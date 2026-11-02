@@ -26,6 +26,7 @@
 /* No box-shadow blur, no gradient - a hard-edged plate, notched like the
    run's other decisive-action surfaces (see .primary in PerfectRun.module.css). */
 .stamp {
+  animation: signedIn var(--dur-transform) var(--ease-out) both;
   position: absolute;
   top: 50%;
   left: 50%;
@@ -91,5 +92,8 @@
 }
 
 @media (max-width: 680px) {
-  .stamp { font-size: 15px; padding: 8px 16px; }
+  .stamp {
+  animation: signedIn var(--dur-transform) var(--ease-out) both; font-size: 15px; padding: 8px 16px; }
 }
+
+@keyframes signedIn { from { opacity:0; scale:.96; } to { opacity:1; scale:1; } }

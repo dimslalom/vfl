@@ -3,7 +3,7 @@
 // This deliberately lives under its own storage keys rather than inside
 // `vfl-perfectrun`: that blob is parsed on every render, and a run is three
 // orders of magnitude larger than the records it would otherwise share a key
-// with. A run is written only at quiescent phase boundaries.
+// with. A run is written at committed decision and phase boundaries.
 //
 // Two rules govern the format:
 //   1. Never serialize a card object - store ids and rehydrate from cards.json.
@@ -11,6 +11,7 @@
 //   2. Never throw on load. A corrupt or unreadable run is discarded and the
 //      player is offered a fresh start; their records blob is untouched.
 
+import cardData from '../../shared/src/data/cards.json' with { type: 'json' };
 import { hashSeed } from '../../shared/src/engine/perfectRun.js';
 
 export const ENDLESS_RUN_KEY = 'vfl-endless-run';
@@ -27,6 +28,56 @@ export function cardsRevision(cards) {
 }
 
 const idsOf = list => (list ?? []).map(card => (typeof card === 'string' ? card : card?.id)).filter(Boolean);
+
+// Active tournaments contain developed NPC cards. Keep only differences from
+// the card catalogue so their exact ratings survive without duplicating art.
+const baseCards = new Map(cardData.map(card => [card.id, card]));
+function encodeActive(value) {
+  if (Array.isArray(value)) return value.map(encodeActive);
+  if (!value || typeof value !== 'object') return value;
+  const base = value.id && value.stats && baseCards.get(value.id);
+  const entries = Object.entries(value).filter(([key, item]) =>
+    !base || JSON.stringify(item) !== JSON.stringify(base[key]));
+  const encoded = Object.fromEntries(entries.map(([key, item]) => [key, encodeActive(item)]));
+  return base ? { $card: value.id, changes: encoded } : encoded;
+}
+function decodeActive(value, byId) {
+  if (Array.isArray(value)) return value.map(item => decodeActive(item, byId));
+  if (!value || typeof value !== 'object') return value;
+  if (value.$card) {
+    const card = byId.get(value.$card);
+    if (!card) throw new Error('Active tournament card unavailable');
+    return { ...card, ...decodeActive(value.changes, byId) };
+  }
+  return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, decodeActive(item, byId)]));
+}
+
+// Timers and bracket flights are presentation. Their domain changes are
+// already committed, so resume at the next stable screen without applying
+// those changes again.
+export function normalizeEndlessCheckpoint(active) {
+  if (!active) return null;
+  if (active.boardState === 'travel') {
+    return { ...active, boardState: 'pairings', seriesActive: false };
+  }
+  if (active.boardState === 'revealing') {
+    const round = active.tour?.rounds?.[active.tour.roundIdx];
+    return { ...active, boardState: 'complete', revealCount: round?.matches.length ?? 0 };
+  }
+  return active;
+}
+
+export function endlessResumeAction(active) {
+  if (active?.phase !== 'run') return null;
+  if (active.pendingMap) return 'settle-map';
+  if (active.view === 'tactic' && active.tacticReveal) return 'play-committed-map';
+  if ((active.view === 'maps' && active.seriesPlan?.order)
+    || (active.view === 'match' && !active.pendingBoardReturn && !active.pendingReward)) return 'prepare-map';
+  if (active.view === 'reward' && active.pendingRewardChoice?.kind === 'player') return 'settle-player-pack';
+  if (active.view === 'reward' && active.pendingRewardChoice?.kind === 'replace') return 'settle-replacement';
+  if (active.view === 'reward' && active.rewardStep === 'tactics' && active.rewardTacticPicks?.length >= 2) return 'settle-tactics';
+  return null;
+}
 
 // ── serialize ───────────────────────────────────────────────────────────────
 
@@ -80,7 +131,7 @@ export function serializeEndlessRun(run) {
     yearSummaries: run.yearSummaries,
     tourResults: (run.tourResults ?? []).map(dehydrateTourResult),
     feed: run.feed,
-    active: run.active,
+    active: encodeActive(run.active),
   };
 }
 
@@ -168,7 +219,7 @@ export function hydrateEndlessRun(json, cards) {
       yearSummaries: migrated.yearSummaries ?? [],
       tourResults: (migrated.tourResults ?? []).map(result => hydrateTourResult(result, byId)),
       feed: migrated.feed ?? [],
-      active: migrated.active ?? null,
+      active: normalizeEndlessCheckpoint(decodeActive(migrated.active ?? null, byId)),
     };
   } catch {
     return null;
@@ -191,6 +242,8 @@ export function endlessRunMeta(run) {
     tier: run.standing?.tier ?? 0,
     prestige: run.prestige?.level ?? 0,
     score: run.score ?? 0,
+    event: run.active?.tour ? run.season?.[run.tourIndex]?.label : null,
+    stage: run.active?.tour?.rounds?.[run.active.tour.roundIdx]?.label ?? null,
   };
 }
 

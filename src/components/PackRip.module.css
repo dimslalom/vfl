@@ -105,11 +105,6 @@
   transform: rotate(calc(var(--fan-angle, 0deg) + var(--lean, 0deg)));
   animation: packFloat var(--pack-wave-period) ease-in-out var(--wave-delay, var(--pack-wave-start)) infinite;
 }
-.impactCard {
-  animation:
-    rarityJolt var(--dur-micro) steps(2, end) var(--pack-impact-delay) 1,
-    packFloat var(--pack-wave-period) ease-in-out var(--wave-delay, var(--pack-wave-start)) infinite;
-}
 .impactCard::after {
   content: '';
   position: absolute;
@@ -119,34 +114,21 @@
   border: 2px solid transparent;
   border-image: linear-gradient(110deg, #fff, var(--gold), #fff) 1;
   opacity: 0;
-  animation: edgeFlash var(--dur-micro) linear var(--pack-impact-delay) 1;
-}
-.stripCards:has(.impactCard) {
-  animation: packStageJolt var(--dur-micro) steps(2, end) var(--pack-impact-delay) 1;
+  animation: edgeFlash var(--dur-enter) ease-in-out var(--pack-impact-delay) 1;
 }
 
 @keyframes packFloat {
   0%,100% { transform:translateY(0) rotate(calc(var(--fan-angle,0deg) + var(--lean, 0deg))); }
-  50% { transform:translateY(-3px) rotate(calc(var(--fan-angle,0deg) + var(--lean, 0deg))); }
-}
-@keyframes rarityJolt {
-  0%, 32%, 66%, 100% { transform: translateX(0) rotate(calc(var(--fan-angle, 0deg) + var(--lean, 0deg))); }
-  33%, 49% { transform: translateX(-3px) rotate(calc(var(--fan-angle, 0deg) + var(--lean, 0deg))); }
-  50%, 65% { transform: translateX(3px) rotate(calc(var(--fan-angle, 0deg) + var(--lean, 0deg))); }
-}
-@keyframes packStageJolt {
-  0%, 100% { transform: translateX(0); }
-  34% { transform: translateX(-3px); }
-  67% { transform: translateX(3px); }
+  50% { transform:translateY(-2px) rotate(calc(var(--fan-angle,0deg) + var(--lean, 0deg))); }
 }
 @keyframes edgeFlash {
   0% { opacity: 0; }
-  18%, 45% { opacity: 1; }
+  50% { opacity: .65; }
   100% { opacity: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .idleCard,.impactCard,.stripCards:has(.impactCard) { animation:none; transform:none; }
+  .idleCard, .impactCard { animation:none; transform:none; }
   .impactCard::after { animation:none; opacity:1; border-color:var(--gold); border-image:none; }
 }
 

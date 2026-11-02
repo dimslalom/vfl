@@ -6,6 +6,7 @@
 // removes the clone. The real source element is the caller's to hide or
 // unmount; this only ever touches the clone.
 import { animate, MS, ANIME_EASE, gate } from '../../shared/src/lib/anime.js';
+import { flightPose } from './flightPath.js';
 
 function rectOf(el) {
   return el.getBoundingClientRect();
@@ -45,12 +46,14 @@ export function flyTo(sourceEl, targetEl, {
   clone.style.willChange = 'transform, opacity';
   document.body.appendChild(clone);
 
-  const x0 = 0, y0 = 0;
   const x1 = (b.left + b.width / 2) - (a.left + a.width / 2);
   const y1 = (b.top + b.height / 2) - (a.top + a.height / 2);
-  const midX = x0 + (x1 - x0) * 0.5;
-  const midY = y0 + (y1 - y0) * 0.5 + arc;
-  const scaleMid = 1 + (scaleTo - 1) * 0.5;
+  const position = { t: 0 };
+  const render = () => {
+    const pose = flightPose(position.t, { x: x1, y: y1, arc, scaleTo, rotate });
+    clone.style.transform = `translate(${pose.x}px, ${pose.y}px) scale(${pose.scale}) rotate(${pose.rotate}deg)`;
+  };
+  render();
 
   let landed = false;
   const finishLanding = () => {
@@ -60,14 +63,14 @@ export function flyTo(sourceEl, targetEl, {
     onLand?.();
   };
 
-  const animation = animate(clone, {
-    translateX: [x0, midX, x1],
-    translateY: [y0, midY, y1],
-    scale: [1, scaleMid, scaleTo],
-    rotate: [0, rotate * 0.6, rotate],
+  // Ease one progress value across the entire path. Easing two keyframe
+  // segments separately used to brake at the midpoint and then restart.
+  const animation = animate(position, {
+    t: [0, 1],
     duration,
     delay,
     ease: ANIME_EASE.travel,
+    onUpdate: render,
     onComplete: finishLanding,
   });
   animation.speed = rate;

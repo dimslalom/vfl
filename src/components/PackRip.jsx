@@ -93,15 +93,15 @@ export default function PackRip({
     if (!target.width || !target.height) return undefined;
     const x0 = (packRect.left + packRect.width / 2) - (target.left + target.width / 2);
     const y0 = (packRect.top + packRect.height / 2) - (target.top + target.height / 2);
-    const scale0 = Math.max(0.2, Math.min(0.6, packRect.width / target.width));
+    const scale0 = Math.max(0.65, Math.min(0.85, packRect.width / target.width));
 
     const animation = animeAnimate(container, {
       translateX: [x0, 0],
       translateY: [y0, 0],
       scale: [scale0, 1],
       opacity: [0.6, 1],
-      duration: MS.hero,
-      ease: ANIME_EASE.out,
+      duration: MS.deal,
+      ease: ANIME_EASE.deal,
     });
     revealFlightRef.current = animation;
     return () => { revealFlightRef.current = null; animation.pause(); };

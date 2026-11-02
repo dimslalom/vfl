@@ -34,11 +34,13 @@ test('DUR mirrors --dur-* tokens (ms -> seconds)', () => {
   assert.equal(DUR.hover, msToSeconds(cssVar('dur-hover')));
   assert.equal(DUR.transform, msToSeconds(cssVar('dur-transform')));
   assert.equal(DUR.enter, msToSeconds(cssVar('dur-enter')));
+  assert.equal(DUR.deal, msToSeconds(cssVar('dur-deal')));
   assert.equal(DUR.hero, msToSeconds(cssVar('dur-hero')));
   assert.equal(DUR.travel, msToSeconds(cssVar('dur-travel')));
 });
 
 test('EASE mirrors --ease-* cubic-bezier control points', () => {
+  assert.deepEqual(EASE.deal, parseCubicBezier(cssVar('ease-deal')));
   assert.deepEqual(EASE.out, parseCubicBezier(cssVar('ease-out')));
   assert.deepEqual(EASE.in, parseCubicBezier(cssVar('ease-in')));
   assert.deepEqual(EASE.travel, parseCubicBezier(cssVar('ease-travel')));

@@ -4,7 +4,7 @@ import { m, AnimatePresence, useMotionValue, animate } from 'motion/react';
 import PlayerCard from '../../shared/src/components/PlayerCard';
 import useMediaQuery from '../lib/useMediaQuery';
 import useCardTilt from '../../shared/src/lib/useCardTilt';
-import { cardSpring, cardLeave } from '../../shared/src/lib/motion';
+import { cardSpring, cardLeave, DUR } from '../../shared/src/lib/motion';
 import { assetPath } from '../../shared/src/lib/utils';
 import { playUiSound } from '../../shared/src/lib/gameAudio';
 import { prefersReducedMotion } from '../../shared/src/lib/useReducedMotion';
@@ -110,7 +110,7 @@ export default function SquadDock({
     previousIglRef.current = iglId;
     setStampedIglId(iglId);
     playUiSound('igl');
-    const timer = setTimeout(() => setStampedIglId(null), 480);
+    const timer = setTimeout(() => setStampedIglId(null), DUR.hero * 1000 + 80);
     return () => clearTimeout(timer);
   }, [iglId]);
 

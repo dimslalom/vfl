@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { animate, useMotionValue } from 'motion/react';
 import useReducedMotion from '../../shared/src/lib/useReducedMotion';
 
 // A cancellable auto-advance.
@@ -16,8 +17,8 @@ import useReducedMotion from '../../shared/src/lib/useReducedMotion';
 //
 // So every auto-advance goes through here: it reports `remaining` so the UI can
 // show the wait, and `skip` so the player can end it. Under Reduce Motion the
-// wait collapses to `reducedDuration` (0 by default) and the phase advances at
-// once. Timers are cleared on unmount - the discipline the run loop already
+// spatial fill animation is removed; reading time stays intact unless a
+// caller explicitly supplies a different `reducedDuration`. Timers are cleared on unmount - the discipline the run loop already
 // had, now shared.
 //
 //   const { progress, seconds, skip } = useSkippableTimeline({
@@ -30,7 +31,7 @@ export default function useSkippableTimeline({
   duration,
   onDone,
   active = true,
-  reducedDuration = 0,
+  reducedDuration = duration,
 }) {
   // Derived during render rather than stashed in a ref, so toggling Reduce
   // Motion mid-session re-derives the span instead of waiting for a remount.
@@ -38,6 +39,7 @@ export default function useSkippableTimeline({
   const span = reduced ? reducedDuration : duration;
 
   const [remaining, setRemaining] = useState(span);
+  const progress = useMotionValue(1);
 
   // Latest-callback ref, assigned in an effect so render stays pure. Without
   // it, a caller passing an inline arrow would restart the timer every render.
@@ -52,9 +54,10 @@ export default function useSkippableTimeline({
   const finish = useCallback(() => {
     if (settledRef.current) return;
     settledRef.current = true;
+    progress.set(0);
     setRemaining(0);
     onDoneRef.current?.();
-  }, []);
+  }, [progress]);
 
   useEffect(() => {
     if (!active) return undefined;
@@ -62,25 +65,30 @@ export default function useSkippableTimeline({
     settledRef.current = false;
     const startedAt = performance.now();
 
-    // rAF rather than a 100ms interval: the countdown drives a draining bar,
-    // and this keeps it smooth while pausing automatically in a background tab.
-    let frame = requestAnimationFrame(function tick() {
+    progress.set(span > 0 ? 1 : 0);
+    const control = reduced || span === 0 ? null : animate(progress, 0, { duration: span / 1000, ease: 'linear' });
+    let displayTimer;
+    const tick = () => {
+      if (settledRef.current) return;
       const left = Math.max(0, span - (performance.now() - startedAt));
-      setRemaining(left);
-      if (left > 0) frame = requestAnimationFrame(tick);
-    });
+      if (reduced) progress.set(span > 0 ? left / span : 0);
+      setRemaining(Math.ceil(left / 1000) * 1000);
+      if (left > 0) displayTimer = setTimeout(tick, left % 1000 || 1000);
+    };
+    displayTimer = setTimeout(tick, 0);
     const timeout = setTimeout(finish, span);
 
     return () => {
-      cancelAnimationFrame(frame);
+      control?.stop();
+      clearTimeout(displayTimer);
       clearTimeout(timeout);
     };
-  }, [active, span, finish]);
+  }, [active, span, finish, progress, reduced]);
 
   return {
     remaining,
-    // 1 → 0, for a draining bar: style={{ '--remaining': progress }}
-    progress: span > 0 ? remaining / span : 0,
+    // MotionValue for a draining bar: <m.div style={{ scaleX: progress }} />
+    progress,
     seconds: Math.ceil(remaining / 1000),
     skip: finish,
   };
