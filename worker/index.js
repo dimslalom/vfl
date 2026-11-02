@@ -1,5 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
-import cards from '../src/data/cards.json';
+import cards from '../shared/src/data/cards.json';
 import {
   GameError,
   LOBBY_TTL_MS,
@@ -13,7 +13,6 @@ import {
   publicSnapshot,
   setConnection,
 } from '../src/engine/multiplayer.js';
-import { handleFeed } from './feed/routes.js';
 
 const APP_PREFIX = '';
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -37,11 +36,6 @@ export default {
 
 async function handleRequest(request, env) {
     const url = new URL(request.url);
-
-    // Real-data feed (D1). Must sit above the asset fallback below.
-    if (url.pathname.startsWith(`${APP_PREFIX}/api/feed/`) || url.pathname.startsWith(`${APP_PREFIX}/internal/`)) {
-      return withSecurityHeaders(await handleFeed(request, env, url));
-    }
 
     if (url.pathname === `${APP_PREFIX}/api/lobbies` && request.method === 'POST') {
       const body = await readJson(request);

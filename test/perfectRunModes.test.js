@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import liveCards from '../src/data/cards.json' with { type: 'json' };
+import liveCards from '../shared/src/data/cards.json' with { type: 'json' };
 import {
   PACK_SIZE,
   evaluateSeason,
@@ -16,7 +16,7 @@ import {
   resolveTournamentToChampion,
   teamPower,
   updateEncRecords,
-} from '../src/engine/perfectRun.js';
+} from '../shared/src/engine/perfectRun.js';
 
 const cards = Array.from({ length: 12 }, (_, index) => ({
   id: `card-${index + 1}`,

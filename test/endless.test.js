@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import cards from '../src/data/cards.json' with { type: 'json' };
+import cards from '../shared/src/data/cards.json' with { type: 'json' };
 import {
   buildBracket,
   evaluateEndless,
@@ -8,7 +8,7 @@ import {
   makeSeason,
   mulberry32,
   teamPower,
-} from '../src/engine/perfectRun.js';
+} from '../shared/src/engine/perfectRun.js';
 import { migratePerfectRunSaves } from '../src/lib/perfectRunSaves.js';
 
 function tournament(champion, mapsLost = 0) {

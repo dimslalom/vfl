@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
-import PlayerCard from './PlayerCard';
-import allCards from '../data/cards.json';
-import { roleAbbr, countryName } from '../lib/utils';
+import PlayerCard from '../../shared/src/components/PlayerCard';
+import allCards from '../../shared/src/data/cards.json';
+import { roleAbbr, countryName } from '../../shared/src/lib/utils';
 import styles from './DeckBuilder.module.css';
 
 const STRATEGIES = [

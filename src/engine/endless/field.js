@@ -21,7 +21,7 @@
 
 import {
   buildBracketFromTeams, eligibleOrgs, encFormLabel, pickN, tournamentForm,
-} from '../perfectRun.js';
+} from '../../../shared/src/engine/perfectRun.js';
 import { TIER_FIELD_SIZE, tierPools } from './ladder.js';
 import { developCards } from './world.js';
 import { ENDLESS_POWER_DIVISOR } from './seriesCards.js';

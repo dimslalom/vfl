@@ -1,4 +1,4 @@
-import { getCardSpecialties } from '../data/specialties.js';
+import { getCardSpecialties } from '../../shared/src/data/specialties.js';
 
 const COPY = {
   flick: { label: '+1.2 DUEL POWER', detail: 'FLICK' },

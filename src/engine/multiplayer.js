@@ -7,8 +7,8 @@ import {
   npcTeamPower,
   simNpcMatch,
   teamPower,
-} from './perfectRun.js';
-import { effectiveCard, emptyDev, tickCareerYear } from './endless/career.js';
+} from '../../shared/src/engine/perfectRun.js';
+import { effectiveCard, emptyDev, tickCareerYear } from '../../shared/src/engine/endless/career.js';
 import { bondChemistry, pruneBonds, tickBondsAfterEvent } from './endless/bonds.js';
 import { rollNpcSignings } from './endless/market.js';
 import { pushNews } from './endless/news.js';

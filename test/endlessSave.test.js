@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import cards from '../src/data/cards.json' with { type: 'json' };
+import cards from '../shared/src/data/cards.json' with { type: 'json' };
 import {
   ENDLESS_META_KEY,
   ENDLESS_RUN_KEY,

@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { TacticCard } from './SeriesCardTable.jsx';
 import { flyTo } from '../lib/flight';
-import { animate, bump, gate, MS, ANIME_EASE } from '../lib/anime';
+import { animate, bump, gate, MS, ANIME_EASE } from '../../shared/src/lib/anime';
 import styles from './TacticReturn.module.css';
 
 // How long the played tactic sits on screen before it leaves.

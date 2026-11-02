@@ -2,17 +2,17 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { m, AnimatePresence } from 'motion/react';
-import { DUR, EASE, STAGGER, eliminationFlash } from '../lib/motion';
+import { DUR, EASE, STAGGER, eliminationFlash } from '../../shared/src/lib/motion';
 import ModeRail from '../components/ModeRail';
-import PlayerCard from '../components/PlayerCard';
-import PlayerPortrait from '../components/PlayerPortrait';
-import { hasRealPortrait } from '../lib/portrait';
+import PlayerCard from '../../shared/src/components/PlayerCard';
+import PlayerPortrait from '../../shared/src/components/PlayerPortrait';
+import { hasRealPortrait } from '../../shared/src/lib/portrait';
 import CardFocusOverlay from '../components/CardFocusOverlay';
 import SigningSequence from '../components/SigningSequence';
 import PhaseTransition from '../components/PhaseTransition';
 import TacticalButton from '../components/TacticalButton';
-import Split from '../components/Split';
-import CountryFlag from '../components/CountryFlag';
+import Split from '../../shared/src/components/Split';
+import CountryFlag from '../../shared/src/components/CountryFlag';
 import SquadBar from '../components/SquadBar';
 import SquadDock from '../components/SquadDock';
 import {
@@ -20,13 +20,13 @@ import {
 } from '../components/SeriesCardTable';
 import MatchBackdrop from '../components/MatchBackdrop';
 import PackRip from '../components/PackRip';
-import allCards from '../data/cards.json';
-import { assetPath, countryName } from '../lib/utils';
+import allCards from '../../shared/src/data/cards.json';
+import { assetPath, countryName } from '../../shared/src/lib/utils';
 import useSkippableTimeline from '../lib/useSkippableTimeline';
-import useRunSpeed, { scaleDuration, scaleDurationWithFloor } from '../lib/useRunSpeed';
-import useReducedMotion from '../lib/useReducedMotion';
+import useRunSpeed, { scaleDuration, scaleDurationWithFloor } from '../../shared/src/lib/useRunSpeed';
+import useReducedMotion from '../../shared/src/lib/useReducedMotion';
 import useScrollLean from '../lib/useScrollLean';
-import { playUiSound } from '../lib/gameAudio';
+import { playUiSound } from '../../shared/src/lib/gameAudio';
 import { buildRoundCascade } from '../lib/matchCascade';
 import { loadPerfectRunSaves as loadSaves, savePerfectRunSaves as saveSaves } from '../lib/perfectRunSaves';
 import {
@@ -40,7 +40,7 @@ import { buildEndlessBracket, endlessFieldPool, endlessPlayerPower } from '../en
 import {
   SOFT_WEIGHT, cardSignals, effectiveRoster, emptyDev, isClubIconEligible, softResidual,
   tickCareerYear, tickFatigue,
-} from '../engine/endless/career';
+} from '../../shared/src/engine/endless/career';
 import { bondChemistry, decayIdleBonds, pruneBonds, tickBondsAfterEvent } from '../engine/endless/bonds';
 import { rollYouthProspect } from '../engine/endless/academy';
 import { tickWorldYear } from '../engine/endless/world';
@@ -56,7 +56,7 @@ import {
   tacticBooster, tacticClash,
 } from '../engine/endless/seriesCards';
 import { flyTo, fallAway } from '../lib/flight';
-import { bump, STAGGER_MS } from '../lib/anime';
+import { bump, STAGGER_MS } from '../../shared/src/lib/anime';
 import TacticReturn from '../components/TacticReturn';
 import { flyBracketMoves } from '../lib/bracketFlight';
 import {
@@ -69,7 +69,7 @@ import {
   eligibleNationalPools, buildCpuNationalTeam, nationalChallengeTier,
   buildNationalBracket, resolveTournamentToChampion, updateEncRecords,
   teamSimulationPower, rngState, restoreRng,
-} from '../engine/perfectRun';
+} from '../../shared/src/engine/perfectRun';
 import {
   getClientId, submitDailyScore, fetchDailyLeaderboard, fetchOverallLeaderboard,
 } from '../lib/leaderboardClient';

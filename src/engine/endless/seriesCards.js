@@ -5,8 +5,8 @@
 // power deltas. There is no separate explanatory model that can drift away
 // from what a card actually does.
 
-import { getCardSpecialties } from '../../data/specialties.js';
-import { hashSeed, mulberry32, pickN } from '../perfectRun.js';
+import { getCardSpecialties } from '../../../shared/src/data/specialties.js';
+import { hashSeed, mulberry32, pickN } from '../../../shared/src/engine/perfectRun.js';
 
 export const TACTIC_HAND_MAX = 7;
 export const TACTIC_HAND_FLOOR = 2;

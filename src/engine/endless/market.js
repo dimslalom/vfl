@@ -16,7 +16,7 @@
 // refuse a poach), never traded for cards. That keeps "who will play for you"
 // a consequence of how you have actually done, not of hoarding.
 
-import { pickN } from '../perfectRun.js';
+import { pickN } from '../../../shared/src/engine/perfectRun.js';
 
 import {
   baselineStature, maxSignableRating, orgStature, overreachCeiling, roleGaps,

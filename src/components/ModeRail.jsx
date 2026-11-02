@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { m } from 'motion/react';
-import { DUR, EASE } from '../lib/motion';
+import { DUR, EASE } from '../../shared/src/lib/motion';
 import BrandLogo from './BrandLogo';
 import styles from './ModeRail.module.css';
 

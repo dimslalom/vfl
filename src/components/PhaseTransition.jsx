@@ -1,5 +1,5 @@
 import { m } from 'motion/react';
-import { wipeIn } from '../lib/motion';
+import { wipeIn } from '../../shared/src/lib/motion';
 
 // A broadcast-wipe wrapper for a top-level phase's whole screen. The caller
 // wraps its full set of `{phase === 'x' && (...)}` sibling blocks in one

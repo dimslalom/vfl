@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { m, AnimatePresence } from 'motion/react';
-import PlayerCard from './PlayerCard';
-import { getCardSpecialties } from '../data/specialties';
-import SpecialtyIcon from './SpecialtyIcon';
-import Split from './Split';
-import { fadeIn } from '../lib/motion';
-import { countryName, regionFullName } from '../lib/utils';
+import PlayerCard from '../../shared/src/components/PlayerCard';
+import { getCardSpecialties } from '../../shared/src/data/specialties';
+import SpecialtyIcon from '../../shared/src/components/SpecialtyIcon';
+import Split from '../../shared/src/components/Split';
+import { fadeIn } from '../../shared/src/lib/motion';
+import { countryName, regionFullName } from '../../shared/src/lib/utils';
 import useDialogFocusTrap from '../lib/useDialogFocusTrap';
 import styles from './CardFocusOverlay.module.css';
-import { STAGE_LABEL } from '../engine/endless/career';
+import { STAGE_LABEL } from '../../shared/src/engine/endless/career';
 
 const LEAGUE_LABEL = { t2: 'Challengers', icon: 'Icons', vct: 'VCT' };
 

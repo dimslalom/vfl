@@ -2,8 +2,8 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import cards from '../src/data/cards.json' with { type: 'json' };
-import { eligibleOrgs, mulberry32, samplePack } from '../src/engine/perfectRun.js';
+import cards from '../shared/src/data/cards.json' with { type: 'json' };
+import { eligibleOrgs, mulberry32, samplePack } from '../shared/src/engine/perfectRun.js';
 import { tierPools } from '../src/engine/endless/ladder.js';
 import {
   PRESTIGE_MIN_TITLES, applyPrestige, canPrestige, canSign, freeAgents,

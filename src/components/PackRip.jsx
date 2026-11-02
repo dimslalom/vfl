@@ -1,15 +1,15 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { m, useMotionValue, animate } from 'motion/react';
-import PlayerCard from './PlayerCard';
+import PlayerCard from '../../shared/src/components/PlayerCard';
 import CardReveal from './CardReveal';
-import PackTear from './PackTear';
-import CountryFlag from './CountryFlag';
-import { cardSpring } from '../lib/motion';
-import useReducedMotion, { prefersReducedMotion } from '../lib/useReducedMotion';
-import { playUiSound } from '../lib/gameAudio';
+import PackTear from '../../shared/src/components/PackTear';
+import CountryFlag from '../../shared/src/components/CountryFlag';
+import { cardSpring } from '../../shared/src/lib/motion';
+import useReducedMotion, { prefersReducedMotion } from '../../shared/src/lib/useReducedMotion';
+import { playUiSound } from '../../shared/src/lib/gameAudio';
 import useScrollLean from '../lib/useScrollLean';
-import { animate as animeAnimate, MS, ANIME_EASE } from '../lib/anime';
+import { animate as animeAnimate, MS, ANIME_EASE } from '../../shared/src/lib/anime';
 import styles from './PackRip.module.css';
 
 const DRAG_THRESHOLD = 6; // px of pointer travel before a press counts as a drag, not a tap

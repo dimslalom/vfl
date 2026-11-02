@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { AnimatePresence, m, useAnimationControls } from 'motion/react';
 import backdrops from '../data/backdrops';
-import useReducedMotion from '../lib/useReducedMotion';
+import useReducedMotion from '../../shared/src/lib/useReducedMotion';
 import styles from './MatchBackdrop.module.css';
 
 // The pool for a tournament kind is that kind's own art plus the shared

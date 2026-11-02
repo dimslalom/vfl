@@ -1,12 +1,12 @@
-import Split from '../components/Split';
+import Split from '../../shared/src/components/Split';
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import MapCanvas from '../components/MapCanvas';
-import PlayerCard from '../components/PlayerCard';
+import PlayerCard from '../../shared/src/components/PlayerCard';
 import AppFrame from '../components/AppFrame';
 import StatusStrip from '../components/StatusStrip';
-import allCards from '../data/cards.json';
-import { simMap } from '../engine/perfectRun';
+import allCards from '../../shared/src/data/cards.json';
+import { simMap } from '../../shared/src/engine/perfectRun';
 import styles from './Match.module.css';
 
 export default function Match() {

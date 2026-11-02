@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { speedMultiplier, scaleDuration, scaleDurationWithFloor, RUN_SPEEDS } from '../src/lib/useRunSpeed.js';
+import { speedMultiplier, scaleDuration, scaleDurationWithFloor, RUN_SPEEDS } from '../shared/src/lib/useRunSpeed.js';
 
 test('RUN_SPEEDS lists the three supported preferences', () => {
   assert.deepEqual(RUN_SPEEDS, ['normal', 'fast', 'instant']);

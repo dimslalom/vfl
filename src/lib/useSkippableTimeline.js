@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import useReducedMotion from './useReducedMotion';
+import useReducedMotion from '../../shared/src/lib/useReducedMotion';
 
 // A cancellable auto-advance.
 //

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import cards from '../src/data/cards.json' with { type: 'json' };
+import cards from '../shared/src/data/cards.json' with { type: 'json' };
 import {
   buildBracket,
   eligibleOrgs,
@@ -10,7 +10,7 @@ import {
   rngState,
   teamPower,
   todaySeed,
-} from '../src/engine/perfectRun.js';
+} from '../shared/src/engine/perfectRun.js';
 
 // ── RNG resumability ────────────────────────────────────────────────────────
 // An endless run has to survive a reload, and replaying years of tournaments

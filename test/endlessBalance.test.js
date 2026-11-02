@@ -10,10 +10,10 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import cards from '../src/data/cards.json' with { type: 'json' };
+import cards from '../shared/src/data/cards.json' with { type: 'json' };
 import {
   buildBracket, mulberry32, npcTeamPower, resolveTournamentToChampion, samplePack, teamPower,
-} from '../src/engine/perfectRun.js';
+} from '../shared/src/engine/perfectRun.js';
 import { buildEndlessBracket } from '../src/engine/endless/field.js';
 import { STARTING_TIER, eventPoints, placementFor, yearEndMovement } from '../src/engine/endless/ladder.js';
 

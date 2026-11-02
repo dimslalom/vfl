@@ -1,5 +1,5 @@
-import useCardTilt from '../lib/useCardTilt';
-import { assetPath } from '../lib/utils';
+import useCardTilt from '../../shared/src/lib/useCardTilt';
+import { assetPath } from '../../shared/src/lib/utils';
 import { TACTIC_HAND_MAX } from '../engine/endless/seriesCards.js';
 import { TacticCard } from './SeriesCardTable.jsx';
 import styles from './SquadBar.module.css';

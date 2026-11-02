@@ -1,7 +1,7 @@
 import { forwardRef } from 'react';
 import { m } from 'motion/react';
-import { tierEntrance, PACK_STAGGER, DUR, EASE } from '../lib/motion';
-import useReducedMotion from '../lib/useReducedMotion';
+import { tierEntrance, PACK_STAGGER, DUR, EASE } from '../../shared/src/lib/motion';
+import useReducedMotion from '../../shared/src/lib/useReducedMotion';
 
 // Escalating entrance keyed by tier - one spring-deal idea, scaled, not a
 // bespoke animation per rarity. `index` adds the pack's authored 65ms sibling

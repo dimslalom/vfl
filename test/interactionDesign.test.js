@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { seededRestAngle } from '../src/lib/cardPhysics.js';
+import { seededRestAngle } from '../shared/src/lib/cardPhysics.js';
 import { activeDuelSpecialties, buildRoundCascade } from '../src/lib/matchCascade.js';
 
 function card(id, player, specialties, positioning = 70) {

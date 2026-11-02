@@ -11,8 +11,8 @@
 // reuses every asset, and tells a better story: an unknown from the lower
 // divisions who becomes an 80 in four years.
 
-import { careerStage, debutAge } from './career.js';
-import { pickN } from '../perfectRun.js';
+import { careerStage, debutAge } from '../../../shared/src/engine/endless/career.js';
+import { pickN } from '../../../shared/src/engine/perfectRun.js';
 
 export const PROSPECT_MAX_RATING = 70;
 export const PROSPECT_MIN_RATING = 52;

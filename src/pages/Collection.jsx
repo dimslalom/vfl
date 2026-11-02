@@ -1,15 +1,15 @@
 import { useDeferredValue, useState } from 'react';
 import { flushSync } from 'react-dom';
-import PlayerCard from '../components/PlayerCard';
+import PlayerCard from '../../shared/src/components/PlayerCard';
 import CardFocusOverlay from '../components/CardFocusOverlay';
 import AppFrame from '../components/AppFrame';
 import StatusStrip from '../components/StatusStrip';
-import SpecialtyIcon from '../components/SpecialtyIcon';
-import CountryFlag from '../components/CountryFlag';
-import allCards from '../data/cards.json';
-import { assetPath, countryName, roleAbbr, thumbnailSrc } from '../lib/utils';
-import { getCardSpecialties } from '../data/specialties';
-import useReducedMotion from '../lib/useReducedMotion';
+import SpecialtyIcon from '../../shared/src/components/SpecialtyIcon';
+import CountryFlag from '../../shared/src/components/CountryFlag';
+import allCards from '../../shared/src/data/cards.json';
+import { assetPath, countryName, roleAbbr, thumbnailSrc } from '../../shared/src/lib/utils';
+import { getCardSpecialties } from '../../shared/src/data/specialties';
+import useReducedMotion from '../../shared/src/lib/useReducedMotion';
 import styles from './Collection.module.css';
 
 const TIER_ORDER = ['bronze', 'silver', 'gold', 'icon', 'legendary', 'prestige', 'iconic'];

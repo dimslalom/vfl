@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { DUR, EASE, STAGGER, PACK_STAGGER } from '../src/lib/motion.js';
+import { DUR, EASE, STAGGER, PACK_STAGGER } from '../shared/src/lib/motion.js';
 
 // Parses src/styles/tokens.css and asserts src/lib/motion.js mirrors it
 // exactly. The Impeccable design-lint detector has no motion rule, so this
@@ -11,7 +11,7 @@ import { DUR, EASE, STAGGER, PACK_STAGGER } from '../src/lib/motion.js';
 // drifting from the CSS source of truth.
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const tokensCss = readFileSync(join(__dirname, '../src/styles/tokens.css'), 'utf8');
+const tokensCss = readFileSync(join(__dirname, '../shared/src/styles/tokens.css'), 'utf8');
 
 function cssVar(name) {
   const match = tokensCss.match(new RegExp(`--${name}:\\s*([^;]+);`));

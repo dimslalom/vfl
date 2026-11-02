@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { prefersReducedMotion } from './useReducedMotion';
+import { prefersReducedMotion } from '../../shared/src/lib/useReducedMotion';
 
 const SPRING = 220;
 const DAMPING = 18;

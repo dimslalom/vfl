@@ -5,7 +5,7 @@
 // overflow, animates it along a lifted arc onto the target's rect, then
 // removes the clone. The real source element is the caller's to hide or
 // unmount; this only ever touches the clone.
-import { animate, MS, ANIME_EASE, gate } from './anime.js';
+import { animate, MS, ANIME_EASE, gate } from '../../shared/src/lib/anime.js';
 
 function rectOf(el) {
   return el.getBoundingClientRect();

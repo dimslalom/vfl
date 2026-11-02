@@ -1,5 +1,5 @@
 import { m } from 'motion/react';
-import { DUR, EASE } from '../lib/motion';
+import { DUR, EASE } from '../../shared/src/lib/motion';
 
 // The upgraded press feedback for the run's decisive action buttons - Play
 // your match, Continue, Reroll, and their Multiplayer equivalents (advance

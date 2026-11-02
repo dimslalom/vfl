@@ -11,7 +11,7 @@
 //   2. Never throw on load. A corrupt or unreadable run is discarded and the
 //      player is offered a fresh start; their records blob is untouched.
 
-import { hashSeed } from '../engine/perfectRun.js';
+import { hashSeed } from '../../shared/src/engine/perfectRun.js';
 
 export const ENDLESS_RUN_KEY = 'vfl-endless-run';
 export const ENDLESS_META_KEY = 'vfl-endless-run-meta';

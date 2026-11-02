@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { m } from 'motion/react';
-import PlayerCard from './PlayerCard';
-import PlayerPortrait from './PlayerPortrait';
+import PlayerCard from '../../shared/src/components/PlayerCard';
+import PlayerPortrait from '../../shared/src/components/PlayerPortrait';
 import useMediaQuery from '../lib/useMediaQuery';
 import { previewScale } from '../lib/squadSheetPreview';
-import { DUR, EASE } from '../lib/motion';
+import { DUR, EASE } from '../../shared/src/lib/motion';
 import useDialogFocusTrap from '../lib/useDialogFocusTrap';
 import styles from './SquadSheet.module.css';
 

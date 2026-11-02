@@ -2,10 +2,10 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import cards from '../src/data/cards.json' with { type: 'json' };
-import { eligibleOrgs, mulberry32 } from '../src/engine/perfectRun.js';
+import cards from '../shared/src/data/cards.json' with { type: 'json' };
+import { eligibleOrgs, mulberry32 } from '../shared/src/engine/perfectRun.js';
 import { BASE_SLOTS, MAX_SLOTS, slotUnlockAt, slotsFor, tierPools } from '../src/engine/endless/ladder.js';
-import { careerStage, emptyDev, tickCareerYear } from '../src/engine/endless/career.js';
+import { careerStage, emptyDev, tickCareerYear } from '../shared/src/engine/endless/career.js';
 import { PROSPECT_MAX_RATING, prospectPool, rollYouthProspect } from '../src/engine/endless/academy.js';
 import { MAX_TRACKED_ORGS, developCards, tickWorldYear } from '../src/engine/endless/world.js';
 import { endlessFieldPool } from '../src/engine/endless/field.js';

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
-import { thumbnailSrc } from '../src/lib/utils.js';
+import { thumbnailSrc } from '../shared/src/lib/utils.js';
 
 const PLACEHOLDER = '/assets/players/placeholder.png';
 

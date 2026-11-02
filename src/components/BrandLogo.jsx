@@ -1,4 +1,4 @@
-import { assetPath } from '../lib/utils';
+import { assetPath } from '../../shared/src/lib/utils';
 
 export default function BrandLogo({ className = '', alt = '' }) {
   return (

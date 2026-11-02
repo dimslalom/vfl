@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import AppFrame from '../components/AppFrame';
 import StatusStrip from '../components/StatusStrip';
 import DeckBuilder from '../components/DeckBuilder';
-import allCards from '../data/cards.json';
+import allCards from '../../shared/src/data/cards.json';
 import styles from './PreMatch.module.css';
 
 export default function PreMatch() {

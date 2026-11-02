@@ -4,8 +4,8 @@ import AppFrame from '../components/AppFrame';
 import StatusStrip from '../components/StatusStrip';
 import PackRip from '../components/PackRip';
 import TacticalButton from '../components/TacticalButton';
-import { mulberry32, samplePack } from '../engine/perfectRun';
-import allCards from '../data/cards.json';
+import { mulberry32, samplePack } from '../../shared/src/engine/perfectRun';
+import allCards from '../../shared/src/data/cards.json';
 import styles from './PackOpening.module.css';
 
 // A standalone preview of the pack-open moment shared by every mode (Perfect

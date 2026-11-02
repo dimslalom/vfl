@@ -6,7 +6,7 @@
 // fromEl/toEl by round key + team id); this only does the measuring, the
 // clone, the flight, and staggering multiple winners leaving one after
 // another instead of all at once.
-import { animate, ANIME_EASE, STAGGER_MS, gate } from './anime.js';
+import { animate, ANIME_EASE, STAGGER_MS, gate } from '../../shared/src/lib/anime.js';
 
 // `moves`: [{ id, fromEl, toEl, cloneClass, prepareClone(clone) }]
 // `base`: the container's getBoundingClientRect(), moves are positioned

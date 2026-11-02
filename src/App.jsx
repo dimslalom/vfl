@@ -12,7 +12,7 @@ const Multiplayer = lazy(() => import('./pages/Multiplayer'));
 // the entry bundle; `strict` makes a bare `motion.div` throw, so every call
 // site is forced onto the `m` namespace instead of drifting onto the (larger,
 // non-tree-shaken) full import.
-const loadFeatures = () => import('./lib/motionFeatures').then(mod => mod.default);
+const loadFeatures = () => import('../shared/src/lib/motionFeatures').then(mod => mod.default);
 
 export default function App() {
   return (

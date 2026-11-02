@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { m, AnimatePresence, useMotionValue, animate } from 'motion/react';
-import PlayerCard from './PlayerCard';
+import PlayerCard from '../../shared/src/components/PlayerCard';
 import useMediaQuery from '../lib/useMediaQuery';
-import useCardTilt from '../lib/useCardTilt';
-import { cardSpring, cardLeave } from '../lib/motion';
-import { assetPath } from '../lib/utils';
-import { playUiSound } from '../lib/gameAudio';
-import { prefersReducedMotion } from '../lib/useReducedMotion';
+import useCardTilt from '../../shared/src/lib/useCardTilt';
+import { cardSpring, cardLeave } from '../../shared/src/lib/motion';
+import { assetPath } from '../../shared/src/lib/utils';
+import { playUiSound } from '../../shared/src/lib/gameAudio';
+import { prefersReducedMotion } from '../../shared/src/lib/useReducedMotion';
 import styles from './SquadDock.module.css';
 
 // The dock is the squad's home across the whole loop, so the cards are read

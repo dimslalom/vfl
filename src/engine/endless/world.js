@@ -11,7 +11,7 @@
 // the tier they actually compete in keeps the state proportional to what is
 // on screen.
 
-import { effectiveCard, emptyDev, tickCareerYear } from './career.js';
+import { effectiveCard, emptyDev, tickCareerYear } from '../../../shared/src/engine/endless/career.js';
 
 export const MAX_TRACKED_ORGS = 48;
 

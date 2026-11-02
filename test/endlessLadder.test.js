@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import cards from '../src/data/cards.json' with { type: 'json' };
-import { eligibleOrgs, mulberry32, npcTeamPower, teamPower } from '../src/engine/perfectRun.js';
+import cards from '../shared/src/data/cards.json' with { type: 'json' };
+import { eligibleOrgs, mulberry32, npcTeamPower, teamPower } from '../shared/src/engine/perfectRun.js';
 import {
   MAX_REPUTATION, PROMOTE_AT, RELEGATE_AT, STARTING_TIER, TIERS, TIER_META,
   eventPoints, placementFor, reputationDelta, reputationRank, tierPools, yearEndMovement,

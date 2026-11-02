@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import cards from '../src/data/cards.json' with { type: 'json' };
-import { mulberry32 } from '../src/engine/perfectRun.js';
+import cards from '../shared/src/data/cards.json' with { type: 'json' };
+import { mulberry32 } from '../shared/src/engine/perfectRun.js';
 import {
   TACTIC_HAND_MAX, bankTactics, changedMapCards, consumeTactic, gainMapMastery, mapActivation,
   mapCardsForYear, mapPicksPerSide, npcTactic, npcTacticChoices, refillTacticHand, settleTactic, tacticActivation,

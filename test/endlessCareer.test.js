@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import cards from '../src/data/cards.json' with { type: 'json' };
-import { mulberry32, teamChemistry, teamPower } from '../src/engine/perfectRun.js';
+import cards from '../shared/src/data/cards.json' with { type: 'json' };
+import { mulberry32, teamChemistry, teamPower } from '../shared/src/engine/perfectRun.js';
 import {
   DRIFT_MAX, DRIFT_MIN, SOFT_MAX, SOFT_MIN, SOFT_WEIGHT,
   applyRoleChange, careerAge, careerStage, derivedProMonths, effectiveCard, effectiveRoster,
   emptyDev, fatiguePenalty, isLegendEligible, roleChangeOffer, softResidual, tickCareerYear,
   tickFatigue,
-} from '../src/engine/endless/career.js';
+} from '../shared/src/engine/endless/career.js';
 import {
   BOND_MAX_STRENGTH, TOTAL_BOND_CHEM_CAP, bondChemistry, bondKey, decayIdleBonds,
   pairChem, pruneBonds, tickBondsAfterEvent,

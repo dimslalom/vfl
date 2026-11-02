@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import PlayerCard from './PlayerCard';
+import PlayerCard from '../../shared/src/components/PlayerCard';
 import TacticalButton from './TacticalButton';
 import { flyTo } from '../lib/flight';
-import { bump, gate } from '../lib/anime';
+import { bump, gate } from '../../shared/src/lib/anime';
 import styles from './SigningSequence.module.css';
 
 // Transfer market / prospect signing, played out on the manage screen rather
