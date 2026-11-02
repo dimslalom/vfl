@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { m } from 'motion/react';
 import PlayerCard from '../../shared/src/components/PlayerCard';
+import { t } from '../lib/i18n';
 import PlayerPortrait from '../../shared/src/components/PlayerPortrait';
 import useMediaQuery from '../lib/useMediaQuery';
 import { previewScale } from '../lib/squadSheetPreview';
@@ -120,10 +121,10 @@ export default function SquadSheet({
       role="dialog"
       tabIndex={-1}
       aria-modal="true"
-      aria-label={`${squadName || 'Your squad'} scoreboard`}
+      aria-label={t('{name} scoreboard', { name: squadName || t('Your squad') })}
     >
       {dismissible && (
-        <button ref={closeRef} className={styles.close} onClick={requestClose} aria-label="Close">✕</button>
+        <button ref={closeRef} className={styles.close} onClick={requestClose} aria-label={t('Close')}>✕</button>
       )}
 
       <div className={styles.sheet} onClick={(e) => e.stopPropagation()}>
@@ -138,10 +139,10 @@ export default function SquadSheet({
             <span>{action.confirmPrompt ? action.confirmPrompt(armedCard) : `${action.prompt}: ${armedCard.player}`}</span>
             <div className={styles.confirmGroup}>
               <button type="button" className={styles.cancelBtn} onClick={() => { setArmedId(null); setPreviewId(null); }}>
-                Cancel
+                {t('Cancel')}
               </button>
               <button type="button" className={styles.confirmBtn} onClick={() => { action.onPick(armedCard); setArmedId(null); }}>
-                Confirm
+                {t('Confirm')}
               </button>
             </div>
           </div>

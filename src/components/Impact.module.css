@@ -1,0 +1,29 @@
+.impact { display: grid; gap: var(--sp-1); margin: 0; }
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  min-height: 32px;
+  padding: var(--sp-1) var(--sp-3);
+  background: var(--surface);
+}
+.row dt {
+  font: 700 11px/1 var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.values {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  margin: 0;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+.before { color: var(--muted); }
+.arrow { color: var(--faint); }
+.delta { font: 700 11px/1 var(--font-mono); color: var(--muted); }
+.delta[data-good='true'] { color: var(--win); }
+.delta[data-good='false'] { color: var(--accent); }

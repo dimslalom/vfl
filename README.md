@@ -64,14 +64,13 @@ routes - these are the product:
 | Route | Page | What it is |
 |---|---|---|
 | `/cards` | `src/pages/Collection.jsx` | Browsable/filterable/sortable table of every card in `cards.json`. Click a row/card to open `CardFocusOverlay`. |
-| `/run` | `src/pages/PerfectRun.jsx` (1.7k lines - the largest file in the app) | Solo mode: draft a squad, run it through a seeded tournament season. See below. |
+| `/run` | `src/pages/PerfectRun.jsx` (the largest file in the app; `Landing`, `Desk` and `DeskPanels` were split out of it) | Solo mode: draft a squad, run it through a seeded tournament season. See below. |
 | `/multiplayer` and `/lobby/:code` | `src/pages/Multiplayer.jsx` | Create/join a lobby with other humans, same draft→tournament shape as solo but state-machine-driven over WebSocket. |
 
-`/prematch`, `/match`, `/pack` (`PreMatch.jsx`, `Match.jsx`,
-`PackOpening.jsx`) are earlier prototypes/stubs, reachable only by direct
-URL, not linked from the nav. `PackOpening.jsx` literally renders "Not built
-yet." Don't treat them as current product surface - packs are dealt inside
-`PerfectRun`/`Multiplayer` now, not as a standalone screen.
+`/legal` holds the disclaimer. `/prematch`, `/match` and `/pack` now redirect
+to `/run`, and `/collection` redirects to `/cards`. `PreMatch.jsx`, `Match.jsx`
+and `PackOpening.jsx` are old prototypes with no route; packs are dealt inside
+`PerfectRun`/`Multiplayer`.
 
 ## Domain model
 
@@ -151,11 +150,26 @@ and is rendered by `src/components/MapCanvas.jsx` + `src/engine/roundEvents.js`
 (derives round descriptions/streaks/match-point state from raw scores without
 touching the simulation itself).
 
+**Series cards** (`src/engine/endless/seriesCards.js`): Endless series are
+played with cards. A series deals a hand of maps and the sides draft them in
+turn, higher seed first. Each map then takes one tactic card from your hand
+against one of the opponent's, and tactics counter each other in a soft
+triangle. A map card adds to your edge for role fit and mastery (`mapActivation`), and a
+tactic multiplies it for roster fit (`tacticActivation`). `seriesEdge` is the one
+formula, base plus map, times tactic, plus any counter, and it is power added
+for that map only. Screens show it times ten (`edgePoints`). A won map returns its tactic to your hand, a lost one burns it. Off-screen
+series resolve through the same functions (`resolveEndlessNpcMatches`).
+
 **Modes layered on the base loop** (all still `perfectRun.js`):
 - **Daily challenge** (`mode === 'daily'`): shared seed for everyone that
-  day, one attempt, score submitted to the Worker's D1 leaderboard via
+  day, one attempt, one year of Endless rules, then the run ends on its own.
+  The score goes to the Worker's D1 leaderboard via
   `src/lib/leaderboardClient.js` (identity = a locally-minted anonymous UUID,
-  no accounts).
+  no accounts). The overall board counts only scores from
+  `DAILY_BOARD_START_MS` onward (`src/lib/dailyRules.js`).
+- **Challenge links** (`mode === 'challenge'`, `src/lib/challenge.js`): a run's
+  seed, score and length in the URL. A friend gets the same opening draw and
+  plays the same length. Never submitted to a leaderboard.
 - **ENC - Esports Nations Cup** (`mode === 'enc'`): draft is
   nationality-based instead of packs; `eligibleNationalPools` requires
   `MIN_NATIONAL_POOL = 7` eligible players per country; CPU opponents are
@@ -184,9 +198,11 @@ touching the simulation itself).
   - **Market** (`market.js`): shared scarcity, poach offers on your stars,
     targeted signings priced in packs and gated by reputation, and prestige
     banking with a compounding multiplier.
-  - Runs autosave to their own storage keys and resume exactly - only the
-    RNG state is stored, so re-running the draw regenerates the identical
-    tournament (`src/lib/endlessRunSave.js`).
+  - Solo runs autosave management, active brackets, map/tactic decisions,
+    rewards, and results to their own storage keys. Calculated map outcomes
+    and RNG state are saved before playback; resuming skips interrupted
+    presentation without replaying the tournament or paying rewards twice.
+    Older management-only saves remain supported (`src/lib/endlessRunSave.js`).
 - **Consolation pack**: solo banks packs (won by taking a title) and spends
   them from the dock; multiplayer deals a turn-based consolation pack to
   everyone except the champion. Either way the incoming card swaps for a
@@ -200,11 +216,11 @@ imports card-pool/bracket/match functions from `perfectRun.js`), but driven
 by an explicit **phase state machine** replicated on server and client:
 
 ```
-lobby → draft → igl_select → tournament ⇄ match_ready ⇄ match_transition
+lobby → draft → igl_select → tournament ⇄ series_prep or match_ready ⇄ match_transition
                                    ↓
                             (non-champion each event) consolation
                                    ↓
-                                 shop  →  season_over
+                              season_over
 ```
 
 - The **Worker** (`worker/index.js`) is thin routing: `POST /api/lobbies`
@@ -225,6 +241,12 @@ lobby → draft → igl_select → tournament ⇄ match_ready ⇄ match_transiti
 - `settings.gameLength` is `'year'` (fixed 3-event season, mirrors solo) or
   `'endless'`; `settings.unboxing` is `'normal'` (5-card pack) or
   nationality-based, same duality as solo mode.
+- `settings.seriesCards` adds `series_prep` before each human series: both
+  squads pick maps and tactics privately by a deadline, and `advanceDeadlines`
+  auto-picks with `chooseNpcMap` and `npcTactic` for anyone who times out or
+  drops. `publicSnapshot(state, now, viewerId)` hides hands, picks and the seed,
+  so the `Lobby` DO builds one snapshot per socket. On by default for new
+  lobbies; `migrateLobbyState()` leaves older ones off.
 - There is **no shop**: the credits/lives/fatigue/boosts economy was removed
   in rules V2, and `migrateLobbyState()` strips those fields from any lobby
   still carrying them. `buy_item`/`shop_done` now throw `unsupported_command`.

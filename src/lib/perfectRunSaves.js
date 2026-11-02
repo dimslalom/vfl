@@ -1,5 +1,6 @@
 export const PERFECT_RUN_STORAGE_KEY = 'vfl-perfectrun';
-export const PERFECT_RUN_SAVE_VERSION = 3;
+export const PERFECT_RUN_SAVE_VERSION = 4;
+export const HALL_CAP = 20;
 
 // This blob is read on every render, so it holds records only - never a run.
 // The endless run itself lives under its own key (see lib/endlessRunSave.js),
@@ -20,10 +21,11 @@ export function migratePerfectRunSaves(data) {
       saveVersion: PERFECT_RUN_SAVE_VERSION,
       endlessV2: emptyEndlessV2(),
       endlessV3: emptyEndlessV3(),
+      hall: [],
     };
   }
   if ((data.saveVersion ?? 1) >= PERFECT_RUN_SAVE_VERSION) {
-    return { endlessV2: emptyEndlessV2(), endlessV3: emptyEndlessV3(), ...data };
+    return { endlessV2: emptyEndlessV2(), endlessV3: emptyEndlessV3(), hall: [], ...data };
   }
   const migrated = { ...data, saveVersion: PERFECT_RUN_SAVE_VERSION };
 
@@ -44,7 +46,18 @@ export function migratePerfectRunSaves(data) {
   // rather than deleted, exactly like legacyEndlessV1.
   migrated.endlessV3 ??= emptyEndlessV3();
 
+  // v3 -> v4: finished runs start being kept. Older runs were never recorded,
+  // so the Hall begins empty rather than inventing entries from best scores.
+  migrated.hall ??= [];
+
   return migrated;
+}
+
+// Best runs first, then newest, so a capped list drops the weakest old run.
+export function addHallEntry(hall, entry) {
+  return [...(hall ?? []), entry]
+    .sort((a, b) => b.score - a.score || b.at - a.at)
+    .slice(0, HALL_CAP);
 }
 
 export function loadPerfectRunSaves(storage = localStorage) {

@@ -4,6 +4,8 @@ import PlayerCard from '../../shared/src/components/PlayerCard';
 import TacticalButton from './TacticalButton';
 import { flyTo } from '../lib/flight';
 import { bump, gate } from '../../shared/src/lib/anime';
+import { scaleDurationWithFloor } from '../../shared/src/lib/useRunSpeed';
+import { t } from '../lib/i18n';
 import styles from './SigningSequence.module.css';
 
 // Transfer market / prospect signing, played out on the manage screen rather
@@ -15,7 +17,7 @@ import styles from './SigningSequence.module.css';
 // charges nothing, which is also the fix for the old pack-phase route where
 // "Keep squad" could keep packs already spent on a card never placed.
 export default function SigningSequence({
-  card, cost, picks, openSlot, onCommit, onCancel, reducedMotion, runSpeed,
+  card, cost, picks, openSlot, targetId: chosenTargetId, onCommit, onCancel, reducedMotion, runSpeed,
 }) {
   // pay -> stamp -> choose (only if the squad is full) -> flying
   const [step, setStep] = useState(cost > 0 ? 'pay' : 'stamp');
@@ -44,18 +46,23 @@ export default function SigningSequence({
       },
     }));
     activeRef.current = { complete: () => flights.forEach(f => f.complete()) };
-    return () => { cancelled = true; activeRef.current = null; };
+    return () => { cancelled = true; flights.forEach(flight => flight.cancel()); activeRef.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
   // Stamp: a beat with the SIGNED plate up, then straight to placement.
   useEffect(() => {
     if (step !== 'stamp') return undefined;
-    const next = openSlot ? 'flying' : 'choose';
-    const timer = setTimeout(() => setStep(next), instant ? 0 : 520);
+    // A market signing already chose its slot in the preview, so it flies
+    // straight there. `undefined` means nobody has chosen yet; null is the
+    // open slot.
+    const next = chosenTargetId !== undefined
+      ? { kind: 'flying', targetId: chosenTargetId }
+      : openSlot ? 'flying' : 'choose';
+    const timer = setTimeout(() => setStep(next), instant ? 0 : scaleDurationWithFloor(520, runSpeed, 300));
     activeRef.current = { complete: () => { clearTimeout(timer); setStep(next); } };
     return () => clearTimeout(timer);
-  }, [step, openSlot, instant]);
+  }, [step, openSlot, instant, chosenTargetId, runSpeed]);
 
   function chooseTarget(targetId) {
     setStep({ kind: 'flying', targetId });
@@ -78,7 +85,7 @@ export default function SigningSequence({
       onLand: () => onCommit(targetId),
     });
     activeRef.current = flight;
-    return () => { activeRef.current = null; };
+    return () => { flight.cancel(); activeRef.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFlying, flyingTargetId]);
 
@@ -99,18 +106,18 @@ export default function SigningSequence({
   const canCancel = step === 'pay' || step === 'stamp' || step === 'choose';
 
   return createPortal(
-    <div className={styles.backdrop} onClick={skip} role="dialog" aria-modal="true" aria-label={`Signing ${card.player}`}>
+    <div className={styles.backdrop} onClick={skip} role="dialog" aria-modal="true" aria-label={t('Signing {player}', { player: card.player })}>
       <div className={styles.stage} onClick={(e) => e.stopPropagation()}>
         <div ref={stageRef} className={styles.cardStage} data-swap-incoming="true">
           <PlayerCard card={card} displayScale={0.5} canDrag={false} />
           {step === 'stamp' && (
-            <span ref={stampRef} className={styles.stamp} aria-hidden="true">SIGNED</span>
+            <span ref={stampRef} className={styles.stamp} aria-hidden="true">{t('SIGNED')}</span>
           )}
         </div>
 
         {step === 'choose' && (
-          <div className={styles.choose} role="group" aria-label={`Choose who ${card.player} replaces`}>
-            <b className={styles.chooseLabel}>Replace who?</b>
+          <div className={styles.choose} role="group" aria-label={t('Choose who {player} replaces', { player: card.player })}>
+            <b className={styles.chooseLabel}>{t('Who leaves')}</b>
             <div className={styles.chooseList}>
               {picks.map(p => (
                 <TacticalButton key={p.id} className={styles.secondary} onClick={() => chooseTarget(p.id)}>
@@ -122,7 +129,7 @@ export default function SigningSequence({
         )}
 
         {canCancel && (
-          <TacticalButton className={styles.cancel} onClick={onCancel}>Cancel</TacticalButton>
+          <TacticalButton className={styles.cancel} onClick={onCancel}>{t('Cancel')}</TacticalButton>
         )}
       </div>
     </div>,

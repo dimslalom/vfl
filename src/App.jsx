@@ -2,10 +2,14 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { LazyMotion, MotionConfig, LayoutGroup } from 'motion/react';
 import RouteErrorBoundary, { NotFound } from './components/RouteError';
+import { t } from './lib/i18n';
+import useLang from './lib/useLang';
 
 const Collection = lazy(() => import('./pages/Collection'));
 const PerfectRun = lazy(() => import('./pages/PerfectRun'));
 const Multiplayer = lazy(() => import('./pages/Multiplayer'));
+const Legal = lazy(() => import('./pages/Legal'));
+const BoardPrototype = lazy(() => import('./pages/BoardPrototype'));
 
 // domMax (not domAnimation) is required for layoutId and drag, both used by
 // the card-surface morphs. Loaded as its own async chunk so it doesn't sit in
@@ -15,6 +19,9 @@ const Multiplayer = lazy(() => import('./pages/Multiplayer'));
 const loadFeatures = () => import('../shared/src/lib/motionFeatures').then(mod => mod.default);
 
 export default function App() {
+  // Subscribed here so a language change re-renders the whole tree in place.
+  // Remounting instead would throw away a run in progress.
+  useLang();
   return (
     <LazyMotion features={loadFeatures} strict>
       {/* reducedMotion="user" is the fix for the gap the CSS-only
@@ -28,7 +35,7 @@ export default function App() {
         <LayoutGroup>
           <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
             <RouteErrorBoundary>
-              <Suspense fallback={<div className="route-loading" role="status">Loading game…</div>}>
+              <Suspense fallback={<div className="route-loading" role="status">{t('Loading game…')}</div>}>
                 <Routes>
                   <Route path="/" element={<Navigate to="/run" replace />} />
                   {/* Renamed from /collection - kept as a redirect so old links still work. */}
@@ -38,6 +45,8 @@ export default function App() {
                   <Route path="/match" element={<Navigate to="/run" replace />} />
                   <Route path="/pack" element={<Navigate to="/run" replace />} />
                   <Route path="/run" element={<PerfectRun />} />
+                  <Route path="/legal" element={<Legal />} />
+                  <Route path="/board" element={<BoardPrototype />} />
                   <Route path="/multiplayer" element={<Multiplayer />} />
                   <Route path="/lobby/:code" element={<Multiplayer />} />
                   <Route path="*" element={<NotFound />} />

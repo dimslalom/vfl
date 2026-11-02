@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import cards from '../shared/src/data/cards.json' with { type: 'json' };
 import { mulberry32 } from '../shared/src/engine/perfectRun.js';
 import {
-  TACTIC_HAND_MAX, bankTactics, changedMapCards, consumeTactic, gainMapMastery, mapActivation,
-  mapCardsForYear, mapPicksPerSide, npcTactic, npcTacticChoices, refillTacticHand, settleTactic, tacticActivation,
+  BASE_EDGE, TACTIC_HAND_MAX, bankTactics, changedMapCards, consumeTactic, edgePoints, edgeSteps, gainMapMastery, mapActivation,
+  mapCardsForYear, mapPicksPerSide, npcTactic, npcTacticChoices, refillTacticHand, seriesEdge, settleTactic, tacticActivation,
   tacticBooster, tacticClash,
 } from '../src/engine/endless/seriesCards.js';
 
@@ -75,7 +75,7 @@ test('the opponent visibly holds two calls and chooses the stronger one', () => 
   const choices = npcTacticChoices(mulberry32(77), roster, map);
   assert.equal(choices.length, 2);
   assert.deepEqual(npcTactic(mulberry32(77), roster, map), choices[0]);
-  const activations = choices.map(card => tacticActivation(card, roster, mapActivation(roster, map, 0)).bonus);
+  const activations = choices.map(card => tacticActivation(card, roster, mapActivation(roster, map, 0)).mult);
   assert.ok(activations[0] >= activations[1]);
 });
 
@@ -105,10 +105,36 @@ test('tactics activate cards and soft counters never cancel the loser', () => {
   const tempo = tacticActivation({ key: 'hit' }, roster, mapResult);
   const read = tacticActivation({ key: 'pocket' }, roster, mapResult);
   const clash = tacticClash(tempo, read);
-  assert.ok(tempo.bonus > 0);
-  assert.ok(read.bonus > 0);
+  assert.ok(tempo.mult > 1);
+  assert.ok(read.mult > 1);
   assert.equal(clash.player, 0.8);
   assert.equal(clash.opponent, 0);
+});
+
+test('a tactic multiplies the map, so the same card is worth more on a good map', () => {
+  const tactic = { mult: 1.6 };
+  assert.equal(seriesEdge({ bonus: 0 }, tactic), BASE_EDGE * 1.6);
+  const strong = seriesEdge({ bonus: 3 }, tactic) - seriesEdge({ bonus: 3 });
+  const weak = seriesEdge({ bonus: 0.5 }, tactic) - seriesEdge({ bonus: 0.5 });
+  assert.ok(strong > weak);
+  assert.equal(seriesEdge({ bonus: 1 }, tactic, 0.8), (BASE_EDGE + 1) * 1.6 + 0.8);
+});
+
+test('roster fit decides what a tactic is worth', () => {
+  const role = (r, i) => ({ id: `${r}-${i}`, player: `${r}-${i}`, role: r, rating: 80, stats: {} });
+  const fit = [role('Sentinel', 0), role('Controller', 1), role('Duelist', 2), role('Duelist', 3), role('Initiator', 4)];
+  const miss = [role('Duelist', 0), role('Duelist', 1), role('Duelist', 2), role('Duelist', 3), role('Initiator', 4)];
+  const card = { key: 'retake' };
+  assert.ok(tacticActivation(card, fit).mult - tacticActivation(card, miss).mult > 0.4);
+});
+
+test('the reveal steps land on exactly the edge the series plays with', () => {
+  const map = mapCardsForYear(2, 1)[0];
+  const mapResult = mapActivation(roster, map, 2);
+  const tactic = tacticActivation({ key: 'lockout' }, roster, mapResult);
+  const steps = edgeSteps(mapResult, tactic, 0.8);
+  assert.deepEqual(steps.map(step => step.key), ['base', 'map', 'tactic', 'clash']);
+  assert.equal(steps.at(-1).total, edgePoints(seriesEdge(mapResult, tactic, 0.8)));
 });
 
 test('each side picks one map in a Bo3 and two from a Bo5, leaving a decider', () => {

@@ -159,9 +159,7 @@
   /* Indeterminate cases (match reveal, bracket travel) pass no --progress -
      defaulting to 1 draws a plain full bar instead of a draining one, since
      there's no known duration to count down. */
-  transform: scaleX(var(--progress, 1));
   transform-origin: left;
-  transition: transform var(--dur-micro) linear;
 }
 
 .skipBtn {
@@ -412,23 +410,22 @@
    affordance reads as plain text until the pointer happens to land on it. */
 .landingLinks {
   margin-top: var(--sp-7);
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+  width: 100%;
 }
 .landingLinks button {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 11px 17px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-1);
+  min-height: var(--tap-min);
+  padding: 11px 15px;
   border: 1px solid var(--line);
   background: var(--surface);
   color: var(--ink);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  text-align: left;
   cursor: pointer;
   clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
   transition: color var(--dur-hover), background var(--dur-hover), border-color var(--dur-hover);
@@ -443,6 +440,18 @@
 }
 .landingLinks button:active { background: var(--surface); }
 .landingLinks button:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.landingLinks b {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.landingLinks span {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--muted);
+}
 .landingLinks i {
   font-style: normal;
   font-size: 9px;
@@ -936,7 +945,7 @@
   font-size: 14px;
 }
 /* result is carried by the score color */
-.mapWin .mapScore  { color: var(--win); }
+.mapWin .mapScore  { color: var(--opponent); }
 .mapLoss .mapScore { color: var(--accent); }
 
 .mapName {
@@ -1527,7 +1536,7 @@
   color: var(--muted);
 }
 .castPlayer[data-triggered="true"] {
-  animation: specialtyCardPulse var(--dur-transform) var(--ease-out);
+  animation: specialtyCardPulse 280ms ease-in-out;
 }
 .castTrigger {
   position: absolute;
@@ -1544,26 +1553,20 @@
   font: 700 9px/1 ui-monospace, Menlo, monospace;
   letter-spacing: .06em;
   pointer-events: none;
-  animation: specialtyChip var(--dur-transform) var(--ease-out) both;
+  animation: specialtyChip 280ms ease-in-out both;
 }
 .castTrigger i { font-style: normal; opacity: .76; }
 .castSideRight .castTrigger { left: auto; right: 38px; }
 .castScore[data-specialty-active="true"] {
-  animation: specialtyThreshold 80ms steps(2, end);
+  color: var(--accent);
 }
 @keyframes specialtyCardPulse {
   0%, 100% { transform: translateY(0); }
-  32% { transform: translateY(-10px); }
+  50% { transform: translateY(-3px); }
 }
 @keyframes specialtyChip {
-  from { opacity: 0; transform: translateY(5px); }
-  35% { opacity: 1; }
-  to { opacity: 0; transform: translateY(-12px); }
-}
-@keyframes specialtyThreshold {
-  0%, 100% { transform: translateX(0); }
-  33% { transform: translateX(-1.5px); }
-  66% { transform: translateX(1.5px); }
+  0%, 100% { opacity: 0; }
+  20%, 80% { opacity: 1; }
 }
 /* The right-hand team reads inward, mirroring the plate's text alignment. */
 .castSideRight .castPlayer { flex-direction: row-reverse; }
@@ -1668,7 +1671,7 @@
   text-transform: uppercase;
   color: var(--faint);
 }
-.castMapRow.mapWin .castMapScore { color: var(--win); }
+.castMapRow.mapWin .castMapScore { color: var(--opponent); }
 .castMapRow.mapLoss .castMapScore { color: var(--accent); }
 .castMapMvp {
   font-size: 10px;
@@ -2575,44 +2578,6 @@
   padding-bottom: 250px;
 }
 
-/* A separate grid is the sticky feed's containing block. Keeping this pair
-   in its own wrapper makes the feed release at the end of Circuit/decisions,
-   before the full-width market begins. */
-.deskTopRow {
-  display: grid;
-  grid-template-columns: minmax(0, 620px) minmax(280px, 1fr);
-  gap: var(--sp-5);
-  align-items: start;
-  min-width: 0;
-}
-
-/* Everything before the screen-wide market occupies this left rail: Circuit,
-   decisions, team power and squad development. All four share the academy
-   frame's exact 620px outer width through the grid track itself. */
-.deskTop {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-5);
-  min-width: 0;
-}
-
-/* The feed stays beside every left-column report, then its containing wrapper
-   ends immediately before the market and forces it back into normal flow. */
-.deskSide {
-  position: sticky;
-  top: var(--sp-5);
-  min-width: 0;
-  align-self: start;
-}
-
-/* Screen-wide content begins here, after the sticky pair. */
-.deskRest {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-5);
-  min-width: 0;
-}
-
 .deskTitle {
   margin: 0;
   grid-column: 1 / -1;
@@ -2623,13 +2588,6 @@
   text-transform: uppercase;
 }
 
-/* Below the point a real two-column layout stops paying for itself, the pair
-   stacks and the feed returns to normal document flow. */
-@media (max-width: 900px) {
-  .deskTopRow { grid-template-columns: minmax(0, 1fr); }
-  .deskSide { position: static; }
-}
-
 .deskWarning {
   margin: 0;
   padding: var(--sp-3);
@@ -2638,13 +2596,6 @@
   color: var(--gold);
   font-size: 13px;
   font-weight: 700;
-}
-
-/* Decisions. Present only while something wants an answer. */
-.inbox {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-3);
 }
 
 /* ── Squad, absorbed from the dock ── */
@@ -2958,3 +2909,111 @@ button.seasonSlot:hover { background: var(--surface-hi); }
 .chemList b { font-variant-numeric: tabular-nums; }
 .chemList b[data-sign='up'] { color: var(--win); }
 .chemList b[data-sign='down'] { color: var(--accent); }
+
+/* ── Landing: what each mode is for ── */
+.landingLinks button b { display: inline-flex; align-items: baseline; gap: var(--sp-2); }
+.landingBoardRow { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--sp-2); }
+.landingFoot { display: flex; flex-direction: column; align-items: center; gap: var(--sp-3); }
+.landingDisclaimer a { color: inherit; }
+
+/* ── Leaderboard states ── */
+.boardNote p { margin: 0 0 var(--sp-2); }
+.boardRetry {
+  min-height: var(--tap-min);
+  padding: 0 var(--sp-4);
+  border: 0;
+  background: var(--surface-alt);
+  color: var(--ink);
+  font: 700 11px/1 var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+}
+.boardRetry:hover { background: var(--surface-hi); }
+
+/* ── Hall of Fame ── */
+.hallList { display: grid; gap: var(--sp-1); margin: 0; padding: 0; list-style: none; }
+.hallRow {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  grid-template-areas: 'rank name score' 'rank facts score';
+  column-gap: var(--sp-3);
+  row-gap: var(--sp-1);
+  align-items: center;
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--surface);
+}
+.hallRow .boardRank { grid-area: rank; }
+.hallName { grid-area: name; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.hallName small { font-size: 12px; color: var(--muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.hallFacts { grid-area: facts; font: 700 10px/1 var(--font-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.hallRow .boardScore { grid-area: score; font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* ── Decision previews ── */
+.poachImpact {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-2);
+  width: 100%;
+  margin-top: var(--sp-2);
+}
+.poachImpact > span { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.poachImpact small {
+  font: 700 10px/1 var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+[data-poach-offer]:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.signConfirm { display: flex; gap: var(--sp-5); align-items: flex-start; }
+.signFace { flex: none; }
+.signSide { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
+.signLabel {
+  font: 700 11px/1 var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.signNote { margin: 0; font-size: 15px; line-height: 1.5; color: var(--muted); }
+.signTargets { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
+.signTarget {
+  min-height: var(--tap-min);
+  padding: 0 var(--sp-3);
+  border: 0;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 15px;
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+}
+.signTarget:hover { background: var(--surface-hi); }
+.signTarget[aria-pressed='true'] { background: var(--surface-alt); box-shadow: inset 0 0 0 2px var(--ink); }
+
+.swapImpact { width: 100%; max-width: 420px; }
+.resultGain { width: 100%; max-width: 480px; }
+
+.overGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 360px);
+  gap: var(--sp-8);
+  width: 100%;
+  align-items: start;
+}
+.overColumn { display: flex; flex-direction: column; gap: var(--sp-5); min-width: 0; }
+.rivalLine {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+@media (max-width: 680px) {
+  .landingLinks { grid-template-columns: 1fr; }
+  .poachImpact { grid-template-columns: 1fr; }
+  .signConfirm { flex-direction: column; align-items: center; }
+  .signSide { width: 100%; }
+  .overGrid { grid-template-columns: 1fr; }
+}
+
+.playbackSpeed { display:flex; align-items:center; gap:6px; color:var(--muted); font:700 10px/1 var(--font-mono); text-transform:uppercase; }
+.playbackSpeed select { color:var(--ink); background:var(--surface); border:1px solid var(--line); padding:5px; font:inherit; }

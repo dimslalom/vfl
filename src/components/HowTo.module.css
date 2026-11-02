@@ -1,0 +1,77 @@
+.guide { display: flex; flex-direction: column; gap: var(--sp-6); }
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 190px;
+  gap: var(--sp-5);
+  align-items: center;
+}
+.copy h3 { margin: 0 0 var(--sp-1); font-size: 22px; font-weight: 700; line-height: 1.2; }
+.copy p { margin: 0; font-size: 15px; line-height: 1.5; color: var(--muted); }
+.piece { display: flex; justify-content: center; min-width: 0; pointer-events: none; }
+
+.fan { display: flex; }
+.fan > span + span { margin-left: -24px; }
+.fan > span:nth-child(1) { transform: rotate(-4deg); }
+.fan > span:nth-child(3) { transform: rotate(4deg); }
+
+.igl { position: relative; display: inline-block; padding-top: var(--sp-5); background: var(--accent); }
+.igl b {
+  position: absolute;
+  top: 5px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font: 700 11px/1 var(--font-mono);
+  letter-spacing: 0.14em;
+  color: var(--accent-ink);
+}
+
+.table { display: flex; gap: var(--sp-2); }
+
+.ladder {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ladder li {
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--surface);
+  color: var(--muted);
+  font: 700 11px/1 var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.ladder li[data-current='true'] { background: var(--surface-alt); color: var(--ink); }
+
+.glossary { display: grid; gap: var(--sp-3); margin: 0; }
+.glossary dt {
+  margin-bottom: var(--sp-1);
+  font: 700 11px/1 var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.glossary dd { margin: 0; font-size: 15px; line-height: 1.5; color: var(--muted); }
+
+.footer { position: sticky; bottom: 0; padding-top: var(--sp-2); background: var(--surface-flyout); }
+.done {
+  width: 100%;
+  min-height: var(--tap-min);
+  padding: 15px 24px;
+  border: 0;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 9px 100%, 0 calc(100% - 9px));
+}
+
+@media (max-width: 560px) {
+  .row { grid-template-columns: 1fr; gap: var(--sp-3); }
+  .piece { justify-content: flex-start; }
+}

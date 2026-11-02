@@ -9,6 +9,8 @@
 // bonds, transfers and ladder movement are all invisible while they happen,
 // and every one of them lands here afterwards, named and attributable.
 
+import { t } from '../../lib/i18n.js';
+
 export const FEED_CAP = 40;
 
 export const NEWS_KINDS = [
@@ -37,33 +39,34 @@ export function pushNews(feed, items, { year, event }) {
  * component so the vocabulary has one home and stays consistent.
  */
 export function describeNews(item) {
+  const { player, player2, orgName: org, tierLabel, n } = item;
   switch (item.kind) {
     case 'signing':
-      return { title: `${item.orgName} sign ${item.player}`, note: 'Off the market' };
+      return { title: t('{org} sign {player}', { org, player }), note: t('Off the market') };
     case 'poach':
-      return { title: `${item.orgName} want ${item.player}`, note: 'Approach made' };
+      return { title: t('{org} want {player}', { org, player }), note: t('Approach made') };
     case 'departure':
-      return { title: `${item.player} leaves for ${item.orgName}`, note: 'Transfer complete' };
+      return { title: t('{player} leaves for {org}', { player, org }), note: t('Transfer complete') };
     case 'held':
-      return { title: `${item.player} stays`, note: `${item.orgName} turned away` };
+      return { title: t('{player} stays', { player }), note: t('{org} turned away', { org }) };
     case 'signed':
-      return { title: `${item.player} signs for you`, note: 'Transfer complete' };
+      return { title: t('{player} signs for you', { player }), note: t('Transfer complete') };
     case 'prospect':
-      return { title: `${item.player} joins from the academy`, note: 'Youth signing' };
+      return { title: t('{player} joins from the academy', { player }), note: t('Youth signing') };
     case 'promote':
-      return { title: `Promoted to ${item.tierLabel}`, note: 'Circuit' };
+      return { title: t('Promoted to {tier}', { tier: t(tierLabel) }), note: t('Circuit') };
     case 'relegate':
-      return { title: `Relegated to ${item.tierLabel}`, note: 'Circuit' };
+      return { title: t('Relegated to {tier}', { tier: t(tierLabel) }), note: t('Circuit') };
     case 'legend':
-      return { title: `${item.player} is a club legend`, note: 'No longer declines' };
+      return { title: t('{player} is a club legend', { player }), note: t('No longer declines') };
     case 'bond':
-      return { title: `${item.player} and ${item.player2} are clicking`, note: 'Chemistry' };
+      return { title: t('{player} and {other} are clicking', { player, other: player2 }), note: t('Chemistry') };
     case 'growth':
-      return { title: `${item.player} is improving`, note: `+${item.n}` };
+      return { title: t('{player} is improving', { player }), note: `+${n}` };
     case 'decline':
-      return { title: `${item.player} is slipping`, note: `${item.n}` };
+      return { title: t('{player} is slipping', { player }), note: `${n}` };
     default:
-      return { title: item.title ?? 'Update', note: '' };
+      return { title: item.title ?? t('Update'), note: '' };
   }
 }
 

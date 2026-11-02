@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import { Component } from 'react';
 import { Link } from 'react-router-dom';
 import AppFrame from './AppFrame';
@@ -26,8 +27,8 @@ export function NotFound() {
   return (
     <Fallback
       crumb="404"
-      title="No such page"
-      body="That address doesn't match any screen in the app."
+      title={t('No such page')}
+      body={t("That address doesn't match any screen in the app.")}
     />
   );
 }
@@ -46,9 +47,9 @@ export default class RouteErrorBoundary extends Component {
     if (!this.state.error) return this.props.children;
     return (
       <Fallback
-        crumb="Error"
-        title="Something broke on this screen"
-        body="The rest of the app is still fine - head back and try again."
+        crumb={t('Error')}
+        title={t('Something broke on this screen')}
+        body={t('The rest of the app is still fine. Head back and try again.')}
         // Shown because this is a game people self-host and debug; it is the
         // message only, never a stack.
         detail={this.state.error?.message}

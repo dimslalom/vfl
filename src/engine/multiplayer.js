@@ -5,6 +5,7 @@ import {
   ROUND_META,
   hashSeed,
   npcTeamPower,
+  pickMaps,
   simNpcMatch,
   teamPower,
 } from '../../shared/src/engine/perfectRun.js';
@@ -12,11 +13,16 @@ import { effectiveCard, emptyDev, tickCareerYear } from '../../shared/src/engine
 import { bondChemistry, pruneBonds, tickBondsAfterEvent } from './endless/bonds.js';
 import { rollNpcSignings } from './endless/market.js';
 import { pushNews } from './endless/news.js';
+import {
+  chooseNpcMap, gainMapMastery, mapCardsForYear, mapPicksPerSide, mergeMapPicks, npcTactic,
+  playCardSeries, rivalMapMastery, tacticBooster,
+} from './endless/seriesCards.js';
 
 export const MAX_COMPETITORS = 16;
 export const MAX_SPECTATORS = 32;
 export const DRAFT_DEADLINE_MS = 30_000;
 export const TRANSITION_DEADLINE_MS = 10_000;
+export const SERIES_PREP_DEADLINE_MS = 45_000;
 export const HOST_MIGRATION_MS = 30_000;
 export const LOBBY_TTL_MS = 24 * 60 * 60 * 1000;
 export const RULES_VERSION = 2;
@@ -53,13 +59,14 @@ export function createLobbyState({ code, hostId, squadName, settings, seed, now 
     version: 1,
     seed: seed >>> 0,
     rngCounter: 0,
-    settings: { ...settings },
+    // New lobbies play maps and tactics; migrateLobbyState leaves older ones off.
+    settings: { ...settings, seriesCards: settings.seriesCards !== false },
     phase: 'lobby',
     hostId,
     hostMigrationAt: null,
     competitors: [{
       id: hostId, squadName: name, joinedAt: now, connected: false,
-      rosterIds: [], iglId: null, bonds: {},
+      rosterIds: [], iglId: null, bonds: {}, mapMastery: {},
     }],
     // ONE living world for the whole lobby. `dev` is keyed by card id, and
     // the card pool is shared, so a player another squad developed - or an
@@ -73,6 +80,7 @@ export function createLobbyState({ code, hostId, squadName, settings, seed, now 
     season: null,
     tournament: null,
     consolation: null,
+    seriesPrep: null,
     pendingTransition: null,
     animationEvent: null,
     endEndlessRequested: false,
@@ -88,6 +96,10 @@ export function migrateLobbyState(state) {
   state.rulesVersion = RULES_VERSION;
   state.endEndlessRequested ??= false;
   state.migrationPending ??= null;
+  // A lobby stored before series cards keeps playing the way it started.
+  state.settings ??= {};
+  state.settings.seriesCards ??= false;
+  state.seriesPrep ??= null;
   state.world ??= { dev: {}, signedIds: {}, feed: [], year: 0 };
   state.world.dev ??= {};
   state.world.signedIds ??= {};
@@ -95,6 +107,7 @@ export function migrateLobbyState(state) {
   state.world.year ??= 0;
   for (const competitor of state.competitors ?? []) {
     competitor.bonds ??= {};
+    competitor.mapMastery ??= {};
     delete competitor.eliminated;
     delete competitor.lives;
     delete competitor.credits;
@@ -143,7 +156,7 @@ export function addCompetitor(state, { id, squadName, now }) {
   }
   state.competitors.push({
     id, squadName: name, joinedAt: now, connected: false,
-    rosterIds: [], iglId: null, bonds: {},
+    rosterIds: [], iglId: null, bonds: {}, mapMastery: {},
   });
   touch(state, now);
 }
@@ -168,7 +181,12 @@ export function applyCommand(state, actorId, command, cards, now) {
   const { type, commandId, expectedVersion, payload = {} } = command ?? {};
   if (!commandId || typeof commandId !== 'string') throw new GameError('invalid_command', 'commandId is required.');
   if (state.processedCommandIds.includes(commandId)) return { duplicate: true, events: [] };
-  if (expectedVersion !== state.version) throw new GameError('stale_version', 'The lobby state has changed.');
+  // Two squads can lock in at the same moment, and neither should lose its
+  // picks to the other's version bump. A submit is safe to apply late: it only
+  // touches the sender's own side and commandId already stops a double send.
+  if (type !== 'series_submit' && expectedVersion !== state.version) {
+    throw new GameError('stale_version', 'The lobby state has changed.');
+  }
   const actor = state.competitors.find(p => p.id === actorId);
   if (!actor) throw new GameError('unauthorized', 'Spectators cannot control the game.');
 
@@ -198,6 +216,9 @@ export function applyCommand(state, actorId, command, cards, now) {
     case 'play_match':
       requireHost(state, actorId);
       playHumanMatch(state, cards, now, events);
+      break;
+    case 'series_submit':
+      submitSeriesPicks(state, actorId, payload, cards, now, events);
       break;
     case 'advance_early':
       requireHost(state, actorId);
@@ -258,6 +279,9 @@ export function advanceDeadlines(state, cards, now) {
     }
     startSeason(state, cards, now, events);
     changed = true;
+  } else if (state.phase === 'series_prep' && state.seriesPrep?.deadlineAt <= now) {
+    finishSeriesPrep(state, cards, now, events);
+    changed = true;
   } else if (state.phase === 'match_ready' && state.pendingTransition?.deadlineAt <= now) {
     playHumanMatch(state, cards, now, events);
     changed = true;
@@ -283,9 +307,11 @@ export function nextAlarmAt(state) {
       ? state.pendingTransition?.deadlineAt
       : state.phase === 'consolation'
         ? state.consolation?.deadlineAt
-        : state.phase === 'migration_pending'
-          ? (state.lastActiveAt ?? 0)
-          : null;
+        : state.phase === 'series_prep'
+          ? state.seriesPrep?.deadlineAt
+          : state.phase === 'migration_pending'
+            ? (state.lastActiveAt ?? 0)
+            : null;
   return [
     state.hostMigrationAt,
     phaseDeadline,
@@ -293,9 +319,19 @@ export function nextAlarmAt(state) {
   ].filter(Number.isFinite).sort((a, b) => a - b)[0] ?? null;
 }
 
-export function publicSnapshot(state, serverNow = Date.now()) {
+// One snapshot per viewer, so a squad sees its own hand and picks and nobody
+// else's until the series resolves. The seed stays on the server: hands are
+// drawn from it, so sharing it would reveal them all the same.
+export function publicSnapshot(state, serverNow = Date.now(), viewerId = null) {
   const copy = structuredClone(state);
   delete copy.processedCommandIds;
+  delete copy.seed;
+  delete copy.rngCounter;
+  if (copy.seriesPrep) {
+    for (const [id, side] of Object.entries(copy.seriesPrep.sides)) {
+      if (id !== viewerId) copy.seriesPrep.sides[id] = { ready: side.ready };
+    }
+  }
   copy.serverNow = serverNow;
   return copy;
 }
@@ -468,6 +504,10 @@ function resolveUntilPresentation(state, cards, now, events) {
     if (unresolved) {
       if (unresolved.humanInvolved) {
         tournament.currentHumanMatchId = unresolved.id;
+        if (state.settings.seriesCards) {
+          startSeriesPrep(state, unresolved, now, events);
+          return;
+        }
         state.pendingTransition = {
           type: 'play_match',
           matchId: unresolved.id,
@@ -518,6 +558,114 @@ function playHumanMatch(state, cards, now, events) {
   events.push({ type: 'deadline', serverNow: now, deadlineAt: state.pendingTransition.deadlineAt });
 }
 
+// Series cards in a lobby. Solo draws maps and answers turn by turn because the
+// opponent is the engine; here both humans choose at once and in private, so
+// each commits a map list and one tactic per dealt map, and the alternating
+// draft runs when the picks are revealed. Hands last one series: a persistent
+// bank would need its own economy, and lobbies are short.
+function startSeriesPrep(state, match, now, events) {
+  const tournament = state.tournament;
+  const rng = () => nextRandom(state);
+  const yearCards = new Map(mapCardsForYear(state.seed, state.season.year).map(card => [card.name, card]));
+  const dealt = pickMaps(rng, match.bestOf);
+  const maps = dealt.map(name => yearCards.get(name));
+  const sides = {};
+  for (const teamId of [match.a, match.b]) {
+    if (!tournament.teams[teamId].human) continue;
+    sides[teamId] = {
+      hand: tacticBooster(rng, match.bestOf + 1),
+      mastery: teamMastery(state, tournament.teams[teamId], state.season.year, maps),
+      rivalMastery: teamMastery(state, tournament.teams[teamId === match.a ? match.b : match.a], state.season.year, maps),
+      mapPicks: null, tactics: null, ready: false,
+    };
+  }
+  state.seriesPrep = {
+    matchId: match.id, bestOf: match.bestOf, perSide: mapPicksPerSide(match.bestOf),
+    dealt: maps, sides,
+    deadlineAt: now + SERIES_PREP_DEADLINE_MS,
+  };
+  state.phase = 'series_prep';
+  events.push({ type: 'deadline', serverNow: now, deadlineAt: state.seriesPrep.deadlineAt });
+}
+
+function submitSeriesPicks(state, actorId, payload, cards, now, events) {
+  if (state.phase !== 'series_prep') throw new GameError('invalid_phase', 'No series is being prepared.');
+  const prep = state.seriesPrep;
+  const side = prep.sides[actorId];
+  if (!side) throw new GameError('not_your_series', 'This series is not yours.');
+  if (side.ready) throw new GameError('already_locked', 'Your picks are locked.');
+  const dealtNames = prep.dealt.map(map => map.name);
+  const mapPicks = Array.isArray(payload.mapPicks) ? payload.mapPicks : [];
+  if (mapPicks.length !== prep.perSide
+    || new Set(mapPicks).size !== mapPicks.length
+    || !mapPicks.every(name => dealtNames.includes(name))) {
+    throw new GameError('invalid_picks', 'Choose your maps from the ones dealt.');
+  }
+  const chosen = dealtNames.map(name => side.hand.find(card => card.uid === payload.tactics?.[name]));
+  if (chosen.some(card => !card) || new Set(chosen.map(card => card.uid)).size !== chosen.length) {
+    throw new GameError('invalid_picks', 'Choose one different tactic for each map.');
+  }
+  side.mapPicks = mapPicks;
+  side.tactics = Object.fromEntries(dealtNames.map((name, index) => [name, chosen[index]]));
+  side.ready = true;
+  if (Object.values(prep.sides).every(entry => entry.ready)) finishSeriesPrep(state, cards, now, events);
+}
+
+function teamMastery(state, team, year, maps) {
+  const competitor = state.competitors.find(player => player.id === team.id);
+  return Object.fromEntries(maps.map(map => [
+    map.name,
+    competitor ? (competitor.mapMastery?.[map.name] ?? 0) : rivalMapMastery(state.seed, team.id, map.name, year),
+  ]));
+}
+
+function finishSeriesPrep(state, cards, now, events) {
+  const prep = state.seriesPrep;
+  const tournament = state.tournament;
+  const round = tournament.rounds[tournament.roundIdx];
+  const match = round.matches.find(item => item.id === prep.matchId);
+  const year = state.season.year;
+  const teamA = hydrateTeam(tournament.teams[match.a], cards);
+  const teamB = hydrateTeam(tournament.teams[match.b], cards);
+  const masteryA = teamMastery(state, teamA, year, prep.dealt);
+  const masteryB = teamMastery(state, teamB, year, prep.dealt);
+  const aFirst = tournament.seeds.indexOf(teamA.id) < tournament.seeds.indexOf(teamB.id);
+  const [first, second] = aFirst ? [teamA, teamB] : [teamB, teamA];
+  const [firstMastery, secondMastery] = aFirst ? [masteryA, masteryB] : [masteryB, masteryA];
+  const rng = () => nextRandom(state);
+
+  // An NPC, or a human who timed out or dropped, plays through the same two
+  // helpers an off-screen series does.
+  const order = mergeMapPicks(
+    prep.dealt,
+    prep.sides[first.id]?.mapPicks,
+    prep.sides[second.id]?.mapPicks,
+    prep.perSide,
+    (remaining, firstTurn) => chooseNpcMap(
+      remaining,
+      (firstTurn ? first : second).roster,
+      firstTurn ? firstMastery : secondMastery,
+    ),
+  );
+  const tacticFor = team => map => prep.sides[team.id]?.tactics?.[map.name] ?? npcTactic(rng, team.roster, map);
+
+  const result = playCardSeries(rng, {
+    teamA, teamB, bestOf: match.bestOf, maps: order, masteryA, masteryB,
+    tacticA: tacticFor(teamA), tacticB: tacticFor(teamB),
+  });
+  applyMatchResult(state, match, result);
+  for (const played of result.maps) {
+    for (const team of [teamA, teamB]) {
+      const competitor = state.competitors.find(player => player.id === team.id);
+      if (competitor) competitor.mapMastery = gainMapMastery(competitor.mapMastery, played.map);
+    }
+  }
+  state.seriesPrep = null;
+  state.phase = 'match_transition';
+  state.pendingTransition = { type: 'next_match', matchId: match.id, deadlineAt: now + TRANSITION_DEADLINE_MS };
+  events.push({ type: 'deadline', serverNow: now, deadlineAt: state.pendingTransition.deadlineAt });
+}
+
 function advanceMatchTransition(state, cards, now, events) {
   state.pendingTransition = null;
   state.animationEvent = null;
@@ -529,6 +677,10 @@ function simulateMatch(state, match, cards) {
   const a = state.tournament.teams[match.a];
   const b = state.tournament.teams[match.b];
   const result = simNpcMatch(() => nextRandom(state), hydrateTeam(a, cards), hydrateTeam(b, cards), match.bestOf);
+  applyMatchResult(state, match, result);
+}
+
+function applyMatchResult(state, match, result) {
   Object.assign(match, { maps: result.maps, scoreA: result.scoreA, scoreB: result.scoreB, winner: result.winner });
   for (const competitor of state.competitors) {
     if (competitor.id !== match.a && competitor.id !== match.b) continue;
@@ -747,6 +899,7 @@ function resetToLobby(state, now) {
   state.season = null;
   state.tournament = null;
   state.consolation = null;
+  state.seriesPrep = null;
   state.migrationPending = null;
   state.pendingTransition = null;
   state.animationEvent = null;
@@ -754,6 +907,7 @@ function resetToLobby(state, now) {
   for (const competitor of state.competitors) {
     competitor.rosterIds = [];
     competitor.iglId = null;
+    competitor.mapMastery = {};
   }
   touch(state, now);
 }

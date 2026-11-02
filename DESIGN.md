@@ -243,13 +243,13 @@ Two coexisting corner languages, used by role rather than by taste. Structural c
 The hero object of the app: a tilting, flippable trading card (3D perspective tilt driven by pointer position, a separate slower flip transition for front/back, and a screen-blend glare layer that simulates foil under light - the system's one deliberate departure from the No-Glow Rule). Specialty chips sit on cut-corner notched tiles in `--gold`, spilling half off the card edge, with hover tooltips in the same notched-flyout language as the rest of the system. Respects `prefers-reduced-motion` by disabling tilt/flip/glare transitions outright.
 
 ### Kinetic interaction law
-Player cards are the system's only spring-driven physical objects. A card uses a damped spring with continuous velocity, a deterministic `id`-seeded resting angle, a 1000px perspective, cursor-relative pitch/yaw, and velocity-derived roll. Pointer movement writes rounded transform and world-space glare variables directly to the card rather than rendering React state per frame. Hover, focus, inspection, and drag form a single elevation ladder; the soft altitude penumbra is a PlayerCard-only physical-material exception to the otherwise flat Print-Not-Light rule.
+Player cards are the system's only spring-driven physical objects. A card uses a damped spring with continuous velocity, a deterministic `id`-seeded resting angle, a 1000px perspective, cursor-relative pitch/yaw limited to six degrees, and no velocity-derived roll. Pointer input feeds one damped spring for both tilt and parallax; rounded transform and glare variables are written directly to the card rather than rendering React state per frame. Hover, focus, inspection, and drag form a single elevation ladder; the soft altitude penumbra is a PlayerCard-only physical-material exception to the otherwise flat Print-Not-Light rule.
 
-Pack cards deal at 65ms intervals, settle into a five-card fan, then breathe in a phase-shifted 3.2-second wave. High-tier reveals receive one 120ms edge flash and stage jolt. Dock swaps part only the immediate neighbours, lift/dim the outgoing slot, and land through the shared card spring. IGL assignment uses one sharp stamp and shockwave.
+Pack cards deal at 65ms intervals, settle into a five-card fan, then breathe in a phase-shifted 4.4-second wave. The group emerges over 500ms with one transform owner; high-tier reveals receive one later 320ms edge accent on a separate layer, without a card or stage jolt. Dock swaps part only the immediate neighbours, lift/dim the outgoing slot, and land through the shared card spring. IGL assignment uses one sharp stamp and shockwave.
 
-Match presentation is causal rather than instantaneous: the already-computed simulation result is never changed, but active duel specialties pulse their owning roster row sequentially at 140ms each before the round score reel commits. Screen displacement is reserved for overtime, streak breaks, and map-deciding outcomes. Procedural Web Audio supplies low-volume hover, lift, drop, flip, IGL, specialty, and impact cues without shipping sound assets.
+Match presentation is causal rather than instantaneous: the already-computed simulation result is never changed, but active duel specialties highlight their owning roster rows together in one 320ms beat before the score commits in place. Scores hold at least 450ms, with longer decisive rounds. Screen displacement is reserved for one gentle 300ms map-deciding impulse; zoom changes keep the image stable. Procedural Web Audio supplies low-volume hover, lift, drop, flip, IGL, specialty, and impact cues without shipping sound assets.
 
-Under `prefers-reduced-motion`, tilt, roll, shake, stagger, fan/wave, and spatial specialty motion are removed. State remains visible through immediate accent borders and at most a 120ms opacity response; sound remains available. Moving layers animate only `transform` and `opacity`, round physics coordinates to two decimals, and acquire `will-change` only during hover/focus/drag.
+Under `prefers-reduced-motion`, tilt, roll, shake, stagger, fan/wave, and spatial specialty motion are removed. State remains visible through immediate accent borders and at most a 120ms opacity response; sound remains available. Spatial layers animate `transform` and `opacity`, round physics coordinates to two decimals, and acquire `will-change` only during hover/focus/drag. Large card deals use the dedicated 500ms balanced deal curve; button colour feedback retains the 120–150ms tokens. Scroll lean uses elapsed time and scroll velocity, independent of display refresh.
 
 ### SquadDock + SquadSheet (persistent roster control)
 Replaces the earlier card-fan-in-a-drawer pattern, which opened from cursor position - a mode that could be triggered or lost by accident. The dock (`SquadDock`) is a permanent row of notched 52px chips (44px on mobile) in the bottom `SquadBar`: portrait crop, rating, an IGL tag, a fatigue/boost dot - always legible, no open/close state to get wrong. Hovering a chip lifts one real `PlayerCard` above it (mouse only, suppressed under `prefers-reduced-motion` and `(hover: none)`); clicking a chip opens the single-card `CardFocusOverlay`.
@@ -257,6 +257,43 @@ Replaces the earlier card-fan-in-a-drawer pattern, which opened from cursor posi
 The full team scoreboard (`SquadSheet`) is a bottom sheet, not a centered modal - it rises from the dock's own edge and stops short of the top of the screen, so a page that pins it open still shows its own hero and context above the dim (no `backdrop-filter` blur, for the same reason). It opens three ways: held **Tab** (`usePeekKey`, released to close - the VALORANT/CS scoreboard gesture), the dock's `SQUAD` button (mouse/touch), or a phase pinning it open when a card needs picking (`action: { prompt, onPick, isEligible?, dismissible, skip? }` - clicking an eligible card fires the pick directly, no per-card button). Mandatory picks (naming an IGL) hold against Esc; optional ones (a pack swap, a shop target) close on Esc and remain reachable again via peek.
 
 **Tab-key tradeoff:** Tab is taken for the peek gesture on every screen the dock is visible, except inside a text input/textarea/contenteditable (`isTypingTarget`). Shift+Tab is left alone, so keyboard-only users can still traverse backward; the `SQUAD` button is always a mouse/touch-reachable door into the same sheet.
+
+## UX Principles
+
+These came from OpVAL, and VFL takes the **behaviour, not the visuals**. VFL keeps its flat sharp HUD, cut corners, Familjen Grotesk, signal red and tokens. Ruby glass, pills, rounded tiles, Barlow Condensed and the NYT Games look stay in OpVAL. OpVAL's account gate is deliberately not copied: playing without a login is a VFL strength.
+
+| # | Principle | In VFL |
+|---|---|---|
+| 1 | Say what the game is in one sentence, then offer one Play button | `Landing` |
+| 2 | Show the rules once on first Play, and keep them one tap away | `startRun` gate, rail help button |
+| 3 | Teach with worked examples made of real game pieces | `HowTo` |
+| 4 | Keep score and status always visible, tap for detail | `RunHud` |
+| 5 | One task per screen; everything else behind a tab or sheet | `Desk` tabs |
+| 6 | Say "your next move" from real state | `nextMoves` |
+| 7 | Same three-number overview row on each main screen | `OverviewRow` |
+| 8 | Badge counts on nav for anything waiting | Desk tab badges |
+| 9 | Primary actions keep their position; only the label changes | `SquadBar` primary slot |
+| 10 | Preview a change before confirming: out, in, team rating, cost | `previewSquadChange`, `Impact` |
+| 11 | Put decision data inside the choice, and the payoff beside it | Map and tactic bonuses on the cards |
+| 12 | Open choices step by step, with a step count | Series prep |
+| 13 | Results explain exactly how you scored | `scoreLines`, `ScoreLines` |
+| 14 | Every result can become a shareable artifact | `RunReceipt` |
+| 15 | Loading, error and empty states all offer a way forward | Leaderboard, lobby |
+| 16 | Use plain words fans use, and explain the rest once | `Glossary`, visible nav labels |
+| 17 | One modal primitive with shared behaviour | `Sheet` |
+
+### Named Rules
+**The Behaviour-Not-Visuals Rule.** Borrow what a pattern does, then draw it in this system. If a borrowed idea only works with OpVAL's material, the idea does not come across.
+
+**The One-Calculation Rule.** A preview uses the same function the game uses. `squadPower` feeds both the live team power and `previewSquadChange`, and `seriesEdge` feeds the map cards, the tactic chips, the reveal and the map result, so a number shown before a choice cannot disagree with the outcome.
+
+**The Show-It Rule.** A readout is never a sentence. Series progress is pips, the edge is a tug bar with a number at each end, and a total appears only after the choice that makes it.
+
+### Sheet
+`Sheet` is the one modal for new UI: native `<dialog>`, so Esc, focus and the backdrop come with it. It has a sticky head with a notched close button, in a centred or left variant. `SquadSheet` and `CardFocusOverlay` predate it and stay on `useDialogFocusTrap`.
+
+### Run HUD
+`RunHud` is a slim strip through the whole loop except a live map: squad, year and event, tier, score. Tapping it opens a Sheet with the standing detail and the plain-word glossary. It holds no game state of its own.
 
 ## Do's and Don'ts
 

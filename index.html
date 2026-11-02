@@ -8,9 +8,15 @@
          iOS home indicator. -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#0d0f17" />
-    <meta name="description" content="GAUNTLET is a Valorant Champions Tour fantasy card game: draft a squad, run the bracket, and chase a perfect year." />
+    <meta name="description" content="Gauntlet is a VCT fantasy card game. Draft five pros and keep them winning year after year. No login needed." />
+    <meta property="og:title" content="Gauntlet" />
+    <meta property="og:description" content="Draft five VCT pros and keep them winning year after year. No login needed." />
+    <meta property="og:type" content="website" />
+    <!-- PLACEHOLDER: replace with the final share image, see docs/design-brief.md item 2. -->
+    <meta property="og:image" content="/placeholders/og-share.svg" />
+    <meta name="twitter:card" content="summary_large_image" />
 
-    <title>GAUNTLET · Valorant Fantasy</title>
+    <title>Gauntlet</title>
 
     <!-- Loaded here rather than via @import in the bundled CSS: an @import
          cannot start until the stylesheet is parsed, which serialises the
@@ -19,11 +25,14 @@
          Familjen Grotesk tops out at 700 - Google Fonts accepts a request for
          800/900 and silently serves only 400-700. The sheets used 800/900 in
          28 places, which never rendered as authored; those are normalised to
-         700 in the CSS rather than requested here. -->
+         700 in the CSS rather than requested here.
+
+         crossorigin lets a share image read this sheet and embed the font. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
+      crossorigin="anonymous"
       href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
     />
   </head>
