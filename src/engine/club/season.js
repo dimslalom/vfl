@@ -149,12 +149,13 @@ function startYear(state, cards) {
   };
 }
 
-export function newClub({ seed, name, picks, cards }) {
+export function newClub({ seed, name, picks, cards, crest }) {
   const base = {
     v: 2,
     ...rewardDefaults(),
     seed,
     name,
+    crest,
     year: 1,
     tier: 0,
     squad: picks,

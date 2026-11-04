@@ -28,6 +28,8 @@ import {
 } from '../engine/club/season';
 import { TIER_META } from '../engine/endless/ladder';
 import { pickSeriesMaps } from '../prototype/boardSetup';
+import ClubLogo from '../components/ClubLogo';
+import { LOGO_STYLES, defaultLogoStyle, logoSvg } from '../engine/club/logo';
 import { CLUB_SAVE_KEY, clearClub, loadClub, saveClub } from '../lib/clubSave';
 import styles from './Club.module.css';
 
@@ -110,6 +112,11 @@ function Crest({ club, size }) {
   );
 }
 
+// The player's own club mark, rebuilt from its name and chosen style.
+function OwnMark({ state, size }) {
+  return <ClubLogo name={state.name} style={state.crest} size={size} />;
+}
+
 function BackButton({ onClick, label = 'Back to the club' }) {
   return (
     <button type="button" className={styles.iconButton} aria-label={label} onClick={onClick}>
@@ -118,11 +125,12 @@ function BackButton({ onClick, label = 'Back to the club' }) {
   );
 }
 
-function Hud({ title, tags = [], logo, back, chips = [], children }) {
+function Hud({ title, tags = [], logo, mark, back, chips = [], children }) {
   return (
     <header className={styles.hud}>
       <div className={styles.plate}>
         {back}
+        {mark}
         {logo !== undefined && (logo ? <img className={styles.crest} src={assetPath(logo)} alt="" /> : <span className={styles.crest} aria-hidden="true" />)}
         <div className={styles.titleBlock}>
           <b>{title}</b>
@@ -211,10 +219,31 @@ function Road({ state }) {
 
 // ── start ───────────────────────────────────────────────────────────────────
 
+function CrestPicker({ name, value, onPick, onClose }) {
+  return (
+    <div className={styles.crestSheet} role="dialog" aria-modal="true" aria-label="Choose club crest" onClick={onClose}>
+      <div className={styles.crestGrid} onClick={event => event.stopPropagation()}>
+        <h2>Pick a crest</h2>
+        {LOGO_STYLES.map(option => (
+          <button key={option.id} type="button" className={styles.crestOption} aria-pressed={option.id === value} onClick={() => onPick(option.id)} autoFocus={option.id === value}>
+            <span dangerouslySetInnerHTML={{ __html: logoSvg(name, option.id) }} />
+            <b>{option.label}</b>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Start({ onStart, onExit, scale }) {
   const [seed] = useState(() => (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0);
   const [name, setName] = useState('');
   const [picks, setPicks] = useState([]);
+  const [crest, setCrest] = useState(null);
+  const [choosing, setChoosing] = useState(false);
+  const shownName = name.trim() || 'Your club';
+  const style = crest ?? defaultLogoStyle(shownName);
+  useEscape(() => setChoosing(false));
   // Each draft pack is torn open before its cards can be picked.
   const [torn, setTorn] = useState(false);
   const done = picks.length >= DRAFT_PACKS;
@@ -229,7 +258,9 @@ function Start({ onStart, onExit, scale }) {
     <div className={styles.stage}>
       <header className={styles.hud}>
         <div className={styles.plate}>
-          <span className={styles.crest} aria-hidden="true" />
+          <button type="button" className={styles.crestButton} aria-label="Choose club crest" aria-haspopup="dialog" onClick={() => setChoosing(true)}>
+            <ClubLogo name={shownName} style={style} size={44} />
+          </button>
           <label className={styles.nameField}>
             <span>Club name</span>
             <input value={name} maxLength={18} placeholder="Your club" onChange={event => setName(event.target.value)} />
@@ -264,8 +295,9 @@ function Start({ onStart, onExit, scale }) {
             ? <Card key={picks[index].id} card={picks[index]} scale={scale * 0.5} />
             : <span key={index} className={styles.empty} style={{ width: 400 * scale * 0.5, height: 580 * scale * 0.5 }}>Open</span>))}
         </div>
-        <button type="button" className={styles.primary} disabled={!done} onClick={() => { playUiSound('lock_in'); onStart(seed, name.trim() || 'Your club', picks.map(card => card.id)); }}>Enter league</button>
+        <button type="button" className={styles.primary} disabled={!done} onClick={() => { playUiSound('lock_in'); onStart(seed, shownName, picks.map(card => card.id), style); }}>Enter league</button>
       </footer>
+      {choosing && <CrestPicker name={shownName} value={style} onPick={id => { setCrest(id); setChoosing(false); }} onClose={() => setChoosing(false)} />}
     </div>
   );
 }
@@ -377,7 +409,7 @@ function Home({ state, go, onExit, onAbandon, size }) {
   const hand = state.hand ?? [];
   return (
     <div className={styles.stage}>
-      <Hud title={state.name} tags={[[tierName(state.tier), true], [`Year ${state.year}`], ...(started ? [[`${ordinal(pos)} in table`]] : [])]} logo={null}>
+      <Hud title={state.name} tags={[[tierName(state.tier), true], [`Year ${state.year}`], ...(started ? [[`${ordinal(pos)} in table`]] : [])]} mark={<OwnMark state={state} size={50} />}>
         <PackCounter state={state} onOpen={() => go('vault')} />
         <ClubMenu onExit={onExit} onAbandon={onAbandon} />
       </Hud>
@@ -972,7 +1004,7 @@ function Bracket({ state, table }) {
   const team = (id, seed, winner) => (
     <li data-you={id === 'you' || undefined} data-out={winner && winner !== id ? true : undefined} data-won={winner === id || undefined}>
       <span className={styles.seed}>{seed}</span>
-      {id === 'you' ? <span className={styles.crestDisc} aria-hidden="true" /> : <Crest club={clubById(state, id)} size={24} />}
+      {id === 'you' ? <OwnMark state={state} size={24} /> : <Crest club={clubById(state, id)} size={24} />}
       <b>{id === 'you' ? state.name : clubById(state, id).name}</b>
     </li>
   );
@@ -1021,7 +1053,7 @@ function League({ state, onBack }) {
           {table.map(row => (
             <li key={row.id} data-you={row.you || undefined} data-cut={row.pos === 4 ? 'Playoff line' : row.pos === 5 ? 'Drop zone' : undefined}>
               <b className={styles.pos}>{row.pos}</b>
-              {row.you ? <span className={styles.crestDisc} aria-hidden="true" /> : <Crest club={clubById(state, row.id)} />}
+              {row.you ? <OwnMark state={state} size={32} /> : <Crest club={clubById(state, row.id)} />}
               <b className={styles.clubName}>{row.name}</b>
               <b className={styles.record}>{row.w}–{row.l}</b>
             </li>
@@ -1502,9 +1534,9 @@ export default function Club() {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  function start(seed, name, picks) {
+  function start(seed, name, picks, crest) {
     morph(() => {
-      setState(newClub({ seed, name, picks, cards: allCards }));
+      setState(newClub({ seed, name, picks, crest, cards: allCards }));
       setScreen('home');
     });
   }
