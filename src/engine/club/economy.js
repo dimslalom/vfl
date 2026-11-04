@@ -23,6 +23,9 @@ export const GOLD_RATING = 80;
 export const CLUB_FATIGUE_X = 2.5;
 export const SESSION_PRICE = 1;
 export const REROLL_PRICE = 1;
+// The founding name is free; changing it later is a pack sink.
+export const RENAME_PRICE = 3;
+export const NAME_MAX = 18;
 export const INTERNATIONAL_TIER = 2;
 export const SLOT_TITLES = 2;
 

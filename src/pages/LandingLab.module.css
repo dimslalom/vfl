@@ -1,0 +1,6 @@
+/* Lab switcher, floating over the full-screen club stage. */
+.controls { position: fixed; z-index: 80; left: 50%; top: var(--sp-1); transform: translateX(-50%); display: flex; flex-wrap: wrap; justify-content: center; gap: var(--sp-2); max-width: calc(100vw - 2 * var(--sp-2)); opacity: .92; }
+.controls > div { display: flex; gap: 2px; }
+.controls button { min-height: 32px; padding: 0 var(--sp-3); border: 0; background: var(--surface-flyout); color: var(--muted); font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; cursor: pointer; }
+.controls button[data-on] { background: var(--ink); color: var(--bg); }
+@media (max-width: 759px) { .controls { top: auto; bottom: 120px; gap: 2px; } .controls button { min-height: 28px; padding: 0 var(--sp-2); font-size: 9px; } }

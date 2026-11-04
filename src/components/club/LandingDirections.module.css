@@ -1,0 +1,45 @@
+/* Alternative landing directions (lab only). Same tokens as the club. */
+
+/* B. Season road */
+.roadIntro { margin-top: auto; }
+.road { width: min(960px, 100%); display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 2px; margin: 0; padding: 0; list-style: none; }
+.road li { min-height: 88px; padding: var(--sp-2) var(--sp-3); display: flex; flex-direction: column; justify-content: space-between; background: var(--plate); text-align: left; }
+.road li small { font: 700 var(--fs-micro)/1.2 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.road li b { font-size: var(--fs-lead); }
+.road li[data-now] { background: var(--ink); color: var(--bg); }
+.road li[data-now] small { color: var(--bg); }
+.road li[data-won] { background: var(--win); color: var(--win-ink); }
+.road li[data-won] small { color: var(--win-ink); }
+.road li[data-lost] { background: var(--plate-inset); color: var(--muted); }
+.road + p { margin-bottom: auto; }
+
+/* C. Pack first */
+.packHero { flex: 1; display: flex; align-items: center; justify-content: center; }
+.packButton { display: flex; flex-direction: column; align-items: center; gap: var(--sp-4); padding: var(--sp-4); border: 0; background: none; color: var(--ink); font: inherit; cursor: pointer; }
+.packButton img { width: 200px; height: 290px; object-fit: contain; filter: var(--shadow-rest); transition: transform .18s cubic-bezier(.2, .8, .2, 1), filter .18s; }
+.packButton span { font: 700 var(--fs-label)/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+@media (hover: hover) { .packButton:hover img { transform: translateY(-6px); filter: var(--shadow-lift); } }
+@media (prefers-reduced-motion: reduce) { .packButton img { transition: none; } }
+
+/* D. Ladder */
+.ladderSplit { flex: 1; width: min(960px, 100%); display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: var(--sp-8); }
+.ladderCopy { align-items: flex-start; text-align: left; }
+.ladderCopy h1 { font-size: clamp(34px, 4.4vw, 60px); overflow-wrap: normal; }
+.rungs { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.rungs li { min-height: 76px; padding: var(--sp-3) var(--sp-4); display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); background: var(--plate); }
+.rungs li b { font-size: var(--fs-title); }
+.rungs li[data-above] { background: var(--plate-inset); color: var(--muted); }
+.rungs li[data-here] { background: var(--ink); color: var(--bg); }
+.rungClub { display: flex; align-items: center; gap: 4px; }
+.rungClub small { margin-left: var(--sp-2); font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
+
+@media (max-width: 759px) {
+  .road { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .road li { min-height: 60px; padding: var(--sp-2); }
+  .road li b { font-size: var(--fs-body); }
+  .packButton img { width: 150px; height: 218px; }
+  .packFive { transform: scale(.78); }
+  .ladderSplit { grid-template-columns: 1fr; gap: var(--sp-4); align-content: center; }
+  .rungs li { min-height: 56px; }
+  .rungs li b { font-size: var(--fs-lead); }
+}

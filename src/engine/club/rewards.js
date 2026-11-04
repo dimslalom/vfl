@@ -8,7 +8,7 @@ import { mulberry32, pickN } from '../../../shared/src/engine/perfectRun.js';
 import { bankTactics } from '../endless/seriesCards.js';
 import { maxSignableRating } from '../endless/stature.js';
 import {
-  GOLD_PITY, GOLD_RATING, REROLL_PRICE, SESSION_PRICE, TAPE_MAX, TRAIN_SLOTS_MAX, payPacks, squadMax, stock,
+  GOLD_PITY, GOLD_RATING, NAME_MAX, RENAME_PRICE, REROLL_PRICE, SESSION_PRICE, TAPE_MAX, TRAIN_SLOTS_MAX, payPacks, squadMax, stock,
 } from './economy.js';
 import { CONTRACT_MAX, SKILL_SESSIONS, rollChipOffer, squadCards, trainingOffer } from './season.js';
 
@@ -130,6 +130,25 @@ export function rerollChips(state) {
   if (!canReroll(state)) return state;
   const paid = payPacks(state, REROLL_PRICE);
   return { ...paid, chipOffer: rollChipOffer(state, state.chipOffer.stage, state.chipOffer.attempt + 1) };
+}
+
+// ── the club's name ─────────────────────────────────────────────────────────
+
+/** A club name as stored: trimmed, single-spaced, at most NAME_MAX characters. */
+export function cleanName(name) {
+  return String(name ?? '').trim().replace(/\s+/g, ' ').slice(0, NAME_MAX).trim();
+}
+
+/** Renaming needs a real, different name, a club still in charge, and the packs. */
+export function canRename(state, name) {
+  const next = cleanName(name);
+  return Boolean(next) && next !== state.name && state.phase !== 'over' && payPacks(state, RENAME_PRICE) !== null;
+}
+
+/** A new name for RENAME_PRICE in pack value. */
+export function renameClub(state, name) {
+  if (!canRename(state, name)) return state;
+  return { ...payPacks(state, RENAME_PRICE), name: cleanName(name) };
 }
 
 // ── training ────────────────────────────────────────────────────────────────
