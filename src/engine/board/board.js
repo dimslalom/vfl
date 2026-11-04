@@ -120,6 +120,16 @@ export function laneScore(cards, lane, tactic = null, ctx = {}) {
   return { total, steps };
 }
 
+// Chips whose rarity differs on the board from Endless: Pocket Strat's board
+// rule wins as often as the uncommons, so it is dealt and printed as one.
+const BOARD_TIERS = { pocket: 'uncommon' };
+
+/** A chip's rarity on the board and in Club. */
+export function chipTier(key) {
+  const tactic = TACTICS[key];
+  return BOARD_TIERS[tactic?.key] ?? tactic?.tier ?? 'common';
+}
+
 // The numbers behind the chips with board rules, in one place to tune.
 export const CHIP_TUNING = {
   pocket: 2,            // the IGL's lane, when the lane's role rule also fires

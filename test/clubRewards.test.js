@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { chipTier } from '../src/engine/board/board.js';
 import assert from 'node:assert/strict';
 import allCards from '../shared/src/data/cards.json' with { type: 'json' };
 import { CLUB_SAVE_KEY, loadClub } from '../src/lib/clubSave.js';
@@ -11,7 +12,6 @@ import {
 import {
   STARTERS, WEEKS, draftPack, finishSeries, newClub, nextMatch, rollChipOffer, train, trainingOffer, clubCard, squadCards,
 } from '../src/engine/club/season.js';
-import { TACTICS } from '../src/engine/endless/seriesCards.js';
 
 function draft(seed = 7) {
   const picks = [];
@@ -142,7 +142,7 @@ test('a win offers three different chips and a deeper stage guarantees a better 
   for (const stage of ['Semifinal', 'Final']) {
     for (let attempt = 0; attempt < 30; attempt += 1) {
       const offer = rollChipOffer(state, stage, attempt);
-      const best = Math.max(...offer.options.map(option => ['common', 'uncommon', 'rare'].indexOf(TACTICS[option.key].tier)));
+      const best = Math.max(...offer.options.map(option => ['common', 'uncommon', 'rare'].indexOf(chipTier(option.key))));
       assert.ok(best >= (stage === 'Final' ? 2 : 1));
     }
   }

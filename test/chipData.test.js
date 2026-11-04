@@ -76,3 +76,8 @@ test('the plan reads the real squad and names who shares the lane', () => {
   const flicker = [...five.slice(0, 4), card('f', 'Duelist', 'flick')];
   assert.deepEqual(chipPlan('noRespect', flicker).cards.map(c => c.id), ['f']);
 });
+
+test('Pocket Strat is dealt and printed as an uncommon on the board, not in Endless', () => {
+  assert.equal(chipInfo('pocket').tier, 'uncommon');
+  assert.equal(TACTIC_LIST.find(tactic => tactic.key === 'pocket').tier, 'common');
+});

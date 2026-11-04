@@ -93,7 +93,7 @@ All in `src/engine/board/board.js` (`tacticMult`, `sideScores`, numbers in `CHIP
 
 | Chip | Tier | Board rule |
 | --- | --- | --- |
-| Pocket Strat | common | ×2 on the IGL's lane when that lane's role rule (+20 Roles) fires, else ×1.5 |
+| Pocket Strat | uncommon (was common; board and Club only) | ×2 on the IGL's lane when that lane's role rule (+20 Roles) fires, else ×1.5 |
 | Deep Default | uncommon | ×2.5 with three different roles on its lane, else ×1.5 |
 | Second Call | rare | ×2 on its lane and a ×1.5 chain to the lane on its left (from the left lane: the middle). Each Mastermind on its lane adds ×0.5 to both |
 | No Respect | rare | No multiplier. The enemy's best player on its lane scores 0. A Flick player on its lane also gives it ×1.5 (skill gate as balance) |
@@ -118,7 +118,7 @@ Tested and rejected:
 - Lock the Map with ×1.5 plus the cancel: 79%, it dominated everything.
 - Pocket Strat only when the IGL plays a lane alone: 43%, back to useless.
 
-Still open: Pocket Strat (a common) is now among the strongest chips. The lever is `CHIP_TUNING.pocket` or a stricter condition.
+Pocket Strat now wins about as often as the uncommons, so it is an uncommon on the board and in Club (`chipTier` in board.js). Endless keeps it common.
 
 Scoring effects (`src/table3d/chipFx.js`):
 - **Every player card:** attacks the bar as its number lands (pull back, lunge, impact ring).

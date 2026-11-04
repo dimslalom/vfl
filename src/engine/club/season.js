@@ -10,7 +10,7 @@
 
 import { effectiveCard, emptyDev, tickCareerYear, tickFatigue, careerStage } from '../../../shared/src/engine/endless/career.js';
 import { eligibleOrgs, mulberry32, pickN, samplePack } from '../../../shared/src/engine/perfectRun.js';
-import { BOARD_SKILLS } from '../board/board.js';
+import { BOARD_SKILLS, chipTier } from '../board/board.js';
 import { TIERS, reputationDelta, tierPools } from '../endless/ladder.js';
 import { releaseFee, signingCost } from '../endless/market.js';
 import { maxSignableRating } from '../endless/stature.js';
@@ -296,20 +296,16 @@ const TIER_ORDER = ['common', 'uncommon', 'rare'];
 export function rollChipOffer(state, stage, attempt = 0) {
   const floor = CHIP_FLOOR[stage] ?? 'common';
   const rng = rngFor(state, 'chips', state.year, state.week, stage, attempt);
-  const weighted = [
-    ...TACTIC_LIST.filter(tactic => tactic.tier === 'common'),
-    ...TACTIC_LIST.filter(tactic => tactic.tier === 'common'),
-    ...TACTIC_LIST.filter(tactic => tactic.tier === 'uncommon'),
-    ...TACTIC_LIST.filter(tactic => tactic.tier === 'rare'),
-  ];
+  const of = tier => TACTIC_LIST.filter(tactic => chipTier(tactic.key) === tier);
+  const weighted = [...of('common'), ...of('common'), ...of('uncommon'), ...of('rare')];
   const keys = [];
   while (keys.length < 3) {
     const tactic = weighted[Math.floor(rng() * weighted.length)];
     if (!keys.includes(tactic.key)) keys.push(tactic.key);
   }
-  const reaches = key => TIER_ORDER.indexOf(TACTIC_LIST.find(tactic => tactic.key === key).tier) >= TIER_ORDER.indexOf(floor);
+  const reaches = key => TIER_ORDER.indexOf(chipTier(key)) >= TIER_ORDER.indexOf(floor);
   if (!keys.some(reaches)) {
-    const pool = TACTIC_LIST.filter(tactic => tactic.tier === floor && !keys.includes(tactic.key));
+    const pool = of(floor).filter(tactic => !keys.includes(tactic.key));
     keys[2] = pool[Math.floor(rng() * pool.length)].key;
   }
   return { stage, floor, attempt, options: keys.map(key => createTacticInstance(rng, key, 'owned')) };

@@ -2,7 +2,7 @@
 // here: each step is a lane of example players run through the board's own
 // tacticMult, so a chip can never promise a number the board won't pay.
 
-import { chainMult, hasSkill, tacticMult } from '../engine/board/board.js';
+import { chainMult, chipTier, hasSkill, tacticMult } from '../engine/board/board.js';
 import { TACTICS, TACTIC_LIST } from '../engine/endless/seriesCards.js';
 
 export const ROLES = ['Duelist', 'Initiator', 'Controller', 'Sentinel'];
@@ -102,7 +102,7 @@ export function chipInfo(key) {
   return {
     key: id,
     name: tactic.name,
-    tier: tactic.tier,
+    tier: chipTier(id),
     icons: CHIPS[id].icons,
     ladder,
     code: chipCode(id),
