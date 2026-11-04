@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import cards from '../shared/src/data/cards.json' with { type: 'json' };
 import { mulberry32 } from '../shared/src/engine/perfectRun.js';
 import {
-  BASE_EDGE, TACTIC_HAND_MAX, bankTactics, changedMapCards, consumeTactic, edgePoints, edgeSteps, gainMapMastery, mapActivation,
+  BASE_EDGE, TACTICS, TACTIC_HAND_MAX, TACTIC_LIST, bankTactics, changedMapCards, consumeTactic, edgePoints, edgeSteps, gainMapMastery, mapActivation,
   mapCardsForYear, mapPicksPerSide, npcTactic, npcTacticChoices, refillTacticHand, seriesEdge, settleTactic, tacticActivation,
   tacticBooster, tacticClash,
 } from '../src/engine/endless/seriesCards.js';
@@ -135,6 +135,13 @@ test('the reveal steps land on exactly the edge the series plays with', () => {
   const steps = edgeSteps(mapResult, tactic, 0.8);
   assert.deepEqual(steps.map(step => step.key), ['base', 'map', 'tactic', 'clash']);
   assert.equal(steps.at(-1).total, edgePoints(seriesEdge(mapResult, tactic, 0.8)));
+});
+
+test('No Respect resolves, including in hands saved under its old key', () => {
+  assert.ok(TACTIC_LIST.every(tactic => TACTICS[tactic.key] === tactic));
+  assert.equal(TACTIC_LIST.filter(tactic => tactic.name === 'NO RESPECT').length, 1);
+  assert.ok(tacticActivation({ key: 'noRespect' }, roster).tag);
+  assert.ok(tacticActivation({ key: 'no-respect' }, roster).tag);
 });
 
 test('each side picks one map in a Bo3 and two from a Bo5, leaving a decider', () => {

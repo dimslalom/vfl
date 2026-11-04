@@ -1,8 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  allPlacements, bestPlacement, isLegalPlacement, isLegalRotate, laneFormula, laneScore, resolveBoard, rotate, playBoard,
+   BOARD_SKILLS, allPlacements, bestPlacement, bestRotate, hasSkill, isLegalPlacement, isLegalRotate, isLegalRotation, laneFormula,
+  laneScore, resolveBoard, rotate, rotateMoves, playBoard,
 } from '../src/engine/board/board.js';
+import allCards from '../shared/src/data/cards.json' with { type: 'json' };
+import { getCardSpecialties } from '../shared/src/data/specialties.js';
 import { MAP_LANES, seriesWinner, winsNeeded } from '../src/engine/board/mapLanes.js';
 import { MAP_NAMES } from '../src/engine/endless/seriesCards.js';
 
@@ -61,6 +64,58 @@ test('a board replays identically from its seed', () => {
   assert.ok(isLegalPlacement(bestPlacement({ roster: squad, maps }).slots));
 });
 
+// Real specialties come from a curated list, so these tests borrow real cards.
+const withSkill = key => allCards.find(item => item.org && hasSkill(item, key));
+
+test('Flick scores the best stat only when alone on a lane', () => {
+  const flicker = withSkill('flick');
+  const lane = { ...map, stat: 'synergy', roles: ['Nobody', 'Nobody'] };
+  assert.equal(laneScore([flicker], lane).total, Math.max(...Object.values(flicker.stats)));
+  const pair = laneScore([flicker, { ...squad[3], org: null, nationality: null }], lane);
+  assert.equal(pair.steps[0].value, flicker.stats.synergy);
+});
+
+test('One Trick pays only on a map that suits their agent', () => {
+  const trick = allCards.find(item => hasSkill(item, 'one_trick') && item.agents?.length === 1);
+  const roles = ['Nobody', 'Nobody'];
+  const home = laneScore([trick], { ...map, stat: 'aim', roles, agents: [trick.agents[0]] });
+  const away = laneScore([trick], { ...map, stat: 'aim', roles, agents: ['Nobody'] });
+  assert.equal(home.total - away.total, 20);
+});
+
+test('Aura takes from the opposing total on its lane, and the sum shows it', () => {
+  const aura = withSkill('aura');
+  const plain = { ...squad[0], org: null, nationality: null };
+  const others = [squad[1], squad[2], squad[3], squad[4]];
+  const result = resolveBoard({
+    maps,
+    you: { roster: [plain, ...others], slots: [0, 0, 1, 1, 2], tactic: null },
+    them: { roster: [aura, ...others], slots: [0, 0, 1, 1, 2], tactic: null },
+  });
+  const lane = result.lanes[0];
+  assert.equal(lane.mine.steps.at(-1).key, 'aura');
+  assert.equal(lane.mine.steps.at(-1).value, 15);
+  assert.match(laneFormula(lane.mine.steps), /-15 Aura/);
+});
+
+test('the IGL gets one rotate, a Mastermind two, and Flex players move free', () => {
+  const plain = squad;
+  assert.equal(rotateMoves(plain), 1);
+  assert.equal(isLegalRotation([0, 0, 1, 1, 2], [2, 0, 1, 1, 2], plain), true);
+  assert.equal(isLegalRotation([0, 0, 1, 1, 2], [2, 2, 1, 1, 0], plain), false);
+  const mind = [withSkill('mastermind'), ...plain.slice(1)];
+  assert.equal(rotateMoves(mind), 2);
+  assert.equal(isLegalRotation([0, 0, 1, 1, 2], [2, 0, 1, 0, 2], mind), true);
+  const flex = [...plain.slice(0, 4), withSkill('flex')];
+  assert.equal(isLegalRotation([0, 0, 1, 1, 2], [2, 0, 1, 1, 0], flex), true);
+});
+
+test('bestRotate only ever reaches a legal board', () => {
+  const you = { roster: squad, slots: [0, 0, 1, 1, 2], tactic: null };
+  const them = { roster: squad, slots: [1, 2, 2, 0, 0], tactic: null };
+  assert.equal(isLegalRotation(you.slots, bestRotate({ you, them, maps }), squad), true);
+});
+
 test('every map has three real lanes, and the three-site maps have no mid', () => {
   assert.deepEqual(Object.keys(MAP_LANES).sort(), [...MAP_NAMES].sort());
   for (const lanes of Object.values(MAP_LANES)) {
@@ -81,4 +136,15 @@ test('a series ends at the majority of its rounds', () => {
   assert.equal(seriesWinner(3, 2, 0), 'you');
   assert.equal(seriesWinner(5, 2, 2), null);
   assert.equal(seriesWinner(5, 1, 3), 'them');
+});
+
+test('every board skill has a specialty badge with its board rule and includes learned club skills', () => {
+  const trained = { ...card('trained', 78, 'Initiator'), learned: ['flex'] };
+  const specs = getCardSpecialties(trained);
+  assert.deepEqual(specs.map(spec => spec.key), ['flex']);
+  for (const [key, rule] of Object.entries(BOARD_SKILLS)) {
+    const spec = getCardSpecialties({ ...card(key, 80, 'Duelist'), learned: [key] })[0];
+    assert.equal(spec.board, rule.text);
+    assert.ok(spec.color);
+  }
 });

@@ -14,7 +14,7 @@ export const DYNAMIC = () => [
   t('Challenger'), t('Underdog'),
   t('CHAMPION'), t('Won the tournament'), t('FLAWLESS'), t('No maps dropped'),
   t('GRAND SLAM'), t('Won all three tournaments'), t('PERFECT SEASON'), t('Three titles, zero maps dropped'),
-  t('Titles'), t('Series won'), t('Maps won'), t('Round difference'), t('Grand Slams'), t('Perfect Seasons'), t('Prestige bonus'), t('Floor'),
+  t('Titles'), t('Series won'), t('Maps won'), t('Round difference'), t('Rounds won'), t('Lane difference'), t('Grand Slams'), t('Perfect Seasons'), t('Prestige bonus'), t('Floor'),
   t('Bronze'), t('Silver'), t('Gold'), t('Icon'), t('bronze'), t('silver'), t('gold'), t('icon'),
   t('Prospect'), t('Prime'), t('Veteran'),
   t('Squad'), t('Market'), t('World'), t('Player Library'), t('Gauntlet'), t('Multiplayer'), t('Modes'),

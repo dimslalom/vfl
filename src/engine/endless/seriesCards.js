@@ -27,6 +27,11 @@ const MAP_ART = {
   Split:    { mark: 'S', hue: '#bd8295', image: '/assets/maps/split.webp', agents: ['Raze', 'Cypher', 'Viper'] },
   Sunset:   { mark: 'U', hue: '#ce8068', image: '/assets/maps/sunset.webp', agents: ['Cypher', 'Breach', 'Omen'] },
   Icebox:   { mark: 'I', hue: '#75a8ca', image: '/assets/maps/icebox.webp', agents: ['Jett', 'Sage', 'Viper'] },
+  Abyss:    { mark: 'Y', hue: '#6f86c4', image: '/assets/maps/abyss.webp', agents: ['Jett', 'Omen', 'Sova'] },
+  Breeze:   { mark: 'Z', hue: '#6fb5b0', image: '/assets/maps/breeze.webp', agents: ['Jett', 'Viper', 'Cypher'] },
+  Corrode:  { mark: 'C', hue: '#a184b8', image: '/assets/maps/corrode.webp', agents: ['Neon', 'Viper', 'Fade'] },
+  Fracture: { mark: 'F', hue: '#c4a46a', image: '/assets/maps/fracture.webp', agents: ['Breach', 'Brimstone', 'Raze'] },
+  Pearl:    { mark: 'P', hue: '#5fa6b8', image: '/assets/maps/pearl.webp', agents: ['Astra', 'Fade', 'Killjoy'] },
 };
 
 // Three learnable identities per place. A year changes exactly three active
@@ -67,6 +72,31 @@ const MAP_RULES = {
     { key: 'long-sightlines', label: 'LONG SIGHTLINES', roles: ['Duelist', 'Sentinel'], mode: 'pair' },
     { key: 'utility-wall', label: 'UTILITY WALL', roles: ['Controller', 'Sentinel'], mode: 'pair' },
     { key: 'first-contact', label: 'FIRST CONTACT', roles: ['Duelist', 'Initiator'], mode: 'pair' },
+  ],
+  Abyss: [
+    { key: 'no-walls', label: 'NO WALLS', roles: ['Duelist', 'Sentinel'], mode: 'pair' },
+    { key: 'edge-control', label: 'EDGE CONTROL', roles: ['Controller', 'Initiator'], mode: 'pair' },
+    { key: 'full-drop', label: 'FULL DROP', roles: ROLE_ORDER, mode: 'coverage' },
+  ],
+  Breeze: [
+    { key: 'long-range', label: 'LONG RANGE', roles: ['Duelist', 'Initiator'], mode: 'pair' },
+    { key: 'wide-sites', label: 'WIDE SITES', roles: ROLE_ORDER, mode: 'coverage' },
+    { key: 'door-wars', label: 'DOOR WARS', roles: ['Sentinel', 'Controller'], mode: 'pair' },
+  ],
+  Corrode: [
+    { key: 'tower-climb', label: 'TOWER CLIMB', roles: ['Duelist', 'Controller'], mode: 'pair' },
+    { key: 'lockdown', label: 'LOCKDOWN', roles: ['Sentinel', 'Initiator'], mode: 'pair' },
+    { key: 'every-gate', label: 'EVERY GATE', roles: ROLE_ORDER, mode: 'coverage' },
+  ],
+  Fracture: [
+    { key: 'pincer', label: 'PINCER', roles: ['Duelist', 'Initiator'], mode: 'pair' },
+    { key: 'rope-control', label: 'ROPE CONTROL', roles: ['Controller', 'Sentinel'], mode: 'pair' },
+    { key: 'both-sides', label: 'BOTH SIDES', roles: ROLE_ORDER, mode: 'coverage' },
+  ],
+  Pearl: [
+    { key: 'mid-fight', label: 'MID FIGHT', roles: ['Initiator', 'Controller'], mode: 'pair' },
+    { key: 'long-b', label: 'LONG B', roles: ['Duelist', 'Sentinel'], mode: 'pair' },
+    { key: 'deep-hold', label: 'DEEP HOLD', roles: ['Sentinel', 'Controller'], mode: 'pair' },
   ],
 };
 
@@ -181,7 +211,7 @@ export const TACTICS = {
     role: null, rule: 'MASTERMIND ×2', base: 0.2, specialty: 'mastermind', specialtyBonus: 1.2,
   },
   noRespect: {
-    key: 'no-respect', name: 'NO RESPECT', tier: 'rare', tag: 'tempo',
+    key: 'noRespect', name: 'NO RESPECT', tier: 'rare', tag: 'tempo',
     role: null, rule: 'FLICK LEADS', base: 0.2, specialty: 'flick', specialtyBonus: 0.8,
   },
   lockout: {
@@ -191,6 +221,8 @@ export const TACTICS = {
 };
 
 export const TACTIC_LIST = Object.values(TACTICS);
+// Hands saved before this key was fixed still hold the old spelling.
+TACTICS['no-respect'] = TACTICS.noRespect;
 
 function hasSpec(card, key) {
   return getCardSpecialties(card).some(spec => spec.key === key);

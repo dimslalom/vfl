@@ -1,0 +1,42 @@
+{
+  "checks": [
+    {
+      "name": "Library inspect, both flips and rapid close without root crossfades"
+    },
+    {
+      "name": "Reduced motion disables return-flip animation",
+      "animation": "none",
+      "transform": "matrix(1, 0, 0, 1, 0, 0)"
+    },
+    {
+      "name": "Scene exit finishes before next scene mounts"
+    },
+    {
+      "name": "Pack group has one transform owner throughout emergence",
+      "samples": 81,
+      "maxDifference": 2.8991699263514192e-8
+    },
+    {
+      "name": "Reduced-motion pack has no floating or fan transforms"
+    },
+    {
+      "name": "Fast travel scales once; reduced travel commits without clones",
+      "fast": 275.60000002384186,
+      "reduced": 0,
+      "arrivals": 2,
+      "remainingClones": 0
+    },
+    {
+      "name": "Countdown animates without frame-rate React renders and skip completes once",
+      "renders": 5,
+      "midpointScale": 0.736667
+    },
+    {
+      "name": "Reduced motion preserves countdown reading time"
+    },
+    {
+      "name": "No browser runtime errors"
+    }
+  ],
+  "errors": []
+}

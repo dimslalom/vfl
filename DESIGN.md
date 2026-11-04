@@ -25,6 +25,10 @@ colors:
   gold-soft: "rgba(216, 179, 76, 0.14)"
   gold-ink: "#211b06"
   opponent: "#00d2ff"
+  plate: "color-mix(in srgb, #161b29 78%, transparent)"
+  plate-hi: "color-mix(in srgb, #1e2435 92%, transparent)"
+  plate-inset: "color-mix(in srgb, #23293a 78%, transparent)"
+  veil: "color-mix(in srgb, #0d0f17 78%, transparent)"
 typography:
   hero:
     fontFamily: "Familjen Grotesk, system-ui, sans-serif"
@@ -215,6 +219,36 @@ Cut-and-layered, not lit. The system has no ambient light source: surfaces don't
 
 ### Named Rules
 **The Print-Not-Light Rule.** A shadow's offset is fixed at 5px/5px (or its 8px/8px lifted step); blur otherwise appears only on `--shadow-overlay`, which separates a full overlay from the page. PlayerCard's transient altitude penumbra is the sole component-level exception and may not be copied to ordinary panels or controls.
+
+## Game Surfaces (club and other screens on art)
+
+Some screens are game scenes, not pages: the club sits on the next map's art, blurred and darkened to fill the whole screen, and the board is a 3D scene. Anything laid on that art uses a small fixed set of tokens, never a hand-mixed gray. Mixing ad hoc is how the club ended up with sixteen slightly different grays, so this layer exists to stop it.
+
+### Surfaces
+- **Plate** (`--plate`): the one surface for everything that sits on the art: tiles, the pack counter, empty bench places, buttons' resting fill, menus, the chip and tape shelves. Two plates side by side are the same gray, always.
+- **Plate Hi** (`--plate-hi`): hover, and the one picked or open thing.
+- **Plate Inset** (`--plate-inset`): tracks and empty states: unlit bars and pips, meter tracks, unfilled stripes, quiet tags.
+- **Veil** (`--veil`): a dim laid over art so text on it reads (map rows, map-backed panels).
+
+### Objects
+Cards, packs, tapes and chips are physical objects, so they are the one place soft shadows are allowed, and only two:
+- **Rest** (`--shadow-rest`, a `filter: drop-shadow`): an object lying in its place.
+- **Lift** (`--shadow-lift`): the object picked, held or rising toward you.
+- **Chip** (`--shadow-chip`, a `box-shadow`): round chips, which can't take a drop-shadow filter cleanly.
+
+Packs and tapes are rendered stills of their 3D models (`public/assets/pack3d/`, `public/assets/tape3d/`), shown at card proportions (400 x 580) so they sit in a row with players.
+
+### Hierarchy on art
+1. **The cards are the brightest thing.** Nothing behind a card: no panel, no frame. The role sits above it as a label (IGL filled), contract years as three bars below.
+2. **Everything else is a plate.** Tiles show a label (muted) over the one number that matters (ink).
+3. **One state colour.** `--win` green means now, good or selected (current week, a won week filled green, picked corners, a gained stat). `--accent` red is the main action and danger only (Play, Take, last contract year). `--gold` is for skills and rare chips.
+4. **Two text levels.** A bold sentence-case heading per area, then muted body. Mono uppercase only for small structural labels ("Starting five", "Bench 0 / 2").
+5. **Equal choices are equal buttons.** When a screen offers parallel choices (Pass, Reroll, Take), they share one size; colour alone marks the main one.
+
+### Named Rules
+**The No Hand-Mixed Gray Rule.** On art, a surface is `--plate`, `--plate-hi` or `--plate-inset`. A new `color-mix` of a surface token is a bug.
+
+**The Two Shadows Rule.** Objects cast `--shadow-rest` or `--shadow-lift`. Panels and text never cast a shadow.
 
 ## Shapes
 

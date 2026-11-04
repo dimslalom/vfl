@@ -17,6 +17,7 @@ import Sheet from '../components/Sheet';
 import PlayerCard from '../../shared/src/components/PlayerCard';
 import PlayerPortrait from '../../shared/src/components/PlayerPortrait';
 import { hasRealPortrait } from '../../shared/src/lib/portrait';
+import BoardSeries from '../components/BoardSeries';
 import CardFocusOverlay from '../components/CardFocusOverlay';
 import SigningSequence from '../components/SigningSequence';
 import PhaseTransition from '../components/PhaseTransition';
@@ -148,6 +149,9 @@ export default function PerfectRun() {
   // score the run in progress is being compared against.
   const [challenge, setChallenge] = useState(() => decodeChallenge(window.location.search));
   const [rival, setRival] = useState(null);
+  // The map board replaces the series screens in a run opened with ?board.
+  // Everything around the series stays the same game.
+  const [boardMode] = useState(() => new URLSearchParams(window.location.search).has('board'));
   // A run waiting on the first-time How to Play sheet.
   const [pendingStart, setPendingStart] = useState(null);
   // The market target open in the signing preview.
@@ -643,6 +647,11 @@ export default function PerfectRun() {
     setBackdropVariant(v => v + 1); // this series' baseline backdrop
     setZoomLevel(1); zoomLevelRef.current = 1; // every series starts calm
 
+    if (endless && boardMode) {
+      setView('boardSeries');
+      return;
+    }
+
     // The legacy modes keep their existing instant entrance. Endless locks
     // the dock here and deals the series as cards before any simulation can
     // start; the state itself is the explanation.
@@ -958,6 +967,24 @@ export default function PerfectRun() {
     const fn = matchSkipRef.current;
     matchSkipRef.current = null;
     fn?.();
+  }
+
+  // A board series ends as if its rounds were maps, so a win pays the same
+  // reward screen and either way the bracket carries on as normal.
+  function finishBoardSeries({ won, results, hand }) {
+    setMapResults(results);
+    setMaps(results.map(result => result.map));
+    setTacticHand(hand);
+    if (won) {
+      setPendingReward({ results, remaining: round.key === 'final' ? 2 : 1 });
+      setRewardStep('packs');
+      setTacticOffers([]);
+      setRewardTacticPicks([]);
+      setPendingTactics([]);
+      setView('reward');
+      return;
+    }
+    backToBoard(results);
   }
 
   function finishRewardPick(nextHand = tacticHand) {
@@ -2181,7 +2208,7 @@ export default function PerfectRun() {
   );
 
   const barVisible = ['draft', 'intro', 'run', 'result', 'manage', 'pack'].includes(phase)
-    && !(phase === 'run' && view === 'match');
+    && !(phase === 'run' && (view === 'match' || view === 'boardSeries'));
   // The dock IS the squad, everywhere in the loop. It only stands down inside
   // a match, where the broadcast plate already lists both rosters and a second
   // copy of your five would just compete with it.
@@ -2473,6 +2500,22 @@ export default function PerfectRun() {
         </PhaseTransition>
       )}
 
+      {phase === 'run' && view === 'boardSeries' && round && opp && (
+        <PhaseTransition key="run:boardSeries" phaseKey="run:boardSeries">
+          <BoardSeries
+            key={`${tourIndex}:${round.key}`}
+            squad={squad}
+            opponent={opp.roster}
+            opponentName={opp.name}
+            bestOf={round.bestOf}
+            seed={(runSeed ^ (tourIndex * 73 + tour.roundIdx * 13 + 1)) >>> 0}
+            hand={tacticHand}
+            onDone={finishBoardSeries}
+            fixed
+          />
+        </PhaseTransition>
+      )}
+
       {phase === 'run' && view === 'maps' && seriesPlan && opp && (
         <PhaseTransition key="run:maps" phaseKey="run:maps">
           <MapDealTable
@@ -2614,6 +2657,7 @@ export default function PerfectRun() {
           result={currentResult}
           runningScore={runningScore.score}
           endless={endless}
+          board={boardMode}
         />
         </PhaseTransition>
       )}
@@ -2717,6 +2761,7 @@ export default function PerfectRun() {
           endless={endless}
           daily={mode === 'daily'}
           rival={rival}
+          board={boardMode}
           receipt={receipt}
           onReplay={() => startRun(mode, runLength, { challenge: rival })}
           onBoard={showTodaysBoard}
@@ -3246,7 +3291,7 @@ function selectedNationFromTour(tour) {
 
 // ── Tournament result interstitial ───────────────────────────────────────────
 
-function TournamentResult({ result, runningScore, endless }) {
+function TournamentResult({ result, runningScore, endless, board }) {
   return (
     <section className={styles.result}>
       <span className={styles.introMarker}>{result.label}</span>
@@ -3305,7 +3350,7 @@ function TournamentResult({ result, runningScore, endless }) {
 
       <ScoreLines
         small
-        lines={scoreLines(evaluateSeason([result]))}
+        lines={scoreLines(evaluateSeason([result]), { board })}
         total={runningScore}
         totalLabel={endless ? t('Run score') : t('Season score')}
       />
@@ -3424,7 +3469,7 @@ function PackPhase({ nat, choices, ripId, picks, pendingSwap, onDropSwap, onConf
 
 const OVER_HISTORY_CAP = 12;
 
-function SeasonOver({ result, tourResults, season, endless, daily, rival, receipt, onReplay, onBoard, onMenu }) {
+function SeasonOver({ result, tourResults, season, endless, daily, rival, receipt, onReplay, onBoard, onMenu, board }) {
   const headline = daily
     ? t('Daily complete')
     : rival
@@ -3466,7 +3511,7 @@ function SeasonOver({ result, tourResults, season, endless, daily, rival, receip
 
       <div className={styles.overGrid}>
         <div className={styles.overColumn}>
-          <ScoreLines lines={scoreLines(result)} total={result.score} totalLabel={t('Score')} />
+          <ScoreLines lines={scoreLines(result, { board })} total={result.score} totalLabel={t('Score')} />
           <div className={styles.historyList}>
             {skipped > 0 && (
               <div className={styles.historyRow}>

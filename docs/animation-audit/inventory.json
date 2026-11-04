@@ -1,0 +1,2028 @@
+{
+  "generatedAt": "2026-11-02T07:16:38.641681+00:00",
+  "filesScanned": 137,
+  "occurrences": [
+    {
+      "file": "shared/src/components/PackTear.jsx",
+      "line": 65,
+      "text": "animeAnimate(bodyRef.current, { translateY: 60, rotateX: 25, opacity: [1, 0], duration: MS.enter, ease: ANIME_EASE.in });"
+    },
+    {
+      "file": "shared/src/components/PackTear.jsx",
+      "line": 81,
+      "text": "flapRef.current.animate("
+    },
+    {
+      "file": "shared/src/components/PackTear.jsx",
+      "line": 108,
+      "text": "if (k < 1) requestAnimationFrame(step);"
+    },
+    {
+      "file": "shared/src/components/PackTear.jsx",
+      "line": 111,
+      "text": "requestAnimationFrame(step);"
+    },
+    {
+      "file": "shared/src/components/PackTear.module.css",
+      "line": 2,
+      "text": "effect didn't need to touch .strip's layout math. `.packWrap` is the only"
+    },
+    {
+      "file": "shared/src/components/PlayerCard.jsx",
+      "line": 97,
+      "text": "layoutId={layoutId}"
+    },
+    {
+      "file": "shared/src/components/PlayerCard.jsx",
+      "line": 104,
+      "text": "whileTap={onClick ? { scale: pressScale } : undefined}"
+    },
+    {
+      "file": "shared/src/components/PlayerCard.module.css",
+      "line": 78,
+      "text": "animation: flipShadow var(--dur-hero) var(--ease-out) both;"
+    },
+    {
+      "file": "shared/src/components/PlayerCard.module.css",
+      "line": 82,
+      "text": "animation: flipShadowBack var(--dur-hero) var(--ease-out) both;"
+    },
+    {
+      "file": "shared/src/components/PlayerCard.module.css",
+      "line": 85,
+      "text": "@keyframes flipShadow {"
+    },
+    {
+      "file": "shared/src/components/PlayerCard.module.css",
+      "line": 90,
+      "text": "@keyframes flipShadowBack {"
+    },
+    {
+      "file": "shared/src/components/PlayerCard.module.css",
+      "line": 141,
+      "text": "transition: transform var(--dur-hero) var(--ease-out);"
+    },
+    {
+      "file": "shared/src/components/PlayerCard.module.css",
+      "line": 151,
+      "text": "animation: wristFlip var(--dur-hero) var(--ease-out) both;"
+    },
+    {
+      "file": "shared/src/components/PlayerCard.module.css",
+      "line": 155,
+      "text": "animation: wristFlipBack var(--dur-hero) var(--ease-out) both;"
+    },
+    {
+      "file": "shared/src/components/PlayerCard.module.css",
+      "line": 170,
+      "text": "animation: flipFlash var(--dur-micro) linear var(--flip-flash-delay) both;"
+    },
+    {
+      "file": "shared/src/components/PlayerCard.module.css",
+      "line": 174,
+      "text": "animation: flipFlashBack var(--dur-micro) linear var(--flip-flash-delay) both;"
+    },
+    {
+      "file": "shared/src/components/PlayerCard.module.css",
+      "line": 177,
+      "text": "@keyframes wristFlip {"
+    },
+    {
+      "file": "shared/src/components/PlayerCard.module.css",
+      "line": 183,
+      "text": "@keyframes wristFlipBack {"
+    },
+    {
+      "file": "shared/src/components/PlayerCard.module.css",
+      "line": 189,
+      "text": "@keyframes flipFlash {"
+    },
+    {
+      "file": "shared/src/components/PlayerCard.module.css",
+      "line": 195,
+      "text": "@keyframes flipFlashBack {"
+    },
+    {
+      "file": "shared/src/components/PlayerCard.module.css",
+      "line": 225,
+      "text": "transition: transform var(--dur-hover) var(--ease-out);"
+    },
+    {
+      "file": "shared/src/components/PlayerCard.module.css",
+      "line": 287,
+      "text": "transition: opacity var(--dur-transform) var(--ease-out);"
+    },
+    {
+      "file": "shared/src/components/PlayerCard.module.css",
+      "line": 311,
+      "text": ".flip,.flip[data-flipped=\"true\"] { animation:none; transition:opacity var(--dur-micro); transform:rotateY(var(--flip,0deg)); }"
+    },
+    {
+      "file": "shared/src/components/PlayerCard.module.css",
+      "line": 346,
+      "text": "transition: background 0.14s ease, color 0.14s ease;"
+    },
+    {
+      "file": "shared/src/components/PlayerCard.module.css",
+      "line": 367,
+      "text": "transition: opacity 0.14s ease, transform 0.14s ease;"
+    },
+    {
+      "file": "shared/src/components/PlayerCard.module.css",
+      "line": 552,
+      "text": "transition: none;"
+    },
+    {
+      "file": "shared/src/index.css",
+      "line": 69,
+      "text": "transition: background var(--dur-micro), color var(--dur-micro),"
+    },
+    {
+      "file": "shared/src/index.css",
+      "line": 128,
+      "text": "animation-duration: 0.01ms !important;"
+    },
+    {
+      "file": "shared/src/index.css",
+      "line": 134,
+      "text": "animation-delay: 0ms !important;"
+    },
+    {
+      "file": "shared/src/lib/anime.js",
+      "line": 43,
+      "text": "animate(el, {"
+    },
+    {
+      "file": "shared/src/lib/motion.js",
+      "line": 33,
+      "text": "animate: { opacity: 1, y: 0, transition: { duration: DUR.hero, ease: EASE.out } },"
+    },
+    {
+      "file": "shared/src/lib/motion.js",
+      "line": 34,
+      "text": "exit: { opacity: 0, transition: { duration: DUR.hover, ease: EASE.in } },"
+    },
+    {
+      "file": "shared/src/lib/motion.js",
+      "line": 39,
+      "text": "animate: { opacity: 1, transition: { duration: DUR.enter, ease: EASE.out } },"
+    },
+    {
+      "file": "shared/src/lib/motion.js",
+      "line": 40,
+      "text": "exit: { opacity: 0, transition: { duration: DUR.hover, ease: EASE.in } },"
+    },
+    {
+      "file": "shared/src/lib/motion.js",
+      "line": 46,
+      "text": "animate: { opacity: 1, y: 0, transition: { duration: DUR.transform, ease: EASE.out } },"
+    },
+    {
+      "file": "shared/src/lib/motion.js",
+      "line": 47,
+      "text": "exit: { opacity: 0, y: 16, transition: { duration: DUR.hover, ease: EASE.in } },"
+    },
+    {
+      "file": "shared/src/lib/motion.js",
+      "line": 54,
+      "text": "animate: { opacity: 1, y: 0, transition: { duration: DUR.transform, ease: EASE.out } },"
+    },
+    {
+      "file": "shared/src/lib/motion.js",
+      "line": 55,
+      "text": "exit: { opacity: 0, transition: { duration: DUR.micro, ease: EASE.in } },"
+    },
+    {
+      "file": "shared/src/lib/motion.js",
+      "line": 62,
+      "text": "animate: { opacity: 1, y: 0, transition: { duration: DUR.enter, ease: EASE.out } },"
+    },
+    {
+      "file": "shared/src/lib/motion.js",
+      "line": 63,
+      "text": "exit: { opacity: 0, y: -4, transition: { duration: DUR.transform, ease: EASE.in } },"
+    },
+    {
+      "file": "shared/src/lib/motion.js",
+      "line": 84,
+      "text": "transition: cardSpringSoft,"
+    },
+    {
+      "file": "shared/src/lib/motion.js",
+      "line": 96,
+      "text": "transition: { duration: 0.18, ease: EASE.out },"
+    },
+    {
+      "file": "shared/src/lib/motion.js",
+      "line": 108,
+      "text": "transition: { duration: DUR.hero, ease: EASE.out },"
+    },
+    {
+      "file": "shared/src/lib/motion.js",
+      "line": 126,
+      "text": "transition: { ...cardSpringSoft, opacity: { duration: DUR.transform } },"
+    },
+    {
+      "file": "shared/src/lib/motion.js",
+      "line": 137,
+      "text": "transition: { ...cardSpring, opacity: { duration: DUR.transform } },"
+    },
+    {
+      "file": "shared/src/lib/motion.js",
+      "line": 143,
+      "text": "animate: { opacity: 1, x: 0, y: 0, transition: { ...cardSpring, opacity: { duration: DUR.transform } } },"
+    },
+    {
+      "file": "shared/src/lib/useCardTilt.js",
+      "line": 59,
+      "text": "if (moving) frameRef.current = requestAnimationFrame(tick);"
+    },
+    {
+      "file": "shared/src/lib/useCardTilt.js",
+      "line": 62,
+      "text": "frameRef.current = requestAnimationFrame(tick);"
+    },
+    {
+      "file": "src/App.jsx",
+      "line": 31,
+      "text": "{/* LayoutGroup at the root so layoutId survives createPortal - React"
+    },
+    {
+      "file": "src/components/CardFocusOverlay.jsx",
+      "line": 79,
+      "text": "requestAnimationFrame(() => {"
+    },
+    {
+      "file": "src/components/CardFocusOverlay.jsx",
+      "line": 110,
+      "text": "initial=\"initial\""
+    },
+    {
+      "file": "src/components/CardFocusOverlay.jsx",
+      "line": 111,
+      "text": "animate=\"animate\""
+    },
+    {
+      "file": "src/components/CardFocusOverlay.jsx",
+      "line": 112,
+      "text": "exit=\"exit\""
+    },
+    {
+      "file": "src/components/CardFocusOverlay.jsx",
+      "line": 133,
+      "text": "layoutId={releasingId === card.id ? undefined : `card-${card.id}`}"
+    },
+    {
+      "file": "src/components/CardFocusOverlay.module.css",
+      "line": 40,
+      "text": "transition: opacity var(--dur-hover) var(--ease-out);"
+    },
+    {
+      "file": "src/components/CardFocusOverlay.module.css",
+      "line": 205,
+      "text": "transition: background var(--dur-micro), color var(--dur-micro);"
+    },
+    {
+      "file": "src/components/CardFocusOverlay.module.css",
+      "line": 232,
+      "text": "transition: transform var(--dur-hover);"
+    },
+    {
+      "file": "src/components/CardReveal.jsx",
+      "line": 23,
+      "text": "initial={reducedMotion ? { opacity: 0 } : variant.initial}"
+    },
+    {
+      "file": "src/components/CardReveal.jsx",
+      "line": 24,
+      "text": "animate={reducedMotion"
+    },
+    {
+      "file": "src/components/CardReveal.jsx",
+      "line": 25,
+      "text": "? { opacity: 1, transition: { duration: DUR.micro, ease: EASE.out } }"
+    },
+    {
+      "file": "src/components/CardReveal.jsx",
+      "line": 28,
+      "text": "transition: { ...variant.animate.transition, delay: baseDelay + index * PACK_STAGGER },"
+    },
+    {
+      "file": "src/components/DeckBuilder.module.css",
+      "line": 124,
+      "text": "transition: transform var(--dur-transform) var(--ease-out);"
+    },
+    {
+      "file": "src/components/DeckBuilder.module.css",
+      "line": 213,
+      "text": "transition: color var(--dur-micro), border-color var(--dur-micro);"
+    },
+    {
+      "file": "src/components/DeckBuilder.module.css",
+      "line": 323,
+      "text": "transition: transform var(--dur-transform);"
+    },
+    {
+      "file": "src/components/DeckBuilder.module.css",
+      "line": 341,
+      "text": "transition: opacity var(--dur-hover);"
+    },
+    {
+      "file": "src/components/Desk.module.css",
+      "line": 24,
+      "text": "transition: background var(--dur-micro);"
+    },
+    {
+      "file": "src/components/Desk.module.css",
+      "line": 42,
+      "text": "transition: color var(--dur-micro), background var(--dur-micro);"
+    },
+    {
+      "file": "src/components/Landing.jsx",
+      "line": 248,
+      "text": "const raf = requestAnimationFrame(() => setN(value ?? 0));"
+    },
+    {
+      "file": "src/components/Landing.jsx",
+      "line": 257,
+      "text": "if (k < 1) raf = requestAnimationFrame(step);"
+    },
+    {
+      "file": "src/components/Landing.jsx",
+      "line": 259,
+      "text": "raf = requestAnimationFrame(step);"
+    },
+    {
+      "file": "src/components/LanguagePicker.module.css",
+      "line": 12,
+      "text": "transition: color var(--dur-micro), background var(--dur-micro);"
+    },
+    {
+      "file": "src/components/MatchBackdrop.jsx",
+      "line": 58,
+      "text": "transition: { duration: reducedMotion ? 0 : ZOOM_DURATION, ease: ZOOM_EASE },"
+    },
+    {
+      "file": "src/components/MatchBackdrop.jsx",
+      "line": 71,
+      "text": "transition: { duration, ease: 'easeInOut' },"
+    },
+    {
+      "file": "src/components/MatchBackdrop.jsx",
+      "line": 84,
+      "text": "initial={{ scale: ZOOM_SCALE[zoomLevel] ?? ZOOM_SCALE[1] }}"
+    },
+    {
+      "file": "src/components/MatchBackdrop.jsx",
+      "line": 85,
+      "text": "animate={controls}"
+    },
+    {
+      "file": "src/components/MatchBackdrop.jsx",
+      "line": 96,
+      "text": "initial={{ opacity: 0.78 }}"
+    },
+    {
+      "file": "src/components/MatchBackdrop.jsx",
+      "line": 97,
+      "text": "animate={{ opacity: 0 }}"
+    },
+    {
+      "file": "src/components/MatchBackdrop.jsx",
+      "line": 98,
+      "text": "exit={{ opacity: 0 }}"
+    },
+    {
+      "file": "src/components/MatchBackdrop.module.css",
+      "line": 30,
+      "text": "animation: imageIn 700ms ease both;"
+    },
+    {
+      "file": "src/components/MatchBackdrop.module.css",
+      "line": 55,
+      "text": "@keyframes imageIn {"
+    },
+    {
+      "file": "src/components/ModeRail.jsx",
+      "line": 70,
+      "text": "whileHover={{ scale: 1.05 }}"
+    },
+    {
+      "file": "src/components/ModeRail.jsx",
+      "line": 71,
+      "text": "whileTap={{ scale: 0.92 }}"
+    },
+    {
+      "file": "src/components/ModeRail.module.css",
+      "line": 44,
+      "text": "transition: color var(--dur-micro), background var(--dur-micro);"
+    },
+    {
+      "file": "src/components/ModeRail.module.css",
+      "line": 78,
+      "text": "transition: opacity var(--dur-micro);"
+    },
+    {
+      "file": "src/components/ModeRail.module.css",
+      "line": 100,
+      "text": "transition: color var(--dur-micro), background var(--dur-micro);"
+    },
+    {
+      "file": "src/components/PackRip.jsx",
+      "line": 98,
+      "text": "const animation = animeAnimate(container, {"
+    },
+    {
+      "file": "src/components/PackRip.jsx",
+      "line": 230,
+      "text": "animate(x, 0, { ...cardSpring, onComplete: () => setGhostRect(null) }),"
+    },
+    {
+      "file": "src/components/PackRip.jsx",
+      "line": 231,
+      "text": "animate(y, 0, cardSpring),"
+    },
+    {
+      "file": "src/components/PackRip.jsx",
+      "line": 232,
+      "text": "animate(rotate, 0, cardSpring),"
+    },
+    {
+      "file": "src/components/PackRip.jsx",
+      "line": 346,
+      "text": "layoutId={dropTarget === 'chip' ? undefined : `card-${card.id}`}"
+    },
+    {
+      "file": "src/components/PackRip.module.css",
+      "line": 106,
+      "text": "animation: packFloat var(--pack-wave-period) ease-in-out var(--wave-delay, var(--pack-wave-start)) infinite;"
+    },
+    {
+      "file": "src/components/PackRip.module.css",
+      "line": 109,
+      "text": "animation:"
+    },
+    {
+      "file": "src/components/PackRip.module.css",
+      "line": 122,
+      "text": "animation: edgeFlash var(--dur-micro) linear var(--pack-impact-delay) 1;"
+    },
+    {
+      "file": "src/components/PackRip.module.css",
+      "line": 125,
+      "text": "animation: packStageJolt var(--dur-micro) steps(2, end) var(--pack-impact-delay) 1;"
+    },
+    {
+      "file": "src/components/PackRip.module.css",
+      "line": 128,
+      "text": "@keyframes packFloat {"
+    },
+    {
+      "file": "src/components/PackRip.module.css",
+      "line": 132,
+      "text": "@keyframes rarityJolt {"
+    },
+    {
+      "file": "src/components/PackRip.module.css",
+      "line": 137,
+      "text": "@keyframes packStageJolt {"
+    },
+    {
+      "file": "src/components/PackRip.module.css",
+      "line": 142,
+      "text": "@keyframes edgeFlash {"
+    },
+    {
+      "file": "src/components/PackRip.module.css",
+      "line": 149,
+      "text": ".idleCard,.impactCard,.stripCards:has(.impactCard) { animation:none; transform:none; }"
+    },
+    {
+      "file": "src/components/PackRip.module.css",
+      "line": 150,
+      "text": ".impactCard::after { animation:none; opacity:1; border-color:var(--gold); border-image:none; }"
+    },
+    {
+      "file": "src/components/PhaseTransition.jsx",
+      "line": 15,
+      "text": "<m.div key={phaseKey} variants={wipeIn} initial=\"initial\" animate=\"animate\" exit=\"exit\">"
+    },
+    {
+      "file": "src/components/RouteError.module.css",
+      "line": 61,
+      "text": "transition: background var(--dur-micro), transform var(--dur-micro);"
+    },
+    {
+      "file": "src/components/RunHud.module.css",
+      "line": 16,
+      "text": "transition: background var(--dur-micro);"
+    },
+    {
+      "file": "src/components/SeriesCardTable.jsx",
+      "line": 172,
+      "text": "initial={{ opacity: 0, scale: 0.94 }}"
+    },
+    {
+      "file": "src/components/SeriesCardTable.jsx",
+      "line": 173,
+      "text": "animate={{ opacity: 1, scale: 1 }}"
+    },
+    {
+      "file": "src/components/SeriesCardTable.jsx",
+      "line": 297,
+      "text": "<m.div key={card.id} className={styles.dealtMap} initial={{ opacity: 0, y: -80, rotate: (index - maps.length / 2) * 4 }} animate={{ opacity: 1, y: 0, rotate: 0 }} transition={{ duration: DUR.enter, ease: EASE.out, delay: index * STAGGER }}>"
+    },
+    {
+      "file": "src/components/SeriesCardTable.jsx",
+      "line": 399,
+      "text": "<m.li key={step.key} data-step={step.key} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: DUR.hover, ease: EASE.out }}>"
+    },
+    {
+      "file": "src/components/SeriesCardTable.jsx",
+      "line": 455,
+      "text": "<m.div key={reveal.player.uid} className={styles.selectedTactic} layout initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}>"
+    },
+    {
+      "file": "src/components/SeriesCardTable.jsx",
+      "line": 459,
+      "text": "<m.div key=\"player-hand\" className={styles.tacticHand} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>"
+    },
+    {
+      "file": "src/components/SeriesCardTable.jsx",
+      "line": 461,
+      "text": "<m.div key={card.uid} className={styles.handCard} onPointerEnter={() => onHover?.(card)} onPointerLeave={() => onHover?.(null)} onFocus={() => onHover?.(card)} onBlur={() => onHover?.(null)} initial={{ opacity: 0, y: 50, rotate: (index - hand.length / 2) * 2 }} animate={{ opacity: 1, y: 0, rotate: 0 }} transition={{ duration: DUR.enter, ease: EASE.out, delay: index * STAGGER }}><TacticCard instance={card} onPlay={onPlay} compact={narrow} mult={multFor?.(card) ?? null} /></m.div>"
+    },
+    {
+      "file": "src/components/SeriesCardTable.jsx",
+      "line": 468,
+      "text": "<m.span className={styles.clashMark} data-edge={reveal?.edge} animate={{ opacity: reveal ? 1 : 0, scale: reveal ? 1 : .75 }}>\u00d7</m.span>"
+    },
+    {
+      "file": "src/components/SeriesCardTable.jsx",
+      "line": 476,
+      "text": "<m.div key={card.uid} layout initial={{ opacity: 0, y: -45, rotate: index ? 3 : -3 }} animate={{ opacity: 1, y: 0, rotate: 0 }} exit={{ opacity: 0, y: -35, scale: .85 }} transition={{ duration: DUR.enter, ease: EASE.out }}>"
+    },
+    {
+      "file": "src/components/SeriesCardTable.jsx",
+      "line": 542,
+      "text": "<div className={styles.patchCards}>{cards.map((card, index) => <m.div key={card.id} initial={{ opacity: 0, y: -30, rotate: index - 1 }} animate={{ opacity: 1, y: 0, rotate: 0 }} transition={{ duration: DUR.enter, ease: EASE.out, delay: index * STAGGER }}><MapCard card={card} compact /></m.div>)}</div>"
+    },
+    {
+      "file": "src/components/SeriesCardTable.module.css",
+      "line": 44,
+      "text": "transition: translate var(--dur-transform) var(--ease-out);"
+    },
+    {
+      "file": "src/components/SeriesCardTable.module.css",
+      "line": 128,
+      "text": "transition:transform var(--dur-hero) var(--ease-out);"
+    },
+    {
+      "file": "src/components/SeriesCardTable.module.css",
+      "line": 169,
+      "text": ".cardPlane, .cardGlare { transition: transform var(--dur-hover) var(--ease-out), opacity var(--dur-transform) var(--ease-out); }"
+    },
+    {
+      "file": "src/components/SeriesCardTable.module.css",
+      "line": 455,
+      "text": ".dealtMap { transition:none; }"
+    },
+    {
+      "file": "src/components/SeriesCardTable.module.css",
+      "line": 518,
+      "text": "transition: width var(--dur-enter) var(--ease-out);"
+    },
+    {
+      "file": "src/components/SeriesCardTable.module.css",
+      "line": 546,
+      "text": ".edgeTrack i { transition: none; }"
+    },
+    {
+      "file": "src/components/Sheet.module.css",
+      "line": 49,
+      "text": "transition: color var(--dur-micro), background var(--dur-micro);"
+    },
+    {
+      "file": "src/components/SigningSequence.module.css",
+      "line": 72,
+      "text": "transition: background var(--dur-hover);"
+    },
+    {
+      "file": "src/components/SigningSequence.module.css",
+      "line": 85,
+      "text": "transition: color var(--dur-hover);"
+    },
+    {
+      "file": "src/components/SigningSequence.module.css",
+      "line": 90,
+      "text": ".secondary, .cancel { transition: none; }"
+    },
+    {
+      "file": "src/components/SquadBar.module.css",
+      "line": 73,
+      "text": "transition: outline-color var(--dur-hover);"
+    },
+    {
+      "file": "src/components/SquadBar.module.css",
+      "line": 83,
+      "text": ".dockSlot { transition: none; }"
+    },
+    {
+      "file": "src/components/SquadDock.jsx",
+      "line": 242,
+      "text": "animate(x, 0, { ...cardSpring, onComplete: () => setGhostRect(null) }),"
+    },
+    {
+      "file": "src/components/SquadDock.jsx",
+      "line": 243,
+      "text": "animate(y, 0, cardSpring),"
+    },
+    {
+      "file": "src/components/SquadDock.jsx",
+      "line": 244,
+      "text": "animate(rotate, 0, cardSpring),"
+    },
+    {
+      "file": "src/components/SquadDock.jsx",
+      "line": 350,
+      "text": "exit={cardLeave.exit}"
+    },
+    {
+      "file": "src/components/SquadDock.jsx",
+      "line": 375,
+      "text": "layoutId={focusCardId === card.id ? undefined : `card-${card.id}`}"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 34,
+      "text": "transition: translate var(--dur-transform) var(--ease-out), opacity var(--dur-micro) linear;"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 113,
+      "text": "animation:activeCardBeat 700ms var(--ease-out) both;"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 142,
+      "text": "@keyframes activeCardBeat { from { opacity:0; transform:scale(.92); } 45% { opacity:1; } to { opacity:.55; transform:none; } }"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 145,
+      "text": "animation:dropWarning var(--dur-hero) ease-in-out infinite alternate;"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 150,
+      "text": "@keyframes dropWarning {"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 191,
+      "text": ".chip[data-igl-stamp=\"true\"] { animation:iglStamp var(--dur-hero) var(--ease-out); }"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 194,
+      "text": "animation:iglShockwave var(--dur-hero) var(--ease-out) both;"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 196,
+      "text": "@keyframes iglStamp {"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 201,
+      "text": "@keyframes iglShockwave {"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 218,
+      "text": "transition: translate var(--dur-transform) var(--ease-out);"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 267,
+      "text": "animation: chipRise var(--dur-transform) var(--ease-out) both;"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 311,
+      "text": "@keyframes chipRise {"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 349,
+      "text": "transition: background var(--dur-hover), color var(--dur-hover);"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 358,
+      "text": ".chip, .chip:hover + .chip, .chip:has(+ .chip:hover), .chipEmpty { transition: none; }"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 359,
+      "text": ".chipPreview { animation: none; }"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 361,
+      "text": ".chip[data-drop-active=\"true\"] .chipOutline,.chip[data-igl-stamp=\"true\"],.chip[data-igl-stamp=\"true\"] .chipOutline { animation:none; }"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 380,
+      "text": "transition: filter var(--dur-transform, 0.16s);"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 389,
+      "text": "animation: slotDeal 0.72s var(--ease-out) both;"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 399,
+      "text": "animation: slotDealEdge 0.72s var(--ease-out) both;"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 402,
+      "text": "@keyframes slotDeal {"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 420,
+      "text": "@keyframes slotDealEdge {"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 427,
+      "text": ".chipEmpty[data-new='true'] { animation: none; }"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 440,
+      "text": "animation: slotAlert 0.6s ease-in-out 3;"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 449,
+      "text": "animation: dropWarning var(--dur-hero) ease-in-out 3 alternate;"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 452,
+      "text": "@keyframes slotAlert {"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 460,
+      "text": "animation: none;"
+    },
+    {
+      "file": "src/components/SquadSheet.jsx",
+      "line": 185,
+      "text": "animate={armed ? { boxShadow: ['0 0 0 0px transparent', '0 0 0 6px var(--accent-soft)', '0 0 0 0px transparent'] } : { boxShadow: '0 0 0 0px transparent' }}"
+    },
+    {
+      "file": "src/components/SquadSheet.module.css",
+      "line": 14,
+      "text": "animation: fadeIn var(--dur-transform) ease-out;"
+    },
+    {
+      "file": "src/components/SquadSheet.module.css",
+      "line": 41,
+      "text": "animation: previewRise var(--dur-transform) var(--ease-out) both;"
+    },
+    {
+      "file": "src/components/SquadSheet.module.css",
+      "line": 44,
+      "text": "@keyframes previewRise {"
+    },
+    {
+      "file": "src/components/SquadSheet.module.css",
+      "line": 75,
+      "text": "transition: background var(--dur-hover);"
+    },
+    {
+      "file": "src/components/SquadSheet.module.css",
+      "line": 96,
+      "text": "transition: background var(--dur-hover);"
+    },
+    {
+      "file": "src/components/SquadSheet.module.css",
+      "line": 109,
+      "text": "transition: opacity var(--dur-hover);"
+    },
+    {
+      "file": "src/components/SquadSheet.module.css",
+      "line": 149,
+      "text": "transition: transform var(--dur-transform);"
+    },
+    {
+      "file": "src/components/SquadSheet.module.css",
+      "line": 150,
+      "text": "animation: faceIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;"
+    },
+    {
+      "file": "src/components/SquadSheet.module.css",
+      "line": 151,
+      "text": "animation-delay: calc(var(--i) * 70ms);"
+    },
+    {
+      "file": "src/components/SquadSheet.module.css",
+      "line": 190,
+      "text": "@keyframes faceIn {"
+    },
+    {
+      "file": "src/components/SquadSheet.module.css",
+      "line": 238,
+      "text": "transition: background var(--dur-micro), color var(--dur-micro);"
+    },
+    {
+      "file": "src/components/SquadSheet.module.css",
+      "line": 251,
+      "text": "@keyframes fadeIn {"
+    },
+    {
+      "file": "src/components/SquadSheet.module.css",
+      "line": 257,
+      "text": ".backdrop { animation: none; }"
+    },
+    {
+      "file": "src/components/SquadSheet.module.css",
+      "line": 258,
+      "text": ".face { animation: none; transition: none; }"
+    },
+    {
+      "file": "src/components/SquadSheet.module.css",
+      "line": 259,
+      "text": ".preview { animation: none; }"
+    },
+    {
+      "file": "src/components/TacticReturn.jsx",
+      "line": 32,
+      "text": "const enter = animate(el, {"
+    },
+    {
+      "file": "src/components/TacticReturn.jsx",
+      "line": 59,
+      "text": "exit = animate(el, {"
+    },
+    {
+      "file": "src/components/TacticalButton.jsx",
+      "line": 18,
+      "text": "whileTap={{ scale: 0.97, filter: 'brightness(0.85)' }}"
+    },
+    {
+      "file": "src/lib/bracketFlight.js",
+      "line": 55,
+      "text": "const animation = animate(clone, {"
+    },
+    {
+      "file": "src/lib/flight.js",
+      "line": 63,
+      "text": "const animation = animate(clone, {"
+    },
+    {
+      "file": "src/lib/flight.js",
+      "line": 108,
+      "text": "const animation = animate(clone, {"
+    },
+    {
+      "file": "src/lib/useScrollLean.js",
+      "line": 59,
+      "text": "frameRef.current = requestAnimationFrame(tick);"
+    },
+    {
+      "file": "src/lib/useScrollLean.js",
+      "line": 61,
+      "text": "frameRef.current = requestAnimationFrame(tick);"
+    },
+    {
+      "file": "src/lib/useScrollLean.js",
+      "line": 72,
+      "text": "animate();"
+    },
+    {
+      "file": "src/lib/useSkippableTimeline.js",
+      "line": 67,
+      "text": "let frame = requestAnimationFrame(function tick() {"
+    },
+    {
+      "file": "src/lib/useSkippableTimeline.js",
+      "line": 70,
+      "text": "if (left > 0) frame = requestAnimationFrame(tick);"
+    },
+    {
+      "file": "src/pages/Collection.module.css",
+      "line": 27,
+      "text": "transition: background-color var(--dur-micro), color var(--dur-micro);"
+    },
+    {
+      "file": "src/pages/Collection.module.css",
+      "line": 60,
+      "text": "transition: background 0.12s;"
+    },
+    {
+      "file": "src/pages/Collection.module.css",
+      "line": 107,
+      "text": "transition: background 0.12s, color 0.12s;"
+    },
+    {
+      "file": "src/pages/Collection.module.css",
+      "line": 181,
+      "text": "transition: background 0.12s ease;"
+    },
+    {
+      "file": "src/pages/Match.jsx",
+      "line": 62,
+      "text": "simulationTimer.current = setInterval(() => {"
+    },
+    {
+      "file": "src/pages/Match.module.css",
+      "line": 135,
+      "text": "transition: transform var(--dur-hover);"
+    },
+    {
+      "file": "src/pages/Match.module.css",
+      "line": 220,
+      "text": "transition: background var(--dur-micro), color var(--dur-micro);"
+    },
+    {
+      "file": "src/pages/Multiplayer.jsx",
+      "line": 518,
+      "text": "initial={{ opacity: 0, y: 8 }}"
+    },
+    {
+      "file": "src/pages/Multiplayer.jsx",
+      "line": 519,
+      "text": "animate={{ opacity: 1, y: 0 }}"
+    },
+    {
+      "file": "src/pages/Multiplayer.jsx",
+      "line": 719,
+      "text": "const id = setInterval(tick, 100);"
+    },
+    {
+      "file": "src/pages/Multiplayer.jsx",
+      "line": 732,
+      "text": "const id = setInterval(tick, 250);"
+    },
+    {
+      "file": "src/pages/Multiplayer.module.css",
+      "line": 67,
+      "text": ".timerDock button { position:relative; display:block; width:min(720px,100%); min-height:68px; margin:auto; overflow:hidden; border:2px solid var(--accent); background:#191d2a; color:white; font-size:17px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; transition:transform var(--dur-hover),filter var(--dur-hover); }"
+    },
+    {
+      "file": "src/pages/Multiplayer.module.css",
+      "line": 68,
+      "text": ".timerDock button::before { content:''; position:absolute; inset:0; background:var(--accent); transform:scaleX(var(--remaining)); transform-origin:left; transition:transform var(--dur-micro) linear; }.timerDock button span { position:relative; }.timerDock button:not(:disabled):hover { transform:translateY(-3px); filter:brightness(1.08); }.timerDock button:not(:disabled):active { transform:translateY(1px) scale(.99); }"
+    },
+    {
+      "file": "src/pages/Multiplayer.module.css",
+      "line": 78,
+      "text": "@media(prefers-reduced-motion:reduce){.timerDock button,.timerDock button::before{transition:none}}"
+    },
+    {
+      "file": "src/pages/PackOpening.module.css",
+      "line": 3,
+      "text": "the page's own layout and the \"open another\" affordance below it. */"
+    },
+    {
+      "file": "src/pages/PackOpening.module.css",
+      "line": 47,
+      "text": "transition: background var(--dur-micro), color var(--dur-micro);"
+    },
+    {
+      "file": "src/pages/PerfectRun.jsx",
+      "line": 1141,
+      "text": "revealTimer.current = setInterval(() => {"
+    },
+    {
+      "file": "src/pages/PerfectRun.jsx",
+      "line": 2573,
+      "text": "initial={roundFlash ? {"
+    },
+    {
+      "file": "src/pages/PerfectRun.jsx",
+      "line": 2578,
+      "text": "animate={{ color: 'var(--ink)', opacity: 1, y: 0 }}"
+    },
+    {
+      "file": "src/pages/PerfectRun.jsx",
+      "line": 3228,
+      "text": "<m.p className={styles.groupNote} animate={eliminationFlash.animate}>"
+    },
+    {
+      "file": "src/pages/PerfectRun.jsx",
+      "line": 3273,
+      "text": "<m.h2 className={styles.overFail} animate={eliminationFlash.animate}>"
+    },
+    {
+      "file": "src/pages/PerfectRun.jsx",
+      "line": 3307,
+      "text": "initial={{ opacity: 0, y: 8 }}"
+    },
+    {
+      "file": "src/pages/PerfectRun.jsx",
+      "line": 3308,
+      "text": "animate={{ opacity: 1, y: 0 }}"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 112,
+      "text": "transition: transform 0.12s;"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 126,
+      "text": "transition: background 0.12s;"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 164,
+      "text": "transition: transform var(--dur-micro) linear;"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 180,
+      "text": "transition: background var(--dur-hover), color var(--dur-hover);"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 185,
+      "text": ".skipFill { transition: none; }"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 228,
+      "text": "transition: color var(--dur-hover);"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 253,
+      "text": ".rise { animation: riseIn var(--dur-hero) var(--ease-out) both; }"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 254,
+      "text": ".riseB { animation-delay: 0.06s; }"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 255,
+      "text": ".riseC { animation-delay: 0.12s; }"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 257,
+      "text": "@keyframes riseIn {"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 261,
+      "text": "@keyframes landingFanIn {"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 265,
+      "text": "@keyframes landingFanInMobile {"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 298,
+      "text": "animation: landingFanIn 0.7s 0.15s var(--ease-out) both;"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 310,
+      "text": ".landingFan .fanCard { position: absolute; top: 50%; left: 50%; transition: none; }"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 362,
+      "text": "transition: transform var(--dur-transform) var(--ease-out), box-shadow var(--dur-transform) var(--ease-out);"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 370,
+      "text": "transition: transform 0.38s var(--ease-out);"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 405,
+      "text": "transition: color var(--dur-hover), text-decoration-color var(--dur-hover);"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 433,
+      "text": "transition: color var(--dur-hover), background var(--dur-hover), border-color var(--dur-hover);"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 499,
+      "text": "transition: color var(--dur-hover), border-color var(--dur-hover);"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 518,
+      "text": ".landingFan { animation-name: landingFanInMobile; }"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 538,
+      "text": "transition: background 0.12s, color 0.12s;"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 715,
+      "text": ".revealed { animation: resultIn 0.35s ease; }"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 716,
+      "text": "@keyframes resultIn {"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 821,
+      "text": "transition: transform var(--dur-hover);"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 835,
+      "text": "animation: scoutDeal var(--dur-enter) var(--ease-out) both;"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 846,
+      "text": "@keyframes scoutDeal { from { opacity:0; transform:translateY(8px) rotate(-1deg); } to { opacity:1; transform:none; } }"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 1094,
+      "text": "transition: border-color 0.14s, background 0.14s;"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 1144,
+      "text": "transition: border-color 0.15s, transform 0.15s, background 0.15s;"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 1186,
+      "text": "animation: riseIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 1360,
+      "text": "transition: transform var(--dur-transform);"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 1361,
+      "text": "animation: heroIn 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 1362,
+      "text": "animation-delay: calc(var(--i) * 90ms);"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 1372,
+      "text": "@keyframes heroIn {"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 1421,
+      "text": "animation: heroIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 1422,
+      "text": "animation-delay: calc(var(--i) * 80ms);"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 1424,
+      "text": ".castBandRight .castFace { animation-delay: calc((4 - var(--i)) * 80ms); }"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 1541,
+      "text": "animation: specialtyCardPulse var(--dur-transform) var(--ease-out);"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 1558,
+      "text": "animation: specialtyChip var(--dur-transform) var(--ease-out) both;"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 1563,
+      "text": "animation: specialtyThreshold 80ms steps(2, end);"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 1565,
+      "text": "@keyframes specialtyCardPulse {"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 1569,
+      "text": "@keyframes specialtyChip {"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 1574,
+      "text": "@keyframes specialtyThreshold {"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 1648,
+      "text": ".castPlayer[data-triggered=\"true\"], .castTrigger, .castScore[data-specialty-active=\"true\"] { animation:none; }"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 1777,
+      "text": "transition: background 0.12s, color 0.12s;"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 1845,
+      "text": ".introTitle { animation: none; }"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 1846,
+      "text": ".revealed { animation: none; }"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 1847,
+      "text": ".rise { animation: none; }"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 1848,
+      "text": ".landingFan { animation: none; opacity: .16; }"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 1849,
+      "text": ".landingPlay, .landingPlay::before { transition: none; }"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 1850,
+      "text": ".fanCard { transition: none; }"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 1851,
+      "text": ".heroFace { animation: none; transition: none; }"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 2661,
+      "text": "transition: background 0.12s, color 0.12s;"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 2761,
+      "text": "animation: slotArrive 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 2764,
+      "text": "@keyframes slotArrive {"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 2838,
+      "text": ".squadDeskOpen[data-new='true'] { animation: none; }"
+    },
+    {
+      "file": "src/pages/PreMatch.module.css",
+      "line": 51,
+      "text": "transition:"
+    }
+  ],
+  "keyframes": [
+    {
+      "file": "shared/src/components/PlayerCard.module.css",
+      "line": 85,
+      "name": "flipShadow"
+    },
+    {
+      "file": "shared/src/components/PlayerCard.module.css",
+      "line": 90,
+      "name": "flipShadowBack"
+    },
+    {
+      "file": "shared/src/components/PlayerCard.module.css",
+      "line": 177,
+      "name": "wristFlip"
+    },
+    {
+      "file": "shared/src/components/PlayerCard.module.css",
+      "line": 183,
+      "name": "wristFlipBack"
+    },
+    {
+      "file": "shared/src/components/PlayerCard.module.css",
+      "line": 189,
+      "name": "flipFlash"
+    },
+    {
+      "file": "shared/src/components/PlayerCard.module.css",
+      "line": 195,
+      "name": "flipFlashBack"
+    },
+    {
+      "file": "src/components/MatchBackdrop.module.css",
+      "line": 55,
+      "name": "imageIn"
+    },
+    {
+      "file": "src/components/PackRip.module.css",
+      "line": 128,
+      "name": "packFloat"
+    },
+    {
+      "file": "src/components/PackRip.module.css",
+      "line": 132,
+      "name": "rarityJolt"
+    },
+    {
+      "file": "src/components/PackRip.module.css",
+      "line": 137,
+      "name": "packStageJolt"
+    },
+    {
+      "file": "src/components/PackRip.module.css",
+      "line": 142,
+      "name": "edgeFlash"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 142,
+      "name": "activeCardBeat"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 150,
+      "name": "dropWarning"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 196,
+      "name": "iglStamp"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 201,
+      "name": "iglShockwave"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 311,
+      "name": "chipRise"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 402,
+      "name": "slotDeal"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 420,
+      "name": "slotDealEdge"
+    },
+    {
+      "file": "src/components/SquadDock.module.css",
+      "line": 452,
+      "name": "slotAlert"
+    },
+    {
+      "file": "src/components/SquadSheet.module.css",
+      "line": 44,
+      "name": "previewRise"
+    },
+    {
+      "file": "src/components/SquadSheet.module.css",
+      "line": 190,
+      "name": "faceIn"
+    },
+    {
+      "file": "src/components/SquadSheet.module.css",
+      "line": 251,
+      "name": "fadeIn"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 257,
+      "name": "riseIn"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 261,
+      "name": "landingFanIn"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 265,
+      "name": "landingFanInMobile"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 716,
+      "name": "resultIn"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 846,
+      "name": "scoutDeal"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 1372,
+      "name": "heroIn"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 1565,
+      "name": "specialtyCardPulse"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 1569,
+      "name": "specialtyChip"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 1574,
+      "name": "specialtyThreshold"
+    },
+    {
+      "file": "src/pages/PerfectRun.module.css",
+      "line": 2764,
+      "name": "slotArrive"
+    }
+  ],
+  "sourceManifest": [
+    {
+      "path": "shared/src/components/CountryFlag.jsx",
+      "sha256": "e0472058668f727868e59d98f123e33dc060ccee26f7adef4496aae0752f645c"
+    },
+    {
+      "path": "shared/src/components/PackTear.jsx",
+      "sha256": "3d9dc0169b19bde334684d2efcaff74c961c7f9f1956945add1b1302ebefa104"
+    },
+    {
+      "path": "shared/src/components/PackTear.module.css",
+      "sha256": "506e71df15d15e958bf4e0ebe54ddcca9032285426eb7eadfc8d31cdec4b39f1"
+    },
+    {
+      "path": "shared/src/components/PlayerCard.jsx",
+      "sha256": "f32109178ef6c355f04a86cc50242967dbfffc8f9e89ea339e261db72827fbd1"
+    },
+    {
+      "path": "shared/src/components/PlayerCard.module.css",
+      "sha256": "a21f3f104bb8f5591f29454ee5e9fa98a11cce2d5c34d8d4a489e7e0f648ac5b"
+    },
+    {
+      "path": "shared/src/components/PlayerPortrait.jsx",
+      "sha256": "1c4b77b01244198e58d995a4dc0dc40454b58be286b7904f282a67e9f75d2101"
+    },
+    {
+      "path": "shared/src/components/PlayerPortrait.module.css",
+      "sha256": "e6bce4119df8f99ce28e41954c1e21c973dda389f4ce24685ef610a8acb187c9"
+    },
+    {
+      "path": "shared/src/components/SpecialtyIcon.jsx",
+      "sha256": "33bc9524426aad4175b91a86b4cd375a60d3f5facec8fd979850b8d403ed9094"
+    },
+    {
+      "path": "shared/src/components/Split.jsx",
+      "sha256": "993e19f519fa49d2d796e1c4e618e1f0062da958f132cd80a7f0298ef50367bb"
+    },
+    {
+      "path": "shared/src/components/Split.module.css",
+      "sha256": "4760fb975d9141f5694cde9f9f028a7c9f4f53788672317a5425920fbe7a3e2b"
+    },
+    {
+      "path": "shared/src/data/specialties.js",
+      "sha256": "83177e6cf449f01c6df78a22e79fd02626a8d8c5702659ecbe8807ac1fe39bf4"
+    },
+    {
+      "path": "shared/src/data/statFields.js",
+      "sha256": "dbaa26e7a1c1a1d81f1513bddd1b9ac31a3a12bf629f298b785c69bdeffd7eac"
+    },
+    {
+      "path": "shared/src/engine/endless/career.js",
+      "sha256": "4149cfedd19366f96b17b2b800e527efb3b19e6cecd53bbf3eb7cbaef77cdeb7"
+    },
+    {
+      "path": "shared/src/engine/perfectRun.js",
+      "sha256": "f60fb64f507660dd01f1bba9e4a5b28dd5229f21f88e9997fa4d05f22914dfb5"
+    },
+    {
+      "path": "shared/src/index.css",
+      "sha256": "06ff737614251df1b7ac005d7e70deaeef5a87d0f4deb67fdb8873e2f7cd9e26"
+    },
+    {
+      "path": "shared/src/lib/anime.js",
+      "sha256": "8b1fa362f9cdf9c8309ca0958a9c0f20027b1628bead912988a3378de3c36845"
+    },
+    {
+      "path": "shared/src/lib/cardPhysics.js",
+      "sha256": "f9c6211b0e6024200cf9da625cf96d5fdf82e1bc1a5ed9f6a25fb4379f57748b"
+    },
+    {
+      "path": "shared/src/lib/gameAudio.js",
+      "sha256": "217e099239dad378bd043dbfe5ddedfe25d1f0ebaa1f735f03af1a9709a706b4"
+    },
+    {
+      "path": "shared/src/lib/motion.js",
+      "sha256": "fb6d59539317572bd1e3b3f6d77cd6dce3ef15ad1549bbc98a813fb969a5b34f"
+    },
+    {
+      "path": "shared/src/lib/motionFeatures.js",
+      "sha256": "1a88c4b9d13ed97749cf3ce7e8dfbda79a34374ec14261d2e88b13df65da37d8"
+    },
+    {
+      "path": "shared/src/lib/portrait.js",
+      "sha256": "5117797fa703dcfe9777ec674dbe1fabeea40e2cb32ec679e0a0df5ff69ecb36"
+    },
+    {
+      "path": "shared/src/lib/useCardTilt.js",
+      "sha256": "be54eb23c0f31bbbb05ea714f292c3901672cc84072a97d41678d3071faee772"
+    },
+    {
+      "path": "shared/src/lib/useReducedMotion.js",
+      "sha256": "1999cc0d8af7db29ddc76ef0aa281b3de9c9499c6fefd2ef2dcadb761b922c99"
+    },
+    {
+      "path": "shared/src/lib/useRunSpeed.js",
+      "sha256": "b3575be4e1de19514810524004e7c8bbedb028895e5741e8cf528923dfb4549b"
+    },
+    {
+      "path": "shared/src/lib/utils.js",
+      "sha256": "8acdaa73ba43e0d631d3bb0fcd2cced2292e23841b8e895c00bc4ac089314ec1"
+    },
+    {
+      "path": "shared/src/styles/team-logos.css",
+      "sha256": "676c5e2bf7daeff84f54421de8dbdf141ee78c45d08174ccffdd783961215a85"
+    },
+    {
+      "path": "shared/src/styles/tokens.css",
+      "sha256": "4ce5ae00a74cf83d39a1639fd876235ed91c1e73d7870b63839e804e86e76630"
+    },
+    {
+      "path": "src/App.jsx",
+      "sha256": "af2227c57853278799ade429c52d83a5d6209a5bc600ba906cdb97216ed4176c"
+    },
+    {
+      "path": "src/components/AppFrame.jsx",
+      "sha256": "5f0bb074cab5c1565660c5af417966d084fec13cbf4d6ad312759e3ac95f7eb3"
+    },
+    {
+      "path": "src/components/AppFrame.module.css",
+      "sha256": "a1007de2fe280b8bd487901d57afdc3b213be74419b78dd65cc4ad35953b0a11"
+    },
+    {
+      "path": "src/components/BrandLogo.jsx",
+      "sha256": "ecdbaf8e1288ef2034cf59ea2700c70c54634b41ea05e453d08e275ed7425b8b"
+    },
+    {
+      "path": "src/components/CardFocusOverlay.jsx",
+      "sha256": "072a65560db9e9983102c8dba059268f9826db34064c12db9a5f7d8eecc089df"
+    },
+    {
+      "path": "src/components/CardFocusOverlay.module.css",
+      "sha256": "a470d6ff2cf106e9f6959748048f23fa39113ed5c0d0dd152250d2d3ba2e2050"
+    },
+    {
+      "path": "src/components/CardReveal.jsx",
+      "sha256": "c20cdff2cc699c778ef60d664244334c0103f9c7ebb3597b011d638e2d54300a"
+    },
+    {
+      "path": "src/components/DeckBuilder.jsx",
+      "sha256": "8bf4eea6e842cfa9e2f90cb11b795666fab5d9b6fe1b8e8292fbcfe856423727"
+    },
+    {
+      "path": "src/components/DeckBuilder.module.css",
+      "sha256": "6a3e2fad83483b20bfe73a258ccbd773613e3d571ea7c958114709e65155f7eb"
+    },
+    {
+      "path": "src/components/Desk.jsx",
+      "sha256": "8dc974f772d85f434a75616f104f2624c448073483d39a2f1945506e7881a62d"
+    },
+    {
+      "path": "src/components/Desk.module.css",
+      "sha256": "b1fdd9e8caca8b473aa3c27c356d62d0cce8ba4292a5162b67fc9ab06d28543d"
+    },
+    {
+      "path": "src/components/DeskPanels.jsx",
+      "sha256": "a204bcdf2c0b22ab031791bd4901fe8c3c56a86f3e58e21fef7534e09b5065f2"
+    },
+    {
+      "path": "src/components/HowTo.jsx",
+      "sha256": "95f1852360f3b9aa3bf7915a4328a7a24c0b6c65316fc196ad5c00e8e01dfe56"
+    },
+    {
+      "path": "src/components/HowTo.module.css",
+      "sha256": "73d58091ab5e8569d737dd8301bc5b1512e1bd3b05fe8891d23a2dd565ca406d"
+    },
+    {
+      "path": "src/components/Impact.jsx",
+      "sha256": "3b3976c62a4a3929435dabed7e7084c22fe89e21a286399f2b7671b3af29eb45"
+    },
+    {
+      "path": "src/components/Impact.module.css",
+      "sha256": "fdf6b56ab088d5c5a190898047f32d9176f2d73ffe50923a6f944909e0671ee2"
+    },
+    {
+      "path": "src/components/Landing.jsx",
+      "sha256": "735ef5229a566cdaf85ef50460b83d26d114443ab46dd179a0d3fe08c4b7133f"
+    },
+    {
+      "path": "src/components/LanguagePicker.jsx",
+      "sha256": "983a32965bd140a0d7ed6cb3d035e3c9023da5bd6a76b8de4f4a02e682a1d8c5"
+    },
+    {
+      "path": "src/components/LanguagePicker.module.css",
+      "sha256": "8a47fd2e4e4019847d3847491ad143e615f827ceeb9e3745f1e387228ba56a36"
+    },
+    {
+      "path": "src/components/LobbySeriesPrep.jsx",
+      "sha256": "3f55cf60c3d1af50133164280369081af14a27abf8d57d15d390d183055f4de8"
+    },
+    {
+      "path": "src/components/LobbySeriesPrep.module.css",
+      "sha256": "54b6b5e6d07bda591c3d55e9a69e1f872016c0bced8beebf0d0eaa9ce9b012f0"
+    },
+    {
+      "path": "src/components/MapCanvas.jsx",
+      "sha256": "4462458b7c39d0912a2d6b9690d062a6a88e65a9a9ba56acc364aa99786061a5"
+    },
+    {
+      "path": "src/components/MatchBackdrop.jsx",
+      "sha256": "023de782debcdbe520312052aad0357e0aa7f13be9749d565f7a3e55b59651b2"
+    },
+    {
+      "path": "src/components/MatchBackdrop.module.css",
+      "sha256": "d56ecafb9de291056c0cb9bf90c2bb5aa0ddade2eff62f526cba262fcf5ea735"
+    },
+    {
+      "path": "src/components/ModeRail.jsx",
+      "sha256": "39567c85c0b406cf546fab97c3c781d8a7a5475b6d139dfc7f79853d7bd15c3b"
+    },
+    {
+      "path": "src/components/ModeRail.module.css",
+      "sha256": "aea89b3731cbc6db38e1b54e676b3e854cc4644436db7d8aef2d6c3556ebae7d"
+    },
+    {
+      "path": "src/components/OverviewRow.jsx",
+      "sha256": "508d81dbddce86feeef385694547fc1c12bcf55aa859d0f40f7b446c5d8e90d7"
+    },
+    {
+      "path": "src/components/OverviewRow.module.css",
+      "sha256": "da758e9de9e03b57c585c553a485956688bd6f2ee3cb6c25c88f242e84d25091"
+    },
+    {
+      "path": "src/components/PackRip.jsx",
+      "sha256": "ff98d22717817201c3a119fca81fc2786321d167833f17efa08e18eae1d2eca9"
+    },
+    {
+      "path": "src/components/PackRip.module.css",
+      "sha256": "8f87f14b8c2cbe16ef50d424d50ed1d0f9d65e545a7ce2159140dce13c295cf5"
+    },
+    {
+      "path": "src/components/PhaseTransition.jsx",
+      "sha256": "beaf2939c8330c2cbff9dd7c6c64f9e61ab17cfd28a78aaff3a5db22ec8d0f87"
+    },
+    {
+      "path": "src/components/RouteError.jsx",
+      "sha256": "2c403f5059047dd2f45dd2dcdcaceefebc18f6bce84abb3a3e684d407739f67e"
+    },
+    {
+      "path": "src/components/RouteError.module.css",
+      "sha256": "d796b197befda572fd50edcf7531e2245b8d65284c8f5f370d3544621d8d4902"
+    },
+    {
+      "path": "src/components/RunHud.jsx",
+      "sha256": "b75cf5e15c355bff98829ee790a8fbdc9b4354a71a1efdc97c30581b5e56cddb"
+    },
+    {
+      "path": "src/components/RunHud.module.css",
+      "sha256": "c669d4027601bf65f353b75701e9851672026e56f1e45eb112f4b56f2f44633b"
+    },
+    {
+      "path": "src/components/RunReceipt.jsx",
+      "sha256": "e11b8fcc070921a12ee95c16d593b72fa9a0cf316b10ed3f916f9994db458a47"
+    },
+    {
+      "path": "src/components/RunReceipt.module.css",
+      "sha256": "13851cd16a5c4df7161ab747a4d6bd4ff438de56846f3ad2f8d3eeb85a220b9f"
+    },
+    {
+      "path": "src/components/ScoreLines.jsx",
+      "sha256": "7d4d6fd05ff5f5ffd67a48a30bd72eeb2e866089f14f32afde4693468986abaa"
+    },
+    {
+      "path": "src/components/ScoreLines.module.css",
+      "sha256": "6972bfec34d73656318e66a5dc5c08813fe9713dfd0234fd4e04aaa15dc6e435"
+    },
+    {
+      "path": "src/components/SeriesCardTable.jsx",
+      "sha256": "04126a85640f8cda02dd5ef110ae2d4bff3b917289dd606a1c7dab312b2d1a55"
+    },
+    {
+      "path": "src/components/SeriesCardTable.module.css",
+      "sha256": "5e260395539e5287809eb519d001c88e7e2be12853d3bfc19ae5d81f8d073a74"
+    },
+    {
+      "path": "src/components/Sheet.jsx",
+      "sha256": "63f83466f00a9e7528e57278db87eee4e760371a3a28c0b60838e367ed57d8de"
+    },
+    {
+      "path": "src/components/Sheet.module.css",
+      "sha256": "8b577e1e6ad3b9f10ec1733bc23713db19b1b90b7641ad8727fd5705012cab19"
+    },
+    {
+      "path": "src/components/SigningSequence.jsx",
+      "sha256": "6b711bbfe2cd6c066b2dc9804f4b0638e078523dcf588107bbb406e25fad11cf"
+    },
+    {
+      "path": "src/components/SigningSequence.module.css",
+      "sha256": "447802e061b2f76c30cf7e4822cb3447468294e6c250fe4375b1c4503cc631db"
+    },
+    {
+      "path": "src/components/SquadBar.jsx",
+      "sha256": "b15040d215145773e9ec329584ed955f210daf7de9adb76f9f078bbcb922d914"
+    },
+    {
+      "path": "src/components/SquadBar.module.css",
+      "sha256": "9687974e00c51bf16b132a4a4e9dba5e5fcd9449518a97ec7c30d415176b5729"
+    },
+    {
+      "path": "src/components/SquadDock.jsx",
+      "sha256": "7401a9966b1aea412cdf862fcaf1d6f9b7f8f388f52d3f786f6f73d91a8ee377"
+    },
+    {
+      "path": "src/components/SquadDock.module.css",
+      "sha256": "79ddb91189179135ac24b477bdb747191ff889e0b9d021c6ce6d11a2f3a30355"
+    },
+    {
+      "path": "src/components/SquadSheet.jsx",
+      "sha256": "b9f3a03a93b10c7205da4dc95e700cf40b0e21fe840f649dc2b3ba1471904f08"
+    },
+    {
+      "path": "src/components/SquadSheet.module.css",
+      "sha256": "f11dabee5ea409d749d63fccfc572af00895c36ee80f066a29756c1e44f0cb23"
+    },
+    {
+      "path": "src/components/StatusStrip.jsx",
+      "sha256": "fc5650ac0df1cd51e01794e3f4979b123e5770fc7f39a4a4da9494cb9c88681b"
+    },
+    {
+      "path": "src/components/StatusStrip.module.css",
+      "sha256": "281c46ffb14e9b6fe6d95edd2dbc25692e853348fa9df8e75d08e46b8c21687f"
+    },
+    {
+      "path": "src/components/TacticReturn.jsx",
+      "sha256": "7efcca16612e47617d19a7508944d7e8040c89829d6717ff8c59e64885560366"
+    },
+    {
+      "path": "src/components/TacticReturn.module.css",
+      "sha256": "57343fc1cc5c62007cf3fa3f286c614b1729f6ce113d35686248a54cf21bbcd2"
+    },
+    {
+      "path": "src/components/TacticalButton.jsx",
+      "sha256": "de79ba180afa255fcfd58b8fa7441d30ec1b8fa3a016fc5bf47100db64b9f2ed"
+    },
+    {
+      "path": "src/data/backdrops.js",
+      "sha256": "65790609b2b12a6f22377fca1f12ba082c7ce55dc5bf366393e40dc1ff118b50"
+    },
+    {
+      "path": "src/engine/endless/academy.js",
+      "sha256": "f4d6bdcd9d4ca6601596db533e411e9afd03456d894d5e8525c53af4fd073fd7"
+    },
+    {
+      "path": "src/engine/endless/bonds.js",
+      "sha256": "98a026a0fa087fbed01c44f5550f5ea0daecb503f1457683f82a1e8d85c1c780"
+    },
+    {
+      "path": "src/engine/endless/field.js",
+      "sha256": "ee88f2b050431c1bee318bf09f866d0bc50214a2d75736642eb96db6acc8453b"
+    },
+    {
+      "path": "src/engine/endless/ladder.js",
+      "sha256": "939364234a2f7a2087979cb41f9e4b26f5c57d12edf20eabbaa207cc7e30ced1"
+    },
+    {
+      "path": "src/engine/endless/market.js",
+      "sha256": "bc6454863afc077fdd2d1e2ccf65af6447d6e76bf5ad5a44f19b90876d6af4bc"
+    },
+    {
+      "path": "src/engine/endless/news.js",
+      "sha256": "036c4e1350c15f84f162a081e5c3535cd7de0d4bcc52d8e02addb6bc2b48d9a8"
+    },
+    {
+      "path": "src/engine/endless/seriesCards.js",
+      "sha256": "4780c5cd681c2c477dce38748b333b120eec1bbcf6ea20a17cf2d980547acbdc"
+    },
+    {
+      "path": "src/engine/endless/squadPreview.js",
+      "sha256": "cb04cff3eb75da10a04c30815908a6f3d26c883f7d267c7e409d2ff5410b65a0"
+    },
+    {
+      "path": "src/engine/endless/stature.js",
+      "sha256": "b35b7c50f3fd544a513f49459c4dc77f35fb2177b1721619155e558d737b7efc"
+    },
+    {
+      "path": "src/engine/endless/world.js",
+      "sha256": "c2521112e0800966b5c31b802b31a27fcc0d180cc00c5582c565276e904dcd0a"
+    },
+    {
+      "path": "src/engine/multiplayer.js",
+      "sha256": "4a44ed368c5f1e61e68885d9e47876cd2b481626b4e3a26589992d0ded3f650d"
+    },
+    {
+      "path": "src/engine/roundEvents.js",
+      "sha256": "b0e4302ab4c50ef0bb8a0ebb8007f808b89109865e6251224ca49204d50159d6"
+    },
+    {
+      "path": "src/i18n/es.js",
+      "sha256": "bf131768279b861f03350ba25e28d53cf8b90fb1e655e209358d0c6c3a0b3bc8"
+    },
+    {
+      "path": "src/i18n/pt.js",
+      "sha256": "90c46640eac4da5c07f18f0f895460ce36828aaf635e9b1ae23534f324b43f92"
+    },
+    {
+      "path": "src/lib/bracketFlight.js",
+      "sha256": "2e453fdc681bd3e41a977b8a9291f01e331661509236c84dd4a2a24197bc9164"
+    },
+    {
+      "path": "src/lib/challenge.js",
+      "sha256": "1f6ce2d63478216d5c7d8c42a896d9e05f2de9b4b52bd02d711ff48e31138df7"
+    },
+    {
+      "path": "src/lib/chemLabels.js",
+      "sha256": "25ecc0fa13173145efc4831840d4cb1a4709d2e21b45e337a322940318b7ebeb"
+    },
+    {
+      "path": "src/lib/dailyRules.js",
+      "sha256": "d9d7bb1fd57b2ff2927a4cbdc7ea415cf3564ea7f98b43910715c4ae31139c7a"
+    },
+    {
+      "path": "src/lib/deskMoves.js",
+      "sha256": "64a8bf3c848758fa7af080f46bb847276e010d00986f81392b44afdf3b314eb7"
+    },
+    {
+      "path": "src/lib/endlessRunSave.js",
+      "sha256": "822a93387ca90f6b3e587bec6460b044ae6941369c3a8c92aa785ce868dd3b10"
+    },
+    {
+      "path": "src/lib/flight.js",
+      "sha256": "5dd46f9e9866a1aaa592a2ca485e8223892c4127f894a96d66f08be710c7193d"
+    },
+    {
+      "path": "src/lib/format.js",
+      "sha256": "ca20055f7e9d0b873d7786d2dc3cea9ab1da09f3188c9779882f6255773fbf9f"
+    },
+    {
+      "path": "src/lib/i18n.js",
+      "sha256": "4a9741880c61dacb045dbb8fe4c992157fadd8e234c2a1e7f8f7e4d642a29125"
+    },
+    {
+      "path": "src/lib/leaderboardClient.js",
+      "sha256": "5a7facdde1940012d45ed5c41dec4251d1f365b3ef421459951d9fd0e51d1e98"
+    },
+    {
+      "path": "src/lib/lobbyTurn.js",
+      "sha256": "d3b08472a522ca7488a7d078de5a3f398547168738bab7c8a123160fb751b340"
+    },
+    {
+      "path": "src/lib/matchCascade.js",
+      "sha256": "31b23da8bbdb9e613dc38d2b471556947a676c56af33f09fb3ca76973de0dfe5"
+    },
+    {
+      "path": "src/lib/multiplayerClient.js",
+      "sha256": "ea028fb146484f8210ae1cebc8e40582ead60e3311fc202b887e8b95680eee18"
+    },
+    {
+      "path": "src/lib/perfectRunSaves.js",
+      "sha256": "209dc8ecfa587ca2caff3dd48daf785af381b4563b1c03bcedd645e20efb8486"
+    },
+    {
+      "path": "src/lib/rulesSeen.js",
+      "sha256": "af5673c18f76beeadd414588cc3ca8954b33cdb87f0499ed183e68db23d4a704"
+    },
+    {
+      "path": "src/lib/scoreBreakdown.js",
+      "sha256": "b5d8cf59f7b06c86e4df61fc2eb615ad15e130895c50c2005282c4cbe9a9d594"
+    },
+    {
+      "path": "src/lib/shareImage.js",
+      "sha256": "f6afb5aa1eca76f0d65e3d84ed3050374c3952301c0225d1bce4090508f0bc3e"
+    },
+    {
+      "path": "src/lib/squadSheetPreview.js",
+      "sha256": "23520ed54e52130418ec55a9bffaa4c041263f421819468073f39b88d698bf5f"
+    },
+    {
+      "path": "src/lib/useDialogFocusTrap.js",
+      "sha256": "1c5b7fafa9dd7b675f477a519823e33b10c31ce3eebd121a6535076fd94a094e"
+    },
+    {
+      "path": "src/lib/useLang.js",
+      "sha256": "05f91f78d4d29db768525803eee8394f47feb3f68dafb186f2c4cf33e19c086a"
+    },
+    {
+      "path": "src/lib/useMediaQuery.js",
+      "sha256": "edad715452454d890629f964cb0df8f78c14db604192f683252b26087c774d01"
+    },
+    {
+      "path": "src/lib/useScrollLean.js",
+      "sha256": "98851fa4265403711ec747b2e1af8eb6da4831d5d3a14e54404fb5b6aeee3d1e"
+    },
+    {
+      "path": "src/lib/useSkippableTimeline.js",
+      "sha256": "0df989b7fcc50e06b03524e107e3499ef5293e70744abcef545673098fc58336"
+    },
+    {
+      "path": "src/main.jsx",
+      "sha256": "91a7f27c3d2abc05eb4531ff17338eded0e347ef0a5f6059ab60c445d0479fe7"
+    },
+    {
+      "path": "src/pages/Collection.jsx",
+      "sha256": "8e4373a0274580178ea74970161a584ebad7d02458f1ffc2424984fd1b92fb0c"
+    },
+    {
+      "path": "src/pages/Collection.module.css",
+      "sha256": "be5e7a0b85318b9092594637d2d19536a583a48d31ef8a95e53e381eb683ae25"
+    },
+    {
+      "path": "src/pages/Legal.jsx",
+      "sha256": "20152a90cee25f3ec446d3f67489807dc84ee4f2a6e3deb18f98e5efaa552059"
+    },
+    {
+      "path": "src/pages/Legal.module.css",
+      "sha256": "efb113fdcf0ec1c34268c97b51b0b7f008d8316efc977c6687ea8725081c6fc9"
+    },
+    {
+      "path": "src/pages/Match.jsx",
+      "sha256": "9a0f6a2b3d83f3c825e8aae685a8851ef37c8101884e8426a6cc48a79eb15968"
+    },
+    {
+      "path": "src/pages/Match.module.css",
+      "sha256": "ad03de7811784966d9754adc30fa01a830f7ee3d7ce82beb0ec5e799a2776b41"
+    },
+    {
+      "path": "src/pages/Multiplayer.jsx",
+      "sha256": "6da5c567b3a8ba02f28a1f721ba12222be53661eff5f4ee3d29f272b2231a4b4"
+    },
+    {
+      "path": "src/pages/Multiplayer.module.css",
+      "sha256": "100e4aca6c95fc6f77e01f511d1d83ef5caae12560cc10a16593a1d782924cd9"
+    },
+    {
+      "path": "src/pages/PackOpening.jsx",
+      "sha256": "2f2c47979ff2e179bf2f1866d934ecb544934c56f898eb494cee8b0fb46bae1f"
+    },
+    {
+      "path": "src/pages/PackOpening.module.css",
+      "sha256": "adc925782388b142c4a02ebae9c4f5307914574519df7fdc4830971edcdbf1b6"
+    },
+    {
+      "path": "src/pages/PerfectRun.jsx",
+      "sha256": "d6cc46ab68227e3661f8703cfba924708aa770af724b18cc35082fc3ff700c97"
+    },
+    {
+      "path": "src/pages/PerfectRun.module.css",
+      "sha256": "800f55fef4f1ade4cafdade9d559a602113c375c3fd84c9d64935567af701039"
+    },
+    {
+      "path": "src/pages/PreMatch.jsx",
+      "sha256": "1248d4128fd2fff222a3bec6693dba71cb5aabf58d5b9af6738bf92e8770366c"
+    },
+    {
+      "path": "src/pages/PreMatch.module.css",
+      "sha256": "2c2d3bee2ca2afc72e39b73c4798af89311e3fe5e9e76c078a0ce4c06848f856"
+    },
+    {
+      "path": "src/styles/hub.module.css",
+      "sha256": "f5a1a6e6b739e4258e293f5b66854e805add71cdeb6360fe8924229bdbacc457"
+    }
+  ]
+}

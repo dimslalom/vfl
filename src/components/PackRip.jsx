@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import { m, useMotionValue, animate } from 'motion/react';
 import PlayerCard from '../../shared/src/components/PlayerCard';
 import CardReveal from './CardReveal';
-import PackTear from '../../shared/src/components/PackTear';
+// The 3D foil pack, which falls back to the flat PackTear on its own when 3D can't run.
+import PackTear from '../pack3d/Pack3DTear';
 import CountryFlag from '../../shared/src/components/CountryFlag';
 import { cardSpring } from '../../shared/src/lib/motion';
 import useReducedMotion, { prefersReducedMotion } from '../../shared/src/lib/useReducedMotion';

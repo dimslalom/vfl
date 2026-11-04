@@ -1,0 +1,52 @@
+.lab {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: var(--sp-10);
+  padding: var(--sp-10);
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+.side { display: flex; flex-direction: column; gap: var(--sp-5); }
+.side h1 { margin: 0; font-size: var(--fs-heading); line-height: 1.1; }
+.hint { margin: 0; color: var(--muted); font-size: var(--fs-body); }
+.group { display: flex; flex-direction: column; gap: var(--sp-1); }
+.group button {
+  min-height: var(--tap-min);
+  padding: 0 var(--sp-4);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  border: 0;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.group button[data-on] { background: var(--ink); color: var(--bg); }
+.group i { width: 18px; height: 18px; flex: none; }
+.roll { min-height: var(--tap-min); display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); border: 0; background: var(--ink); color: var(--bg); font: inherit; font-weight: 800; cursor: pointer; }
+.roll:disabled { opacity: 0.4; cursor: default; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-1); }
+.ghost { min-height: var(--tap-min); border: 0; background: var(--surface); color: var(--ink); font: inherit; font-weight: 800; cursor: pointer; }
+.stats { margin: auto 0 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.stats div { display: flex; justify-content: space-between; font-size: var(--fs-label); }
+.stats dt { color: var(--muted); }
+.stats dd { margin: 0; font-variant-numeric: tabular-nums; }
+.stage { position: relative; min-height: 0; }
+.host { position: absolute; inset: 0; touch-action: none; }
+.notice { position: absolute; top: 50%; left: 50%; margin: 0; transform: translate(-50%, -50%); color: var(--muted); }
+
+@media (max-width: 759px) {
+  .lab { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); padding: var(--sp-4); gap: var(--sp-4); }
+  .side { gap: var(--sp-2); min-width: 0; }
+  .hint { display: none; }
+  .group { flex-direction: row; flex-wrap: wrap; }
+  .group button { min-height: 36px; padding: 0 var(--sp-3); }
+  .stats { display: none; }
+}

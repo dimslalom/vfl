@@ -10,6 +10,12 @@ const PerfectRun = lazy(() => import('./pages/PerfectRun'));
 const Multiplayer = lazy(() => import('./pages/Multiplayer'));
 const Legal = lazy(() => import('./pages/Legal'));
 const BoardPrototype = lazy(() => import('./pages/BoardPrototype'));
+const Club = lazy(() => import('./pages/Club'));
+const PackLab = lazy(() => import('./pages/PackLab'));
+const ChipLab = lazy(() => import('./pages/ChipLab'));
+const TableLab = lazy(() => import('./pages/TableLab'));
+const FxLab = lazy(() => import('./pages/FxLab'));
+const ArenaLab = lazy(() => import('./pages/ArenaLab'));
 
 // domMax (not domAnimation) is required for layoutId and drag, both used by
 // the card-surface morphs. Loaded as its own async chunk so it doesn't sit in
@@ -47,6 +53,12 @@ export default function App() {
                   <Route path="/run" element={<PerfectRun />} />
                   <Route path="/legal" element={<Legal />} />
                   <Route path="/board" element={<BoardPrototype />} />
+                  <Route path="/club" element={<Club />} />
+                  <Route path="/lab/pack" element={<PackLab />} />
+                  <Route path="/lab/chips" element={<ChipLab />} />
+                  <Route path="/lab/table" element={<TableLab />} />
+                  <Route path="/lab/fx" element={<FxLab />} />
+                  <Route path="/lab/arena" element={<ArenaLab />} />
                   <Route path="/multiplayer" element={<Multiplayer />} />
                   <Route path="/lobby/:code" element={<Multiplayer />} />
                   <Route path="*" element={<NotFound />} />

@@ -1,0 +1,496 @@
+/* The series board and its DOM chrome. */
+.series { position: absolute; inset: 0; }
+/* Inside a run the board sits below the HUD and clear of the rail. */
+.series[data-fixed='true'] {
+  position: fixed;
+  inset: var(--hud-h, 40px) 0 0 calc(var(--rail-size) + var(--safe-l));
+  z-index: 4;
+}
+.series[data-fixed='full'] { position: fixed; inset: 0; z-index: 60; background: var(--bg); }
+.board { position: absolute; inset: 0; touch-action: none; }
+.board canvas { display: block; }
+/* The 3D chips: a see-through layer exactly over the board. It takes no input of
+   its own; the chip scene reads presses on the board and claims only chip hits. */
+.chips { position: absolute; inset: 0; pointer-events: none; }
+.chips canvas { display: block; }
+.bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--sp-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  min-height: 52px;
+  pointer-events: none;
+}
+.bar > * { pointer-events: auto; }
+.primary {
+  min-height: var(--tap-min);
+  padding: 12px 24px;
+  border: 0;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 9px 100%, 0 calc(100% - 9px));
+}
+.secondary {
+  min-height: var(--tap-min);
+  padding: 12px 24px;
+  border: 0;
+  background: var(--surface-alt);
+  color: var(--ink);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 9px 100%, 0 calc(100% - 9px));
+}
+.primary:disabled { background: var(--surface-alt); color: var(--muted); }
+.hint { margin: 0; font-size: 12px; color: var(--muted); }
+.result {
+  position: absolute;
+  left: 50%;
+  bottom: var(--sp-3);
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-5);
+  width: min(640px, calc(100% - var(--sp-4)));
+  padding: var(--sp-3) var(--sp-5);
+  background: var(--surface-flyout);
+  box-shadow: var(--shadow-overlay);
+}
+.result h2 { margin: 0; font-size: 28px; line-height: 1; color: var(--accent); }
+.result h2[data-won='true'] { color: var(--win); }
+.line { display: flex; align-items: baseline; gap: var(--sp-3); margin: 0; }
+.line b { font-size: 28px; font-variant-numeric: tabular-nums; }
+.line span { font: 700 11px/1 var(--font-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.head {
+  position: absolute;
+  top: var(--sp-3);
+  left: var(--sp-5);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--surface);
+  pointer-events: none;
+}
+.head b { font-size: 22px; line-height: 1; }
+.mapTitle { display: inline-block; animation: mapSlideIn 300ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes mapSlideIn {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.head small { font: 700 11px/1 var(--font-mono); letter-spacing: 0.08em; color: var(--muted); }
+.head span:last-child { font-size: 12px; color: var(--muted); }
+.notice { position: absolute; top: 50%; left: 50%; margin: 0; transform: translate(-50%, -50%); font-size: 13px; color: var(--muted); }
+.leave { position: absolute; top: var(--sp-3); right: var(--sp-5); min-height: var(--tap-min); padding: 0 var(--sp-3); border: 0; background: var(--surface); color: var(--ink); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.leave[data-armed] { background: var(--accent); color: var(--accent-ink); }
+.pips { display: inline-flex; gap: 3px; }
+.pips i { width: 16px; height: 6px; background: var(--surface-alt); transform: skewX(-20deg); transition: background-color 180ms ease; }
+.pips[data-side='you'] i[data-on='true'] { background: var(--accent); animation: pipPop 260ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.pips[data-side='them'] i[data-on='true'] { background: var(--opponent); animation: pipPop 260ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes pipPop {
+  0% { transform: skewX(-20deg) scale(1); }
+  45% { transform: skewX(-20deg) scale(1.4); }
+  100% { transform: skewX(-20deg) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mapTitle, .pips[data-side='you'] i[data-on='true'], .pips[data-side='them'] i[data-on='true'] { animation: none; }
+}
+/* What your squad's skills do, always in view while you place them. */
+.skills {
+  position: absolute;
+  top: var(--sp-2);
+  right: var(--sp-4);
+  display: grid;
+  gap: 2px;
+  max-width: 300px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  pointer-events: none;
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--muted);
+  text-align: right;
+}
+.skills b { margin-right: var(--sp-1); color: var(--gold); font-weight: 700; }
+/* The 2.5D board docks its button bottom right, beside the hand and chips. */
+.series[data-layout] .bar { left: auto; right: var(--sp-5); justify-content: flex-end; max-width: 46%; }
+.series[data-layout] .bar .primary { max-width: 100%; }
+.series[data-layout='tall'] .bar { right: var(--sp-3); bottom: var(--sp-2); max-width: 52%; }
+.series[data-layout='tall'] .bar .primary { padding: 10px 16px; font-size: 13px; }
+.series[data-layout='tall'] .bar .hint { display: none; }
+/* A picked placed card, grown where it sits; the board dims a little behind it
+   and a tap on it closes the card. */
+.back { min-height: var(--tap-min); border: 0; background: var(--ink); color: var(--bg); font: inherit; font-size: var(--fs-label); font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; }
+/* The round's verdict: an angled broadcast lower-third over the hand, once every lane has stamped. */
+.outcome {
+  --status: var(--win);
+  --status-ink: var(--win-ink);
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--sp-3) + var(--safe-b, 0px));
+  z-index: 4;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: stretch;
+  width: min(472px, calc(100% - var(--sp-4)));
+  box-sizing: border-box;
+  background: var(--surface-flyout);
+  clip-path: polygon(0 0, calc(100% - 11px) 0, 100% 11px, 100% 100%, 11px 100%, 0 calc(100% - 11px));
+  filter: drop-shadow(5px 5px 0 rgba(0, 0, 0, 0.55));
+  animation: settle 0.25s ease-out 0.6s both;
+}
+/* On the 2.5D board, dock the verdict bottom-right on wide screens; on tall (phone) screens
+   the unplayed chips slide away on lock-in, so the verdict centers cleanly across the bottom. */
+.series[data-layout='wide'] .outcome {
+  left: auto;
+  right: var(--sp-5);
+  transform: none;
+  animation-name: settleRight;
+}
+.series[data-layout='tall'] .outcome {
+  bottom: calc(var(--sp-2) + var(--safe-b, 0px));
+  width: calc(100% - var(--sp-3));
+}
+.outcome[data-won='false'] {
+  --status: var(--accent);
+  --status-ink: var(--accent-ink);
+}
+.outcomeStamp {
+  background: var(--status);
+  color: var(--status-ink);
+  padding: 12px 22px 12px 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+  flex-shrink: 0;
+}
+.outcomeStamp small {
+  font: 800 10px/1 var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+.outcome h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.015em;
+  color: inherit;
+  white-space: nowrap;
+}
+.outcomeBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px 10px 10px;
+  gap: var(--sp-4);
+}
+.outcomeMetric {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.outcomeMetric span {
+  font: 700 10px/1 var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.outcomeMetric b {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.outcomeMetric b em {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--muted);
+}
+@keyframes settle {
+  from { opacity: 0; transform: translate(-50%, 12px); visibility: hidden; }
+  to { opacity: 1; transform: translate(-50%, 0); visibility: visible; }
+}
+@keyframes settleRight {
+  from { opacity: 0; transform: translateY(12px); visibility: hidden; }
+  to { opacity: 1; transform: translateY(0); visibility: visible; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .outcome, .series[data-layout] .outcome, .series[data-layout='tall'] .outcome { animation: none; }
+}
+@media (max-width: 680px) {
+  .skills { display: none; }
+  .series[data-fixed='true'] { top: calc(var(--rail-size) + var(--safe-t) + 36px); left: 0; }
+  .head { top: var(--sp-1); left: var(--sp-2); gap: var(--sp-1); }
+  .head b { font-size: 12px; }
+  .head span:last-child { display: none; }
+  .result { gap: var(--sp-3); }
+  .outcome,
+  .series[data-layout='wide'] .outcome {
+    left: 50%;
+    right: auto;
+    bottom: calc(var(--sp-2) + var(--safe-b, 0px));
+    transform: translateX(-50%);
+    width: calc(100% - var(--sp-3));
+    animation-name: settle;
+  }
+  .outcomeStamp {
+    padding: 9px 16px 9px 12px;
+    clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+  }
+  .outcomeStamp small { font-size: 9px; }
+  .outcome h2 { font-size: 19px; }
+  .outcomeBody {
+    padding: 8px 10px 8px 8px;
+    gap: var(--sp-2);
+  }
+  .outcomeMetric span { font-size: 9px; }
+  .outcomeMetric b { font-size: 18px; }
+  .outcome .primary {
+    min-height: 38px;
+    padding: 8px 14px;
+    font-size: 12px;
+  }
+}
+
+/* The picked card's 2.5D hood: a borderless physical slab that tilts and fans in
+   the same 3D plane as the card and locks directly onto its chevron peak. */
+.tag {
+  --tag-bg: var(--ink);
+  --tag-ink: var(--bg);
+  --tag-cell: color-mix(in srgb, var(--bg) 12%, var(--ink));
+  --tag-muted: color-mix(in srgb, var(--bg) 60%, var(--ink));
+  position: absolute;
+  z-index: 6;
+  left: 0;
+  top: 0;
+  width: min(252px, calc(100% - 16px));
+  box-sizing: border-box;
+  padding: var(--sp-2) var(--sp-3) var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  background: var(--tag-bg);
+  color: var(--tag-ink);
+  box-shadow: 0 4px 0 #b8b3aa, 0 7px 0 #2a2e39;
+  filter: var(--shadow-lift);
+  transform-origin: var(--point, 50%) 100%;
+  pointer-events: auto;
+  visibility: hidden;
+  will-change: transform, left, top;
+}
+.tag[data-side='below'] {
+  transform-origin: var(--point, 50%) 0%;
+}
+.tag[data-ready] {
+  visibility: visible;
+  animation: tagIn 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.tag[data-side='below'] { animation-name: tagInBelow; }
+.tag[data-side='right'], .tag[data-side='left'] { animation-name: tagFade; }
+
+/* Card-cut chevron crown along the top edge, matching the 3D card's top peak */
+.tag::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 8px;
+  background: var(--tag-bg);
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
+  pointer-events: none;
+}
+.tag[data-side='below']::before {
+  display: none;
+}
+
+/* Physical coupling bridge into the card's chevron peak */
+.tag::after {
+  content: '';
+  position: absolute;
+  left: calc(var(--point, 50%) - 11px);
+  top: 100%;
+  width: 22px;
+  height: 11px;
+  background: var(--tag-bg);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  pointer-events: none;
+}
+.tag[data-side='below']::after {
+  top: auto;
+  bottom: 100%;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+.tag[data-side='right']::after,
+.tag[data-side='left']::after {
+  top: calc(var(--point, 50%) - 9px);
+  width: 9px;
+  height: 18px;
+}
+.tag[data-side='right']::after {
+  left: auto;
+  right: 100%;
+  clip-path: polygon(100% 0, 100% 100%, 0 50%);
+}
+.tag[data-side='left']::after {
+  left: 100%;
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+
+@keyframes tagFade { from { opacity: 0; } }
+@keyframes tagIn {
+  from { opacity: 0; translate: 0 8px; scale: 0.93; }
+}
+@keyframes tagInBelow {
+  from { opacity: 0; translate: 0 -8px; scale: 0.93; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tag[data-ready] { animation: none; }
+}
+
+.tagHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.tagHead b {
+  font-size: var(--fs-lead);
+  font-weight: 800;
+  line-height: 1.1;
+}
+.tagHead span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  color: var(--tag-muted);
+  font-size: var(--fs-label);
+  font-weight: 600;
+}
+.tagHead em {
+  padding: 2px 6px;
+  background: var(--tag-ink);
+  color: var(--tag-bg);
+  font: 800 var(--fs-micro)/1.2 var(--font-mono);
+  font-style: normal;
+  letter-spacing: 0.08em;
+}
+
+.laneValues {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.laneValues li {
+  position: relative;
+  padding: 6px 4px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  background: var(--tag-cell);
+  clip-path: polygon(0 4px, 50% 0, 100% 4px, 100% 100%, 0 100%);
+  transition: transform 140ms cubic-bezier(0.22, 1, 0.36, 1), background-color 140ms ease;
+}
+.laneValues li[data-clickable] {
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .laneValues li[data-clickable]:hover:not([data-on]) {
+    transform: translateY(-2px);
+    background: color-mix(in srgb, var(--bg) 20%, var(--ink));
+  }
+}
+.laneValues li span {
+  font-weight: 800;
+  font-size: var(--fs-label);
+}
+.laneValues li small {
+  font: 700 var(--fs-micro)/1.2 var(--font-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--tag-muted);
+  text-align: center;
+}
+.laneValues li b {
+  font-size: var(--fs-title);
+  font-weight: 800;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+/* Highest-scoring lane when the card is still in hand */
+.laneValues li[data-best]::after {
+  content: '';
+  position: absolute;
+  left: 24%;
+  right: 24%;
+  bottom: 0;
+  height: 3px;
+  background: var(--tag-ink);
+}
+/* The lane the card is on now */
+.laneValues li[data-on] {
+  background: var(--tag-ink);
+  color: var(--tag-bg);
+}
+.laneValues li[data-on] small {
+  color: var(--tag-bg);
+  opacity: 0.75;
+}
+
+.skillList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-label);
+  line-height: 1.35;
+}
+.skillList li {
+  display: block;
+  color: var(--tag-muted);
+}
+.skillList b {
+  margin-right: var(--sp-1);
+  color: var(--tag-ink);
+  font-weight: 800;
+}
+.skillList li[data-live] {
+  color: var(--tag-ink);
+}
+.skillList li[data-live] b {
+  color: var(--live);
+}
+.skillList li[data-skill='mastermind'] { --live: #1f6f99; }
+.skillList li[data-skill='flex'] { --live: #0a6f8a; }
+.skillList li[data-skill='flick'] { --live: #8a6400; }
+.skillList li[data-skill='one_trick'] { --live: #b24a0c; }
+.skillList li[data-skill='aura'] { --live: #6b3fc4; }
+
+.tag .back {
+  background: var(--tag-ink);
+  color: var(--tag-bg);
+}

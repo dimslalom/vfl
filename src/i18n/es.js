@@ -1,6 +1,8 @@
 // Spanish for every player-facing string. English sources are the keys;
 // test/i18n.test.js fails if any string is missing or stale.
 export default {
+  "Rounds won": "Rondas ganadas",
+  "Lane difference": "Diferencia de carriles",
   "Playback": "Reproducción",
   "Playback speed": "Velocidad de reproducción",
   "Fast": "Rápido",
@@ -306,6 +308,8 @@ export default {
   "Retire your run from the top tier for a score multiplier. Only offered once you have earned it.": "Retira tu campaña desde la división superior para multiplicar su puntuación. Solo aparece cuando te lo has ganado.",
   "Return everyone to lobby": "Volver todos a la sala",
   "Role": "Rol",
+  "Map art by Riot Games environment artists": "Arte de mapas por los artistas de entornos de Riot Games",
+  "and official VALORANT wallpapers.": "y fondos de pantalla oficiales de VALORANT.",
   "Roster data comes from": "Los datos de plantillas vienen de",
   "Round difference": "Diferencia de rondas",
   "Round of 16": "Octavos de final",

@@ -40,6 +40,31 @@ export const MAP_LANES = {
     lane('Mid', 'ability', 'MID TUBE', ['Controller', 'Sentinel']),
     lane('B', 'mentality', 'B YELLOW', ['Duelist', 'Initiator']),
   ],
+  Abyss: [
+    lane('A', 'aim', 'A BRIDGE', ['Duelist', 'Initiator']),
+    lane('Mid', 'mentality', 'MID BEND', ['Controller', 'Duelist']),
+    lane('B', 'positioning', 'B DANGER', ['Sentinel', 'Controller']),
+  ],
+  Breeze: [
+    lane('A', 'aim', 'A HALL', ['Duelist', 'Initiator']),
+    lane('Mid', 'ability', 'MID PILLAR', ['Controller', 'Initiator']),
+    lane('B', 'positioning', 'B TUNNEL', ['Sentinel', 'Controller']),
+  ],
+  Corrode: [
+    lane('A', 'synergy', 'A MAIN', ['Initiator', 'Duelist']),
+    lane('Mid', 'aim', 'MID STAIRS', ['Duelist', 'Controller']),
+    lane('B', 'positioning', 'B TOWER', ['Sentinel', 'Initiator']),
+  ],
+  Fracture: [
+    lane('A', 'ability', 'A HALL', ['Initiator', 'Controller']),
+    lane('Rope', 'mentality', 'ROPES', ['Controller', 'Sentinel']),
+    lane('B', 'aim', 'B ARCADE', ['Duelist', 'Initiator']),
+  ],
+  Pearl: [
+    lane('A', 'positioning', 'A ART', ['Sentinel', 'Controller']),
+    lane('Mid', 'synergy', 'MID PLAZA', ['Initiator', 'Controller']),
+    lane('B', 'aim', 'B LONG', ['Duelist', 'Sentinel']),
+  ],
 };
 
 export function winsNeeded(bestOf) {

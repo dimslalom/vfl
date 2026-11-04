@@ -1,0 +1,217 @@
+<!doctype html><html lang="en"><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>VFL Animation Audit</title><style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#10141c;color:#e6e9ef}*{box-sizing:border-box}body{margin:0}main{max-width:1220px;margin:auto;padding:44px 24px 80px}h1{font-size:clamp(36px,5vw,64px);line-height:1.05;margin:12px 0 24px;letter-spacing:-2px}h2{font-size:28px;margin:46px 0 18px}h3{font-size:19px;margin:12px 0}p{line-height:1.6;color:#bac3d2}a{color:#8bcfff;text-underline-offset:3px}.eyebrow{color:#ff747e;font-size:12px;letter-spacing:2px}.lead{font-size:20px;max-width:850px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:30px 0}.stat,.finding,.clip{background:#181f2b;border:1px solid #303b4e;padding:22px}.stat b{display:block;font-size:34px}.stat span{font-size:13px;color:#b2bdce}.note{border-left:3px solid #ff646f;padding:12px 20px;background:#1c202c}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.tag{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#ffb28f}.fix{border-top:1px solid #303b4e;padding-top:12px;color:#d8e5f6}.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}button,input{background:#242e3e;color:inherit;border:1px solid #526078;padding:10px 14px;font:inherit}button{cursor:pointer}button[aria-pressed=true]{background:#b93645;border-color:#ff747e}video{width:100%;max-height:640px;background:#080b10;display:block;margin:16px 0}table{width:100%;border-collapse:collapse;font-size:14px}td,th{text-align:left;border-bottom:1px solid #303b4e;padding:12px;vertical-align:top}td:last-child{font-size:12px;overflow-wrap:anywhere}.scroll{overflow:auto}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:14px/1.65 system-ui,sans-serif;background:#181f2b;padding:24px}summary{cursor:pointer;font-size:18px}footer{margin-top:36px;color:#9daabe}@media(max-width:700px){.stats,.grid{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}main{padding:28px 16px}.stat{padding:14px}.stat b{font-size:28px}}
+</style><main><div class="note"><b>Fixes implemented in the local app.</b><p>This page preserves the original audit. <a href="fixes.md">Read the fixes and verification</a> · <a href="after/index.html">Watch revised gameplay</a></p></div><div class="eyebrow">VFL ONLY · 2 NOVEMBER 2026 · ANIMATION AUDIT</div><h1>The jitter has identifiable causes.</h1><p class="lead">The first fixes should address overlapping transforms, interrupted effects and abrupt movement. Slowing every animation would leave these problems in place.</p><div class="stats"><div class="stat"><b>137</b><span>source files scanned</span></div><div class="stat"><b>32 / 32</b><span>named CSS effects demonstrated</span></div><div class="stat"><b>262</b><span>motion-related source lines</span></div><div class="stat"><b>5</b><span>recording groups</span></div></div><div class="note"><b>Coverage is explicit.</b><p>25 named CSS effects triggered in ordinary UI or actual-component fixtures; seven additional definitions appear as isolated CSS specimens. Not every game trigger was captured. Multiplayer, complete seasons and physical-device testing remain source-reviewed or untested. Gameplay code was not changed.</p></div><p><a href="report.md">Full written report</a> · <a href="inventory.md">Every source occurrence</a> · <a href="inventory.json">Source hashes and structured inventory</a> · <a href="coverage.json">Coverage data</a></p><h2>Prioritised findings</h2><div class="controls" role="group" aria-label="Filter findings"><button aria-pressed="true" data-filter="All">All</button><button aria-pressed="false" data-filter="High">High priority</button><button aria-pressed="false" data-filter="Medium">Medium</button><button aria-pressed="false" data-filter="Lower">Lower</button></div><div class="grid"><article class="finding" data-level="High"><div class="tag">High</div><h3>Pack transforms collide</h3><p>The 480 ms emergence and 120 ms stage jolt write the same transform. Recorded computed styles confirm the override.</p><p class="fix">Isolate the emergence transform; keep rarity punctuation on a nested layer.</p></article><article class="finding" data-level="High"><div class="tag">High</div><h3>Effects restart before settling</h3><p>140 ms specialty steps replace 200 ms effects; score beats can replace a 320 ms entrance after 240 ms.</p><p class="fix">Stabilise the score and give highlights a readable hold.</p></article><article class="finding" data-level="High"><div class="tag">High</div><h3>Fast travel scales twice</h3><p>Solo bracket travel becomes 121.5 ms rather than the expected 270 ms. Source-confirmed; Fast gameplay not recorded.</p><p class="fix">Scale flight duration exactly once.</p></article><article class="finding" data-level="Medium"><div class="tag">Medium</div><h3>Inspection fades the page</h3><p>Browser-default root fades play while the overlay also fades. The destination card has no matched transition name.</p><p class="fix">Pair the source and destination, and remove unintended root fades.</p></article><article class="finding" data-level="Medium"><div class="tag">Medium</div><h3>Large deals accelerate sharply</h3><p>The house ease covers about 77% of the distance in the first quarter of time. Map cards travel 80 px in 320 ms.</p><p class="fix">Use smaller travel and a more balanced curve for large objects.</p></article><article class="finding" data-level="Medium"><div class="tag">Medium</div><h3>Scene keys sit one level too deep</h3><p>AnimatePresence sees unkeyed PhaseTransition children. The key exists only on the nested motion element.</p><p class="fix">Put scene keys on its direct children and verify exits.</p></article><article class="finding" data-level="Medium"><div class="tag">Medium</div><h3>Layered physics adds visual noise</h3><p>Tilt, roll, elevation, parallax, glare, fan and neighbour motion can run together.</p><p class="fix">Reduce amplitude and simplify layers before changing spring constants.</p></article><article class="finding" data-level="Medium"><div class="tag">Medium</div><h3>Scroll decay varies by refresh rate</h3><p>Lean target decays by 0.9 per frame: roughly 110 ms half-life at 60 Hz, 55 ms at 120 Hz.</p><p class="fix">Measure scroll velocity and use elapsed-time decay.</p></article><article class="finding" data-level="Medium"><div class="tag">Medium</div><h3>Very short backdrop shakes</h3><p>Mild shakes squeeze five movement segments into 80 ms.</p><p class="fix">Reserve a gentler single reaction for decisive moments.</p></article><article class="finding" data-level="Lower"><div class="tag">Lower</div><h3>Countdown updates can do extra work</h3><p>Each frame sets React state and retargets a CSS transition. A dropped-frame cause was not established.</p><p class="fix">Profile before optimising; drive fill separately from text.</p></article></div><h2>Recordings</h2><p>Ordinary UI, actual-component fixtures and CSS specimens are labelled separately. Video is for visual review; it is not an FPS measurement.</p><article class="clip"><h3>Solo · desktop</h3><p>Landing → five draft picks → management → maps → tactics → live match → reward screen. Normal speed; isolated fresh browser. The MP4 is trimmed to 65 s to reduce idle footage.</p><video controls preload="metadata" playsinline poster="captures/solo-020.png"><source src="captures/solo-desktop.mp4" type="video/mp4"><source src="captures/solo-desktop.webm" type="video/webm"></video><a href="captures/solo-desktop.mp4" download>Download video</a></article><article class="clip"><h3>Library · desktop</h3><p>Hover, inspect, front/back flips, close, list inspection and filtering.</p><video controls preload="metadata" playsinline poster="captures/library-desktop-inspect.png"><source src="captures/library-desktop.mp4" type="video/mp4"><source src="captures/library-desktop.webm" type="video/webm"></video><a href="captures/library-desktop.mp4" download>Download video</a></article><article class="clip"><h3>Library · phone size</h3><p>390 × 844 touch emulation. This is not a physical-device performance test.</p><video controls preload="metadata" playsinline poster="captures/library-desktop-inspect.png"><source src="captures/library-mobile.mp4" type="video/mp4"><source src="captures/library-mobile.webm" type="video/webm"></video><a href="captures/library-mobile.mp4" download>Download video</a></article><article class="clip"><h3>Library · reduced motion</h3><p>Same inspection flow with the browser reduced-motion preference enabled.</p><video controls preload="metadata" playsinline poster="captures/library-desktop-inspect.png"><source src="captures/library-reduced.mp4" type="video/mp4"><source src="captures/library-reduced.webm" type="video/webm"></video><a href="captures/library-reduced.mp4" download>Download video</a></article><article class="clip"><h3>Controlled components & CSS specimens</h3><p>Actual pack, dock, sheet, signing, tactic returns, flight helpers and backdrop. The final specimen board demonstrates remaining named CSS definitions, not live game-state triggers.</p><video controls preload="metadata" playsinline poster="captures/fixture-pack.png"><source src="captures/component-fixtures.mp4" type="video/mp4"><source src="captures/component-fixtures.webm" type="video/webm"></video><a href="captures/component-fixtures.mp4" download>Download video</a></article><h2>Every named CSS animation</h2><p>Repeated card instances share these definitions. Motion/Anime effects and timers are covered separately in the full report and source inventory.</p><input id="search" type="search" placeholder="Find an animation or file" aria-label="Search animation inventory"><div class="scroll"><table><thead><tr><th>Animation</th><th>Capture type</th><th>Source</th></tr></thead><tbody><tr><td>flipShadow</td><td>UI / component</td><td><a href="../../shared/src/components/PlayerCard.module.css">shared/src/components/PlayerCard.module.css:85</a></td></tr><tr><td>flipShadowBack</td><td>UI / component</td><td><a href="../../shared/src/components/PlayerCard.module.css">shared/src/components/PlayerCard.module.css:90</a></td></tr><tr><td>wristFlip</td><td>UI / component</td><td><a href="../../shared/src/components/PlayerCard.module.css">shared/src/components/PlayerCard.module.css:177</a></td></tr><tr><td>wristFlipBack</td><td>UI / component</td><td><a href="../../shared/src/components/PlayerCard.module.css">shared/src/components/PlayerCard.module.css:183</a></td></tr><tr><td>flipFlash</td><td>UI / component</td><td><a href="../../shared/src/components/PlayerCard.module.css">shared/src/components/PlayerCard.module.css:189</a></td></tr><tr><td>flipFlashBack</td><td>UI / component</td><td><a href="../../shared/src/components/PlayerCard.module.css">shared/src/components/PlayerCard.module.css:195</a></td></tr><tr><td>imageIn</td><td>UI / component</td><td><a href="../../src/components/MatchBackdrop.module.css">src/components/MatchBackdrop.module.css:55</a></td></tr><tr><td>packFloat</td><td>UI / component</td><td><a href="../../src/components/PackRip.module.css">src/components/PackRip.module.css:128</a></td></tr><tr><td>rarityJolt</td><td>UI / component</td><td><a href="../../src/components/PackRip.module.css">src/components/PackRip.module.css:132</a></td></tr><tr><td>packStageJolt</td><td>UI / component</td><td><a href="../../src/components/PackRip.module.css">src/components/PackRip.module.css:137</a></td></tr><tr><td>edgeFlash</td><td>UI / component</td><td><a href="../../src/components/PackRip.module.css">src/components/PackRip.module.css:142</a></td></tr><tr><td>activeCardBeat</td><td>UI / component</td><td><a href="../../src/components/SquadDock.module.css">src/components/SquadDock.module.css:142</a></td></tr><tr><td>dropWarning</td><td>UI / component</td><td><a href="../../src/components/SquadDock.module.css">src/components/SquadDock.module.css:150</a></td></tr><tr><td>iglStamp</td><td>UI / component</td><td><a href="../../src/components/SquadDock.module.css">src/components/SquadDock.module.css:196</a></td></tr><tr><td>iglShockwave</td><td>UI / component</td><td><a href="../../src/components/SquadDock.module.css">src/components/SquadDock.module.css:201</a></td></tr><tr><td>chipRise</td><td>UI / component</td><td><a href="../../src/components/SquadDock.module.css">src/components/SquadDock.module.css:311</a></td></tr><tr><td>slotDeal</td><td>UI / component</td><td><a href="../../src/components/SquadDock.module.css">src/components/SquadDock.module.css:402</a></td></tr><tr><td>slotDealEdge</td><td>UI / component</td><td><a href="../../src/components/SquadDock.module.css">src/components/SquadDock.module.css:420</a></td></tr><tr><td>slotAlert</td><td>UI / component</td><td><a href="../../src/components/SquadDock.module.css">src/components/SquadDock.module.css:452</a></td></tr><tr><td>previewRise</td><td>CSS specimen</td><td><a href="../../src/components/SquadSheet.module.css">src/components/SquadSheet.module.css:44</a></td></tr><tr><td>faceIn</td><td>UI / component</td><td><a href="../../src/components/SquadSheet.module.css">src/components/SquadSheet.module.css:190</a></td></tr><tr><td>fadeIn</td><td>UI / component</td><td><a href="../../src/components/SquadSheet.module.css">src/components/SquadSheet.module.css:251</a></td></tr><tr><td>riseIn</td><td>UI / component</td><td><a href="../../src/pages/PerfectRun.module.css">src/pages/PerfectRun.module.css:257</a></td></tr><tr><td>landingFanIn</td><td>UI / component</td><td><a href="../../src/pages/PerfectRun.module.css">src/pages/PerfectRun.module.css:261</a></td></tr><tr><td>landingFanInMobile</td><td>UI / component</td><td><a href="../../src/pages/PerfectRun.module.css">src/pages/PerfectRun.module.css:265</a></td></tr><tr><td>resultIn</td><td>CSS specimen</td><td><a href="../../src/pages/PerfectRun.module.css">src/pages/PerfectRun.module.css:716</a></td></tr><tr><td>scoutDeal</td><td>CSS specimen</td><td><a href="../../src/pages/PerfectRun.module.css">src/pages/PerfectRun.module.css:846</a></td></tr><tr><td>heroIn</td><td>UI / component</td><td><a href="../../src/pages/PerfectRun.module.css">src/pages/PerfectRun.module.css:1372</a></td></tr><tr><td>specialtyCardPulse</td><td>CSS specimen</td><td><a href="../../src/pages/PerfectRun.module.css">src/pages/PerfectRun.module.css:1565</a></td></tr><tr><td>specialtyChip</td><td>CSS specimen</td><td><a href="../../src/pages/PerfectRun.module.css">src/pages/PerfectRun.module.css:1569</a></td></tr><tr><td>specialtyThreshold</td><td>CSS specimen</td><td><a href="../../src/pages/PerfectRun.module.css">src/pages/PerfectRun.module.css:1574</a></td></tr><tr><td>slotArrive</td><td>CSS specimen</td><td><a href="../../src/pages/PerfectRun.module.css">src/pages/PerfectRun.module.css:2764</a></td></tr></tbody></table></div><h2>What to change first</h2><ol><li>Give each animated transform one owner and correct double speed scaling.</li><li>Remove stepped shakes and repeated score movement.</li><li>Make card deals smaller, gentler and readable.</li><li>Then profile on actual target devices and capture remaining game branches.</li></ol><h2>Measurement limits</h2><p>The final solo capture sampled 5,572 animation-frame intervals: median 16.7 ms, p95 16.7 ms, five over 33.4 ms. This includes idle time and recording overhead, measures callbacks rather than presented frames, and does not establish performance on phones or other browsers. No blanket FPS conclusion is warranted.</p><details><summary>Read the full report in this page</summary><pre># VFL animation audit
+
+**2 November 2026 · Scope: vfl only · Analysis and captures; gameplay code unchanged**
+
+## Assessment
+
+The fast, jittery feel has concrete causes. Some effects explicitly jump between positions, several large movements use a sharply front-loaded easing curve, and animation systems sometimes compete for the same element. Fixing the choreography is a better starting point than increasing every duration.
+
+The isolated desktop solo recording had a median animation-frame interval of **16.7 ms**, a 95th percentile of **16.7 ms**, and **5 intervals over 33.4 ms in 5,572 samples**. This is consistent with a mostly steady 60 Hz callback cadence on this machine. It does **not** measure compositor presentation, establish an app-wide FPS guarantee, or represent slower phones. Much of the sample includes idle time. Video encoding, screenshots, and instrumentation also affect results.
+
+## Deliverables and scope
+
+- [Watchable report and recordings](index.html).
+- [Complete source occurrence inventory](inventory.md): **137 JS/JSX/CSS files**, **262 matching motion-related lines**, **32 named CSS keyframe definitions**. Includes shared card components, legacy pages, and unused definitions. This is an exhaustive match-based source inventory, not a promise that a text search detects arbitrary future animation techniques.
+- [Structured inventory and source hashes](inventory.json).
+- [Solo runtime evidence](solo-runtime.json), [library runtime evidence](library-runtime.json), and [controlled component evidence](fixture-runtime.json).
+- [Component fixture](lab.html): existing production components rendered with controlled inputs, separate from real game outcomes. Open through the VFL development preview, not directly from disk.
+
+**Capture coverage is not 100%.** 32 of the 32 named CSS keyframes emitted animation-start events: 25 in ordinary UI or actual-component fixtures, and 7 additional effects in clearly labelled isolated CSS specimens. Specimens demonstrate definitions, not their game-state triggers or interrupted sequences. Triggering is not a smoothness verdict. Motion/Anime/helper effects are tracked separately in the register. Real app recordings cover landing, onboarding, five draft pack openings and picks, squad management, map deals, tactic preparation, live round scores, a completed series, and arrival at the reward choice. Library recordings cover desktop and emulated phone inspection, front/back flips, closing, list inspection, filtering, and reduced motion. Controlled fixtures additionally cover high-tier pack effects, dock cues, squad sheet, signing, tactic return/loss, prize flights, bracket flight primitive, and backdrop reactions. Seven additional named CSS effects are shown as isolated CSS specimens, using the production styles on sample markup; these are not game-trigger captures. See the fixture log.
+
+Not played end to end: a live multiplayer lobby, every national/daily variant, full-season promotion/relegation/prestige, every reward/overflow branch, all pointer-cancellation cases, and Safari/Firefox or physical touch devices. These are source-reviewed or share captured primitives; they are not marked as independently verified recordings. Legacy Match/PreMatch/PackOpening pages have no active route. Rive binaries exist but no active app component imports a Rive runtime; Three.js is installed but no current app scene imports it. Installed packages are not counted as animations.
+
+The existing development preview reloaded and then stopped during the first capture attempt. The final solo recording uses an isolated local preview and suppresses its hot-update connection. Early failed takes are excluded from the report gallery. Local source had pre-existing edits; the inventory hashes identify the reviewed source. No user&#x27;s saved game was used: browser contexts were isolated. Four source files changed during the audit (`es.js`, `pt.js`, `endlessRunSave.js`, `PerfectRun.jsx`); these were concurrent edits, not audit changes. The reported PerfectRun motion findings were rechecked at completion and remain present. See [source drift record](source-drift.json).
+
+## Findings, ordered by impact
+
+### 1. Pack emergence and the stage jolt both own the same transform — high priority
+
+**Confirmed in a controlled runtime capture.** `PackRip.jsx` animates `stripCards` using Anime.js: translation and scale over **480 ms**. `PackRip.module.css` applies `packStageJolt` to that **same element** whenever it contains a high-tier impact card. That animation starts after **360 ms** and lasts **120 ms**, overriding the inline transform during the last part of emergence.
+
+Recorded example: the inline style was `translate(0px, 0px) scale(0.9954)` while the computed style was `matrix(1, 0, 0, 1, 0, 0)`. Subsequent samples jumped horizontally to −1.5, −3, +3 and +1.5 px. See `fixture-runtime.json`, `audit.samples`. The scale difference is small near the end; the horizontal jumps are intentional but mechanically discontinuous. For other entrance offsets, overriding the translation also risks a larger discontinuity.
+
+The card itself has a second `rarityJolt`, plus an edge flash. This stacks whole-row movement, card movement, card springs and light punctuation in one beat.
+
+**Recommendation:** give the emergence transform one owner. Move rarity punctuation onto a nested material layer, and prefer a restrained edge/opacity cue. If movement remains, apply one smooth impulse after the group has settled. Do not simply slow the stepped jolt.
+
+Sources: `src/components/PackRip.jsx:87`, `src/components/PackRip.module.css:108`, `:124`; `shared/src/styles/tokens.css:143`.
+
+### 2. Match events can interrupt their own animations — high priority
+
+**Confirmed from scheduling and animation definitions; not every specialty combination was triggered.** A specialty is replaced every **140 ms** at Normal speed, but its chip and player pulse each run **200 ms**. The pulse travels **10 px upward in its first 32%**. Each subsequent trigger can remove the previous chip before completion. The score threshold adds an **80 ms stepped horizontal shake**.
+
+A committed score has a **240 ms minimum hold**, while its keyed number entrance lasts **320 ms** at Normal speed. With no specialty gap, the next round remounts the number before the animation settles. At Fast speed, specialty gaps become **63 ms** while CSS specialty durations remain **200 ms**. Different animation layers therefore accelerate by different amounts.
+
+**Recommendation:** start with **250–350 ms** per highlighted specialty and **400–550 ms** per ordinary score beat; hold important rounds longer. These are proposed design values, not measured requirements. Group simultaneous specialties into one legible highlight. Keep the score stable and animate a separate winner accent; remove the repeated positional reset and threshold shake. Advance from animation completion plus a readable hold rather than unrelated timers.
+
+Sources: `src/pages/PerfectRun.jsx` (`ROUND_SCORE_HOLD_MS`, `revealRound`, keyed `castBig`), `src/pages/PerfectRun.module.css:1540–1578`.
+
+### 3. Solo bracket travel applies Fast speed twice — high priority
+
+**Confirmed by code calculation; full Fast-mode gameplay was not recorded.** The caller scales `TRAVEL_MS = 600` by run speed. `flyBracketMoves()` then sets Anime&#x27;s playback speed using the inverse of the same multiplier. Fast uses 0.45, producing **600 × 0.45 × 0.45 = 121.5 ms** travel instead of the expected **270 ms**. The normal-duration path is unaffected. Multiplayer supplies the unscaled base duration, so its call does not have this same double scaling.
+
+**Recommendation:** pass base durations into the flight helper and scale once inside it. Treat readable pauses separately from motion duration. The stored speed preference is read without an exposed setter in the current solo page, so existing browser preferences can also explain different pacing between profiles.
+
+Sources: `src/pages/PerfectRun.jsx` (`travelDuration`), `src/lib/bracketFlight.js:55–65`, `shared/src/lib/anime.js:31–36`, `shared/src/lib/useRunSpeed.js:12`.
+
+### 4. Library inspection uses a whole-page transition instead of a matched card morph — medium/high priority
+
+**Confirmed in desktop runtime events and source.** Collection assigns `view-transition-name: focused-card` to the grid/list source. There is no corresponding name on the destination overlay card. No custom view-transition styling is authored. Browser events show the default **root fade-in/fade-out** on inspection and closing.
+
+The overlay also plays its own **320 ms fade in / 150 ms fade out**. The combined result is a page crossfade plus overlay fade, rather than the intended card travelling between matching positions.
+
+**Recommendation:** pair a unique transition name on the actual destination and source, and suppress the root crossfade for that transition, or use one existing shared-layout mechanism consistently. Verify open, close, rapid reopen and filtered/list sources separately.
+
+Sources: `src/pages/Collection.jsx:43–60`, `src/components/CardFocusOverlay.jsx:109–112`; library runtime animation events beginning `-ua-view-transition-`.
+
+### 5. The house easing front-loads large movement — medium priority
+
+**Confirmed design setting.** The common curve is `cubic-bezier(0.2, 0.8, 0.2, 1)`. Numerically, it covers approximately **77% of displacement in the first quarter of elapsed time** and **95% by halfway**. A map travels **80 px in 320 ms**, so most of that move happens very early. Tactic hands travel 50 px on the same timing. A long tail does not make the initial movement feel slow.
+
+**Recommendation:** keep quick feedback on buttons, but give large deals a more balanced ease, **450–550 ms**, and less travel (roughly 24–40 px). Tune distance and curve together. The current **120–150 ms** colour feedback is reasonable and does not need global slowing.
+
+Sources: `shared/src/lib/motion.js:8–27`, `src/components/SeriesCardTable.jsx:297`, `:461`.
+
+### 6. Phase exit sequencing is not keyed at AnimatePresence&#x27;s direct child — medium priority
+
+**Source-confirmed structural issue; needs a dedicated transition reproduction after fixing.** The parent renders conditional `PhaseTransition` components under `AnimatePresence mode=&quot;wait&quot;`, but passes `phaseKey` only as a prop. The explicit key is on the nested `m.div`. The direct children seen by AnimatePresence have no explicit scene key, undermining reliable detection and sequencing of scene exits.
+
+**Recommendation:** put the stable scene key on each direct `PhaseTransition` child, or render one keyed direct child. Then verify that exit and entry run once and that a child CSS entrance does not duplicate the parent movement. Do not assume that a prop named `phaseKey` is a React key.
+
+Sources: `src/components/PhaseTransition.jsx:13–16`, `src/pages/PerfectRun.jsx` (`AnimatePresence mode=&quot;wait&quot;` and scene wrappers).
+
+### 7. Card motion has several simultaneous layers — medium priority
+
+**Observed components; causal contribution varies by interaction.** PlayerCard has spring tilt, elevation, velocity-derived roll, direct pointer parallax, 150 ms child-plane transitions, drag elasticity and press scaling. Pack cards can add fan angle, row lean and breathing. Dock hover adds its own lift and neighbour movement. Different elements own many of these transforms correctly; their combined movement can still feel busy.
+
+The tilt allows **±12° pitch/yaw and ±12° roll**; hover lifts 16 source px and press lifts 28 source px, before display scaling. In pointer movement, glare and layer position change directly while the outer tilt follows a spring.
+
+**Recommendation:** first try ±5–7° tilt, much smaller or no velocity roll, one visible elevation response, and calmer glare. Retain spring continuity. Compare one card at a time before adjusting spring constants. Avoid attributing all motion to dropped frames.
+
+Sources: `shared/src/lib/useCardTilt.js`, `shared/src/components/PlayerCard.jsx:101–120`, `shared/src/components/PlayerCard.module.css:219–225`, `src/components/SquadDock.module.css:58–89`.
+
+### 8. Scroll lean is refresh-rate dependent — medium priority
+
+**Confirmed in the equation.** `useScrollLean` derives its target from scroll-event delta and multiplies it by **0.9 per frame**. The target&#x27;s half-life is about **110 ms at 60 Hz** and **55 ms at 120 Hz**. Event-frequency changes also change the input delta. The spring integration uses elapsed time, but the input decay does not.
+
+**Recommendation:** derive lean from scroll velocity in pixels/second and use elapsed-time exponential decay. Reduce the 14° maximum. Verify trackpad, wheel, touch and both 60/120 Hz. Frame clamping in the spring loops also merits a slow-frame test; no instability was proved here.
+
+Source: `src/lib/useScrollLean.js:5–7`, `:38–49`, `:69–72`.
+
+### 9. Backdrop punctuation is extremely short — medium priority
+
+**Captured component and source-confirmed durations.** Mild shakes fit five horizontal segments into **80 ms**; the strong shake uses **200 ms**, and the vignette fades in **150 ms**. At 60 Hz, an 80 ms shake spans roughly five frames total. The backdrop also changes image on tension escalation, with a **700 ms image fade** and **800 ms zoom** to 1.14 or 1.25.
+
+**Recommendation:** remove routine micro-shake, reserve one gentler 250–350 ms reaction for decisive events, and keep the image stable through escalation. Evaluate zoom and image change separately. Current comments describing a 480 ms shake are stale: the executable values are 80/200 ms.
+
+Source: `src/components/MatchBackdrop.jsx:18–33`, `:64–71`, `src/components/MatchBackdrop.module.css:30`.
+
+### 10. Countdown rendering can do unnecessary work — lower priority, profile before changing
+
+**Source-confirmed mechanism; not established as a dropped-frame cause.** `useSkippableTimeline` sets React state every animation frame. Several instances live in the large solo page. Its fill also has a **120 ms CSS transition**, continuously retargeted by those updates. Multiplayer timer samples arrive every 100 ms and are smoothed by a 120 ms transition.
+
+**Recommendation:** drive the continuous fill through a motion value or one elapsed-time transform animation; update displayed seconds only when they change. Keep countdown completion exact. Investigate component render costs with a trace before claiming a performance bottleneck.
+
+Sources: `src/lib/useSkippableTimeline.js:65–72`, `src/pages/PerfectRun.module.css:164`, `src/pages/Multiplayer.jsx` timer intervals, `src/pages/Multiplayer.module.css:68`.
+
+## Animation-by-animation coverage register
+
+“App” = recorded in ordinary UI. “Fixture” = actual component/helper recorded with controlled inputs. “Source” = inspected, not independently triggered. Shared instances are grouped; the inventory lists every definition and call site.
+
+| Animation family | Current timing / movement | Evidence | Assessment |
+|---|---|---|---|
+| Scene wipe / phase change | 320 ms in, 200 ms out; y 8/−4 | App + source | Direct-child key issue; settle sequencing first |
+| Landing text rise | 480 ms, delayed groups | App | Acceptable alone; avoid duplicate parent entrance |
+| Landing fan, desktop | 700 ms + 150 ms delay | App | Calm compared with pack impacts |
+| Landing fan, phone | Mobile keyframe variant | App, emulated phone | Captured; physical device pending |
+| Record count-up | 900 ms cubic count | Source | No seeded historical records in fresh profile |
+| Navigation tile hover/press | scale 1.05 / .92, default Motion timing | App interactions + source | Press scale .92 can feel abrupt; define timing |
+| Buttons / colours / filters | Mostly 120–150 ms | App | Preserve prompt feedback |
+| Native Sheet dialog | Immediate open/close; controls 120 ms | App onboarding + source | Abrupt compared with animated overlays |
+| Card inspect overlay fade | 320 ms in / 150 ms out | App, desktop/mobile/reduced | Competes with default root crossfade |
+| Library view-transition | Browser default root fades | App | Missing matched destination |
+| Card tilt and spring return | Custom spring 260/24; ±12° | App | Too many layers; reduce amplitude first |
+| Card elevation / press / drag | Hover −16, press −28; scale 1.04/1.08 | App + source | Layered with parent hover and press feedback |
+| Card parallax / glare | Direct pointer targets + 150 ms plane transitions | App | May lag differently from outer tilt |
+| Card flip front/back | 480 ms wrist flip + midpoint lift/scale | App, both directions | Rich but busy; simplify midpoint for calmer feel |
+| Flip shadows | 480 ms both directions | App | Coupled to flip; keep synchronized |
+| Flip foil flashes | 120 ms after 250 ms | App | Short punctuation; can remove for calmer style |
+| Specialty tooltip | 140 ms fade/translate | Source | Secondary effect; lower priority |
+| Interactive pack tear | 420 ms automatic tear on tap, pointer-driven manual tear | App (tap) | Manual release/cancellation still needs tests |
+| Foil fling / body departure | 380 ms fling, 320 ms body fade | App | Body unmount can end last 60 ms of flap flight |
+| Spectator pack tear | 260 ms wait + 420 ms tear | Fixture | Shared component verified without live lobby |
+| Partial tear relax | 220 ms transform transition | Source | Not individually triggered |
+| Pack group emergence | 480 ms, scale .2–.6 → 1 | App + fixture | Transform collision with stage jolt |
+| Tier-dependent card reveal | 380/32/.9 or 260/28/1 springs; 65 ms stagger | App + fixture | Shared family, tier inputs differ |
+| High-tier rarity jolt | 120 ms, steps(2), ±3 px | App + fixture | Deliberately discontinuous |
+| Whole-stage pack jolt | 120 ms, steps(2), ±3 px | App + fixture | Same transform as group emergence |
+| Rare-card edge flash | 120 ms | App + fixture | Use as sole punctuation if needed |
+| Pack breathing / fan | 3.2 s, 3 px; per-card delayed start | Fixture | Captured idle wave; keep separate from reveal punctuation |
+| Shelf scroll lean | 220/18 spring, max 14° | Source | Frame-dependent decay; wheel/touch capture pending |
+| Pack/dock drag ghost return | 380/32/.9 spring | Source | Full pointer success/failure matrix pending |
+| Dock layout / fly-to-dock | Card spring, layoutId handoff | App + fixture | Avoid adding more lift to handoff |
+| Dock hover and neighbours | 200 ms; neighbours ±4 px | Fixture + source | Captured with card preview |
+| Dock preview rise | 200 ms | App + fixture | Opening is quick; repeated hover can feel busy |
+| Dock active card beat | 700 ms, scale .92 → 1 | App + fixture | Slower accent; reasonable alone |
+| IGL stamp / shockwave | 480 ms | App + fixture | Early cancellation observed in solo logs |
+| Drop target warning | 480 ms repeated/alternate | Source | Repetition adds noise during drag |
+| Dock vacancy alert / departing card | 600 ms ×3; soft spring departure | Fixture + source | Fixture is a release cue, not a real poach outcome |
+| New dock slot / edge | 720 ms | Fixture | Authored longer, easier to read |
+| Desk new-slot arrival | 500 ms | Source | Needs actual progression trigger |
+| Squad sheet dim / face rise | 200 ms dim; 500 ms face + 70 ms stagger | Fixture | Face entrance can dominate repeated peeks |
+| Squad sheet hover / armed pulse | 200 ms preview; 480 ms armed glow | Fixture hover; armed Source | Phone confirmation branch pending |
+| Squad hero / cast face entrance | 500–550 ms + 80/90 ms stagger | App | Whole cast can re-enter on scene change |
+| Scout deal | 320 ms, y 8 + −1° | Source | Lower concern; confirm active use |
+| NPC result appearance | 350 ms, results every 200 ms | Source | Concurrent results intentionally overlap |
+| Elimination glitch/desaturation | 480 ms, x keyframes + filter | Source | Not a general transition; reserve for one decisive event |
+| Map card deal | y −80 in 320 ms, 40 ms stagger | App | Large travel with aggressive ease |
+| Map hover / neighbours | 200 ms, −18 px; neighbours ±8 px | App + source | Overlap with tilt can feel restless |
+| Table-card preview | 150 ms scale .94 → 1 | App + source | Verify touch first-press behavior separately |
+| Map/tactic physical tilt | Shared spring hook + plane/glare transitions | App | Same layering risks as PlayerCard |
+| Tactic hand deal | y +50 in 320 ms, 40 ms stagger | App | Reduce distance; soften first half |
+| Selected tactic / clash mark | Mix of defaults, layout and explicit 320 ms | App | Normalize unexplained default timing |
+| Opponent tactic reveal | y −45 →0; exit −35, scale .85, 320 ms | App | Large paired motion |
+| Edge-stack steps / meter | 420 ms beat, 150 ms row, 320 ms width | App + source | Width animation requires layout; small surface, profile first |
+| Reward cards / annual patch cards | Staggered 320 ms deal | Reward App; patch Source | Reward resolution/overflow branches pending |
+| Live score flash | Keyed y ±7, opacity .72, 320 ms | App | Can restart after only 240 ms |
+| Specialty card pulse / chip | 200 ms / 200 ms, replaced at 140 ms | Source | Scheduling mismatch |
+| Specialty score shake | 80 ms steps(2), ±1.5 px | Source | Explicit jitter; remove |
+| Backdrop image entrance | 700 ms | App + fixture | Image swaps at zoom thresholds add competing change |
+| Backdrop zoom | 800 ms; 1.04 →1.14 →1.25 | App + fixture | Stable-state zoom is useful; use fewer simultaneous effects |
+| Backdrop shake / vignette | 80/200 ms shake; 150 ms vignette | App + fixture | Short enough to read as jitter |
+| Intro / series / board holds | 1900 /1700 /2200 ms, speed-scaled | App partial + source | Separate reading time from reduced spatial motion |
+| Countdown drain | rAF state + 120 ms transform transition | App | Continuously retargeted; simplify |
+| Prize-to-bank / chosen tactic flight | 600 ms arc; stagger as needed | Fixture primitive | Real reward branch not completed |
+| Unchosen reward / discarded card fall | 320 ms, y 40 fade | Fixture primitive | Appropriate secondary exit |
+| Bank bump | 200 ms, scale 1.12 | Fixture via signing/return | Gate consistently for reduced motion |
+| Signing pay / stamp / placement | 600 ms flights; 70 ms stagger; 520 ms stamp hold | Fixture | Stamp appears instantly; stamp hold ignores Fast scaling |
+| Tactic retained / lost return | 320 ms enter +380 ms hold +600/480 ms exit | Fixture | Existing sequencing is clearer than round pulses |
+| Bracket winner dogleg flight | 600 ms +40 ms stagger | Fixture primitive | Full live bracket path not captured; Fast double-scaling bug |
+| Multiplayer timer drain | 100 ms samples +120 ms transition | Source | Needs real server/client recording |
+| Legacy match map dots | Date.now-based redraw on prop change | Source, inactive route | Not a continuous loop; would jump if re-enabled |
+| Legacy deck/pre-match/pack controls | Hover transitions | Source, inactive routes | Keep separate from current product complaints |
+| Unused exported motion variants | riseIn, sheetRise, chipPop, glitchPulse | Source | Definitions, not currently distinct active effects |
+
+## Proposed tuning pass
+
+1. **Correct ownership and timing bugs first:** isolate pack transforms; scale bracket travel once; key phase children correctly; repair inspection pairing.
+2. **Remove high-frequency positional noise:** whole-stage jolts, threshold shake, routine 80 ms backdrop shake, repeated score y-reset.
+3. **Tune large movement independently:** map/tactic deals 450–550 ms with smaller travel and balanced ease; keep button feedback 120–150 ms.
+4. **Make information readable:** specialty chips 250–350 ms minimum; ordinary score holds 400–550 ms; longer decisive-round holds. Provide explicit skip/fast controls if preserving speed preferences.
+5. **Calm physical cards:** reduce tilt and velocity roll, align parallax response, make scroll decay time-based.
+6. **Then profile actual bottlenecks:** low-end phone + Safari, 60/120 Hz, reduced motion, and recordings without instrumentation. Do not spend the first pass on global GPU hints or blanket duration increases.
+
+## Acceptance checks for a follow-up fix
+
+- No element has two systems writing its transform during the same beat.
+- A 600 ms flight in Fast mode measures about 270 ms, not 121.5 ms.
+- Specialty chip lifetime is at least its entrance/exit sequence plus readable hold.
+- Ordinary scores settle before the next number is introduced.
+- Opening/closing a library card does not fade the whole library unintentionally.
+- A scene plays one exit followed by one entrance, including rapid navigation.
+- Scroll lean has comparable decay time at 60 and 120 Hz.
+- Reduced motion removes spatial motion in both flip directions and all imperative helpers; reading time remains sufficient. Existing CSS and MotionConfig support is a good base, but broad compliance was not established by one library recording.
+- Capture multiplayer host/guest and real season transitions before claiming complete runtime coverage.
+</pre></details><footer>Source review + browser captures · No gameplay changes · <a href="fixture-runtime.json">Fixture evidence</a> · <a href="solo-runtime.json">Solo evidence</a> · <a href="library-runtime.json">Library evidence</a></footer></main><script>document.querySelectorAll('[data-filter]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-filter]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));document.querySelectorAll('.finding').forEach(x=>x.hidden=b.dataset.filter!=='All'&&x.dataset.level!==b.dataset.filter)}));document.querySelector('#search').addEventListener('input',e=>document.querySelectorAll('tbody tr').forEach(r=>r.hidden=!r.textContent.toLowerCase().includes(e.target.value.toLowerCase())));</script></html>

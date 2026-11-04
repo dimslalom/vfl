@@ -2,7 +2,7 @@ import allCards from '../../shared/src/data/cards.json';
 import { mulberry32, pickN } from '../../shared/src/engine/perfectRun.js';
 import { hasRealPortrait } from '../../shared/src/lib/portrait.js';
 import { MAP_LANES } from '../engine/board/mapLanes.js';
-import { MAP_NAMES, mapCardsForYear, TACTICS } from '../engine/endless/seriesCards.js';
+import { MAP_NAMES, mapCardsForYear, npcTactic, TACTICS } from '../engine/endless/seriesCards.js';
 
 const usable = allCards.filter(card => card.org && hasRealPortrait(card));
 const byOrg = new Map();
@@ -44,25 +44,50 @@ export function dealSeries(seed, bestOf) {
     .slice(0, 8);
   const them = near[Math.floor(rng() * near.length)];
   const instance = index => ({ uid: `t${index}`, key: TACTIC_KEYS[Math.floor(rng() * TACTIC_KEYS.length)], source: 'owned' });
-  const artFor = new Map(mapCardsForYear(seed, 1).map(card => [card.name, card.image]));
   return {
     seed, bestOf, you, them,
     opponentName: them[0].org_name ?? them[0].org,
-    maps: pickN(rng, MAP_NAMES, bestOf).map(name => ({ name, image: artFor.get(name) })),
     tactics: Array.from({ length: bestOf }, (_, index) => instance(index)),
-    opponentTactics: Array.from({ length: bestOf }, (_, index) => instance(bestOf + index)),
   };
 }
 
-export function roundBoard(series, round, tactics) {
-  const map = series.maps[round];
+// Drawn from the series' own seed, never the run's generator, so playing a
+// series on the board leaves a Daily's draws exactly as they were.
+export function pickSeriesMaps(seed, bestOf) {
+  const cards = mapCardsForYear(seed, 1);
+  return pickN(mulberry32(seed), MAP_NAMES, bestOf).map(name => cards.find(card => card.name === name));
+}
+
+export function roundBoard({ seed, round, map, you, them, tactics }) {
   return {
-    seed: series.seed + round + 1,
+    seed: seed + round + 1,
     mapName: map.name,
-    maps: MAP_LANES[map.name].map(lane => ({ ...lane, image: map.image })),
-    you: series.you,
-    them: series.them,
+    maps: MAP_LANES[map.name].map(lane => ({ ...lane, image: map.image, agents: map.agents })),
+    you,
+    them,
     tactics,
-    opponentTactic: series.opponentTactics[round],
+    opponentTactic: npcTactic(mulberry32(seed + 100 + round), them, map),
   };
+}
+
+// A round as the run reads a map: lanes stand in for rounds, and the MVP is
+// whoever scored the most on the lanes the squad took.
+export function roundResult(result, mapName, squad) {
+  const best = result.lanes
+    .filter(lane => lane.winner === 'you')
+    .flatMap(lane => lane.mine.steps.filter(step => step.key === 'player'))
+    .sort((a, b) => b.value - a.value)[0];
+  return {
+    map: mapName,
+    a: result.youWon,
+    b: result.themWon,
+    winA: result.winner === 'you',
+    mvp: squad.find(card => card.player === best?.label) ?? squad[0],
+  };
+}
+
+// Named maps instead of drawn ones, for labs that need a set map.
+export function namedSeriesMaps(seed, names) {
+  const cards = mapCardsForYear(seed, 1);
+  return names.map(name => cards.find(card => card.name === name));
 }

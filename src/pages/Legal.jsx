@@ -18,6 +18,12 @@ export default function Legal() {
         <p>
           {t('Roster data comes from')} <a href="https://www.vlr.gg" rel="noreferrer">vlr.gg</a>.
         </p>
+        <p>
+          {t('Map art by Riot Games environment artists')}{' '}
+          <a href="https://www.artstation.com/tobiaskoepp" rel="noreferrer">Tobias Koepp</a>,{' '}
+          <a href="https://www.artstation.com/sirdigitalbacon" rel="noreferrer">Kevin Brunt</a>,{' '}
+          {t('and official VALORANT wallpapers.')}
+        </p>
         <p>{t('There are no accounts and no cookies. Runs stay on this device. A leaderboard entry stores your squad name, score and a random ID.')}</p>
         <Link className={styles.back} to="/run">{t('Back to the game')}</Link>
       </article>

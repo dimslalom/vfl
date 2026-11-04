@@ -1,5 +1,6 @@
 // The map board prototype: five players, three maps, no dice after you commit.
 // Everything is pure so the bots, the tests and the screen share one result.
+import { getCardSpecialties } from '../../../shared/src/data/specialties.js';
 import { mulberry32 } from '../../../shared/src/engine/perfectRun.js';
 import { tacticActivation } from '../endless/seriesCards.js';
 
@@ -12,6 +13,20 @@ export const MAPS_TO_WIN = 2;
 const ROLE_PAIR = 20;
 const TEAMMATE_PAIR = 15;
 const COUNTRY_PAIR = 8;
+const ONE_TRICK_BONUS = 20;
+const AURA_PENALTY = 15;
+
+export const BOARD_SKILLS = {
+  flex: { label: 'Flex', text: 'Moves free during the rotate' },
+  flick: { label: 'Flick', text: 'Alone on a lane: scores their best stat' },
+  one_trick: { label: 'One Trick', text: '+20 on maps that suit their agent' },
+  mastermind: { label: 'Mastermind', text: 'As IGL: two rotates' },
+  aura: { label: 'Aura', text: '-15 to the enemy on their lane' },
+};
+
+export function hasSkill(card, key) {
+  return Boolean(card.learned?.includes(key)) || getCardSpecialties(card).some(spec => spec.key === key);
+}
 
 /** Every legal way to spread five players: each map gets one, none gets more than three. */
 export function allPlacements(size = SQUAD_SIZE) {
@@ -61,8 +76,16 @@ export function laneScore(cards, lane, tactic = null) {
     total += value;
     steps.push({ key, op: '+', value, label, total });
   };
-  for (const card of cards) add('player', card.stats[lane.stat], card.player);
+  for (const card of cards) {
+    const alone = cards.length === 1 && hasSkill(card, 'flick');
+    add('player', alone ? Math.max(...Object.values(card.stats)) : card.stats[lane.stat], card.player);
+  }
   if (cards.length && ruleFires(cards, lane)) add('rule', ROLE_PAIR, 'Roles');
+  for (const card of cards) {
+    if (hasSkill(card, 'one_trick') && card.agents?.length === 1 && lane.agents?.includes(card.agents[0])) {
+      add('trick', ONE_TRICK_BONUS, 'Trick');
+    }
+  }
   for (const [a, b] of pairs(cards)) {
     if (a.org && a.org === b.org) add('teammates', TEAMMATE_PAIR, 'Team');
     else if (a.nationality && a.nationality === b.nationality) add('country', COUNTRY_PAIR, 'Nation');
@@ -86,12 +109,14 @@ export function laneFormula(steps) {
   const sum = steps.filter(step => step.key === 'player').reduce((total, step) => total + step.value, 0);
   const bonuses = new Map();
   for (const step of steps) {
-    if (step.key === 'player' || step.key === 'tactic') continue;
+    if (['player', 'tactic', 'aura'].includes(step.key)) continue;
     bonuses.set(step.label, (bonuses.get(step.label) ?? 0) + step.value);
   }
   const rest = [...bonuses].map(([label, value]) => `+${value} ${label}`);
   const tactic = steps.find(step => step.key === 'tactic');
   if (tactic) rest.push(`×${tactic.value} ${tactic.label}`);
+  const aura = steps.find(step => step.key === 'aura');
+  if (aura) rest.push(`-${aura.value} ${aura.label}`);
   return steps.length ? [String(sum), ...rest].join('  ') : '';
 }
 
@@ -99,13 +124,23 @@ function laneCards(roster, slots, lane) {
   return roster.filter((_, index) => slots[index] === lane);
 }
 
+// An aura lands last, on the side opposite the player carrying it.
+function underAura(score, opposing) {
+  const value = opposing.filter(card => hasSkill(card, 'aura')).length * AURA_PENALTY;
+  if (!value || !score.steps.length) return score;
+  const total = Math.max(0, score.total - value);
+  return { total, steps: [...score.steps, { key: 'aura', op: '-', value, label: 'Aura', total }] };
+}
+
 /** The whole board. Ties on a map go to the higher raw rating there. */
 export function resolveBoard({ maps, you, them }) {
   const lanes = maps.map((map, lane) => {
-    const mine = laneScore(laneCards(you.roster, you.slots, lane), map, you.tactic?.lane === lane ? you.tactic.card : null);
-    const theirs = laneScore(laneCards(them.roster, them.slots, lane), map, them.tactic?.lane === lane ? them.tactic.card : null);
-    const rawMine = laneCards(you.roster, you.slots, lane).reduce((sum, card) => sum + card.rating, 0);
-    const rawTheirs = laneCards(them.roster, them.slots, lane).reduce((sum, card) => sum + card.rating, 0);
+    const myCards = laneCards(you.roster, you.slots, lane);
+    const theirCards = laneCards(them.roster, them.slots, lane);
+    const mine = underAura(laneScore(myCards, map, you.tactic?.lane === lane ? you.tactic.card : null), theirCards);
+    const theirs = underAura(laneScore(theirCards, map, them.tactic?.lane === lane ? them.tactic.card : null), myCards);
+    const rawMine = myCards.reduce((sum, card) => sum + card.rating, 0);
+    const rawTheirs = theirCards.reduce((sum, card) => sum + card.rating, 0);
     const winner = mine.total !== theirs.total
       ? (mine.total > theirs.total ? 'you' : 'them')
       : rawMine === rawTheirs ? null : (rawMine > rawTheirs ? 'you' : 'them');
@@ -139,7 +174,18 @@ export function bestPlacement({ roster, maps, tactic = null, against = null, rng
   return { slots: best.slots, tactic: tactic ? { lane: best.lane, card: tactic } : null };
 }
 
-/** The IGL's one move: a single player to another map, keeping the board legal. */
+/** How many non-Flex players the IGL may move. The leftmost card is the IGL. */
+export function rotateMoves(roster) {
+  return hasSkill(roster[0], 'mastermind') ? 2 : 1;
+}
+
+/** Whether `next` is a board the IGL can reach from `locked` this rotate. */
+export function isLegalRotation(locked, next, roster) {
+  if (!isLegalPlacement(next)) return false;
+  const moved = next.filter((slot, index) => slot !== locked[index] && !hasSkill(roster[index], 'flex')).length;
+  return moved <= rotateMoves(roster);
+}
+
 export function isLegalRotate(slots, index, lane) {
   if (slots[index] === lane) return false;
   const next = [...slots];
@@ -153,20 +199,28 @@ export function rotate(slots, index, lane) {
   return next;
 }
 
-/** The best single move against a board as it stands, or null if none helps. */
+/** The best reachable board against one as it stands, one move at a time. */
 export function bestRotate({ you, them, maps }) {
-  let best = { slots: you.slots, won: resolveBoard({ maps, you, them }).youWon, margin: resolveBoard({ maps, you, them }).youTotal };
-  for (let index = 0; index < you.slots.length; index += 1) {
-    for (let lane = 0; lane < LANES; lane += 1) {
-      if (!isLegalRotate(you.slots, index, lane)) continue;
-      const slots = rotate(you.slots, index, lane);
-      const result = resolveBoard({ maps, you: { ...you, slots }, them });
-      if (result.youWon > best.won || (result.youWon === best.won && result.youTotal > best.margin)) {
-        best = { slots, won: result.youWon, margin: result.youTotal };
+  const score = slots => resolveBoard({ maps, you: { ...you, slots }, them });
+  let best = you.slots;
+  let top = score(best);
+  for (let step = 0; step < you.slots.length; step += 1) {
+    let improved = false;
+    for (let index = 0; index < best.length; index += 1) {
+      for (let lane = 0; lane < LANES; lane += 1) {
+        const slots = rotate(best, index, lane);
+        if (slots[index] === best[index] || !isLegalRotation(you.slots, slots, you.roster)) continue;
+        const result = score(slots);
+        if (result.youWon > top.youWon || (result.youWon === top.youWon && result.youTotal > top.youTotal)) {
+          best = slots;
+          top = result;
+          improved = true;
+        }
       }
     }
+    if (!improved) break;
   }
-  return best.slots;
+  return best;
 }
 
 /**
