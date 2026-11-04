@@ -41,6 +41,14 @@
       "binding": "DB",
       "database_name": "vfl-daily-scores",
       "database_id": "8bfc8861-0417-46d8-8bd5-e18ef206503b"
+    },
+    // VFL-wide accounts (users, sessions) plus each product's own table. Owned by
+    // this repo, apart from the OpVAL-owned database above.
+    {
+      "binding": "ACCOUNTS",
+      "database_name": "vfl-accounts",
+      "database_id": "6acdf325-f3a1-4077-b916-57af36bdcf67",
+      "migrations_dir": "worker/migrations/accounts"
     }
   ],
 
