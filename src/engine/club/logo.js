@@ -46,16 +46,17 @@ const GLYPHS = {
 
 const NARROW = { I: 0, 1: 0 };
 
-// Palettes: ground, main, second. Flat, high contrast, drawn from the game's own colours.
-const TONES = [
-  { ground: '#161b29', main: '#ff4655', second: '#ece8e1' },
-  { ground: '#0d0f17', main: '#00d2ff', second: '#ece8e1' },
-  { ground: '#161b29', main: '#d8b34c', second: '#ece8e1' },
-  { ground: '#0d0f17', main: '#00c8a0', second: '#ece8e1' },
-  { ground: '#1e2435', main: '#b48cff', second: '#ece8e1' },
-  { ground: '#ece8e1', main: '#ff4655', second: '#0d0f17' },
-  { ground: '#ff4655', main: '#0d0f17', second: '#ece8e1' },
-  { ground: '#d8b34c', main: '#0d0f17', second: '#ff4655' },
+// Colourways, the second axis. The ground is always dark and the two inks always
+// light, so every style reads on every colourway and on the dark page.
+export const LOGO_TONES = [
+  { id: 'valor', label: 'Valor', ground: '#161b29', main: '#ff4655', second: '#ece8e1' },
+  { id: 'cyan', label: 'Cyan', ground: '#0d0f17', main: '#00d2ff', second: '#ece8e1' },
+  { id: 'gold', label: 'Gold', ground: '#161b29', main: '#d8b34c', second: '#ece8e1' },
+  { id: 'teal', label: 'Teal', ground: '#0d0f17', main: '#00c8a0', second: '#ece8e1' },
+  { id: 'violet', label: 'Violet', ground: '#1e2435', main: '#b48cff', second: '#ece8e1' },
+  { id: 'bone', label: 'Bone', ground: '#161b29', main: '#ece8e1', second: '#ff4655' },
+  { id: 'sunset', label: 'Sunset', ground: '#0d0f17', main: '#ff4655', second: '#d8b34c' },
+  { id: 'frost', label: 'Frost', ground: '#1e2435', main: '#00d2ff', second: '#ff4655' },
 ];
 
 // Words in a name that point at a picture, the way Cloud9 is a cloud and
@@ -134,16 +135,13 @@ export function emblemFor(name) {
   return FALLBACK[hashName(name) % FALLBACK.length];
 }
 
-/** Each style takes its own colourway, shifted by the name, so ten options look like ten. */
-// Marks with no plate of their own sit straight on the dark page, so they only
-// get the colourways whose strokes are light.
-const FLOATING = new Set(['cut', 'mirror', 'stack', 'laurel']);
-const SOLID = new Set(['block', 'slash']);
+/** The colourway a club starts on, read off its name. */
+export function defaultLogoTone(name) {
+  return (hashName(name) >>> 4) % LOGO_TONES.length;
+}
 
-export function toneFor(name, styleId) {
-  const index = Math.max(0, LOGO_STYLES.findIndex(style => style.id === styleId));
-  const pool = FLOATING.has(styleId) ? TONES.slice(0, 5) : SOLID.has(styleId) ? TONES.slice(0, 6) : TONES;
-  return pool[(hashName(name) + index * 3) % pool.length];
+export function toneFor(name, tone) {
+  return LOGO_TONES[Number.isInteger(tone) && LOGO_TONES[tone] ? tone : defaultLogoTone(name)];
 }
 
 // ── drawing helpers ─────────────────────────────────────────────────────────
@@ -247,9 +245,9 @@ const DRAW = {
     const lead = p.letters[0];
     const layer = (dx, dy, color, stroke) => word(lead, { cx: 50 + dx, cy: 50 + dy, w: 52, h: 66, stroke, color, gap: 0 });
     return [
-      layer(10, 10, t.second, 2.6),
-      layer(5, 5, t.main, 2.6),
-      layer(0, 0, t.ground === '#0d0f17' || t.ground === '#161b29' || t.ground === '#1e2435' ? t.second : t.ground, 2.6),
+      layer(11, 11, t.main, 2.6),
+      layer(0, 0, t.ground, 3.3),
+      layer(0, 0, t.second, 2.6),
     ].join('');
   },
   // Ring, the name running round it, the initials in the middle.
@@ -320,14 +318,14 @@ export function logoParts(name) {
 }
 
 /** The finished SVG markup for one style. Safe to inject: only built from cleaned text and numbers. */
-export function logoSvg(name, styleId) {
+export function logoSvg(name, styleId, tone) {
   const style = DRAW[styleId] ? styleId : LOGO_STYLES[0].id;
   const parts = logoParts(name);
-  const body = DRAW[style](parts, toneFor(name, style));
+  const body = DRAW[style](parts, toneFor(name, tone));
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-hidden="true">${body}</svg>`;
 }
 
-/** All ten, in picker order. */
-export function logoOptions(name) {
-  return LOGO_STYLES.map(style => ({ ...style, svg: logoSvg(name, style.id) }));
+/** All ten styles in one colourway, in picker order. */
+export function logoOptions(name, tone) {
+  return LOGO_STYLES.map(style => ({ ...style, svg: logoSvg(name, style.id, tone) }));
 }

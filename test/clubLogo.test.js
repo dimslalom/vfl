@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { LOGO_STYLES, cleanName, defaultLogoStyle, emblemFor, initialsOf, logoOptions, logoSvg } from '../src/engine/club/logo.js';
+import { LOGO_STYLES, LOGO_TONES, defaultLogoTone, cleanName, defaultLogoStyle, emblemFor, initialsOf, logoOptions, logoSvg } from '../src/engine/club/logo.js';
 
 test('initials come from word starts, or the opening letters of a single word', () => {
   assert.equal(initialsOf('Night Wolves'), 'NW');
@@ -39,4 +39,13 @@ test('a word in the name picks the emblem', () => {
   assert.equal(emblemFor('Royal Phoenix'), 'flame');
   assert.equal(emblemFor('Thunder Five'), 'bolt');
   assert.ok(emblemFor('Zeta Division'));
+});
+
+test('colourway is a second axis: eight tones times ten styles, all different', () => {
+  assert.equal(LOGO_TONES.length, 8);
+  const all = new Set();
+  for (let tone = 0; tone < LOGO_TONES.length; tone++) for (const style of LOGO_STYLES) all.add(logoSvg('Night Wolves', style.id, tone));
+  assert.equal(all.size, 80);
+  assert.equal(logoSvg('Night Wolves', 'shield'), logoSvg('Night Wolves', 'shield', defaultLogoTone('Night Wolves')));
+  assert.equal(logoSvg('Night Wolves', 'shield', 99), logoSvg('Night Wolves', 'shield'));
 });

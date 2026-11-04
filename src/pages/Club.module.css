@@ -1390,3 +1390,10 @@ img.tapeCard { object-fit: contain; filter: var(--shadow-rest); }
 .crestOption[aria-pressed='true'] b { color: var(--ink); }
 .crestOption:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 @media (max-width: 560px) { .crestGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.toneRow { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-2); }
+.tone { width: var(--tap-min); height: var(--tap-min); padding: 0; border: 0; cursor: pointer; background: linear-gradient(135deg, var(--tone-main) 50%, var(--tone-second) 50%); }
+.tone[aria-pressed='true'] { outline: 2px solid var(--ink); outline-offset: 2px; }
+.tone:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.crestDone { grid-column: 1 / -1; justify-self: end; min-height: var(--tap-min); padding: 0 var(--sp-5); border: 0; background: var(--accent); color: var(--accent-ink); font-weight: 800; font-size: var(--fs-body); letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
+.crestDone:hover { filter: brightness(1.08); }
+.crestDone:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
