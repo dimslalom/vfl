@@ -21,4 +21,6 @@ export const DYNAMIC = () => [
   t('Base'), t('Map'), t('Call'), t('Counter'),
   t('All'), t('Duelist'), t('Initiator'), t('Controller'), t('Sentinel'),
   t('VCT'), t('Icons'),
+  t('Cut'), t('Mirror'), t('Shield'), t('Hex'), t('Block'), t('Stack'), t('Roundel'), t('Sigil'), t('Slash'), t('Laurel'),
+  t('Valor'), t('Cyan'), t('Teal'), t('Violet'), t('Bone'), t('Sunset'), t('Frost'),
 ];

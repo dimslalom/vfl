@@ -1,6 +1,26 @@
 // Brazilian Portuguese for every player-facing string. English sources are the
 // keys; test/i18n.test.js fails if any string is missing or stale.
 export default {
+  "Choose club crest": "Escolher escudo do clube",
+  "Pick a crest": "Escolha um escudo",
+  "Colour": "Cor",
+  "Cut": "Corte",
+  "Mirror": "Espelho",
+  "Shield": "Escudo",
+  "Hex": "Hexágono",
+  "Block": "Bloco",
+  "Stack": "Camadas",
+  "Roundel": "Rosácea",
+  "Sigil": "Emblema",
+  "Slash": "Talho",
+  "Laurel": "Louro",
+  "Valor": "Valor",
+  "Cyan": "Ciano",
+  "Teal": "Turquesa",
+  "Violet": "Violeta",
+  "Bone": "Osso",
+  "Sunset": "Pôr do sol",
+  "Frost": "Geada",
   "Rounds won": "Rodadas vencidas",
   "Lane difference": "Saldo de lanes",
 

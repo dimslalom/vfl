@@ -1,6 +1,26 @@
 // Spanish for every player-facing string. English sources are the keys;
 // test/i18n.test.js fails if any string is missing or stale.
 export default {
+  "Choose club crest": "Elegir escudo del club",
+  "Pick a crest": "Elige un escudo",
+  "Colour": "Color",
+  "Cut": "Corte",
+  "Mirror": "Espejo",
+  "Shield": "Escudo",
+  "Hex": "Hexágono",
+  "Block": "Bloque",
+  "Stack": "Capas",
+  "Roundel": "Roseta",
+  "Sigil": "Emblema",
+  "Slash": "Tajo",
+  "Laurel": "Laurel",
+  "Valor": "Valor",
+  "Cyan": "Cian",
+  "Teal": "Turquesa",
+  "Violet": "Violeta",
+  "Bone": "Hueso",
+  "Sunset": "Atardecer",
+  "Frost": "Escarcha",
   "Rounds won": "Rondas ganadas",
   "Lane difference": "Diferencia de carriles",
 
