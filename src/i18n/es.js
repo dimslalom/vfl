@@ -344,7 +344,6 @@ export default {
 
   // Music and credits.
   "Music": "Música",
-  "Background music while you play.": "Música de fondo mientras juegas.",
   "Credits": "Créditos",
   "“Video Game” by": "«Video Game» de",
   "from": "en",
@@ -353,4 +352,6 @@ export default {
   "Player data": "Datos de jugadores",
   "Rosters from": "Plantillas de",
   "Team names, logos and player names belong to their owners.": "Los nombres de equipos, logos y nombres de jugadores pertenecen a sus dueños.",
+  "Plays during matches, loudest as one starts.": "Suena durante los partidos, más fuerte al empezar.",
+  "Music volume": "Volumen de la música",
 };

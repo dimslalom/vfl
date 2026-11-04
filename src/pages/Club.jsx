@@ -40,7 +40,8 @@ import ClubRename from '../components/club/ClubRename';
 import SeasonIntro from '../components/club/SeasonIntro';
 import { stageLabel } from '../components/club/clubSummary';
 import useClubSync from '../lib/useClubSync';
-import { startMusic } from '../lib/music';
+import { preloadMusic } from '../lib/music';
+import MusicControls from '../components/MusicControls';
 import { hintFor, loadOnboarding, markHintSeen, primerDue, saveOnboarding } from '../lib/clubOnboarding';
 import { t } from '../lib/i18n';
 import entry from '../components/club/ClubEntry.module.css';
@@ -1598,7 +1599,12 @@ export default function Club() {
   };
   const show = next => morph(() => setScreen(next));
   useEffect(() => { screenRef.current = screen; });
-  useEffect(() => startMusic(), []);
+  // Match music is fetched and decoded while the player is in the menus, so the
+  // first match intro can start it on time.
+  useEffect(() => {
+    const idle = setTimeout(preloadMusic, 1500);
+    return () => clearTimeout(idle);
+  }, []);
 
   useEffect(() => {
     if (!state) return undefined;
@@ -1830,6 +1836,7 @@ export default function Club() {
         onLeave={() => show('home')}
         fixed="full"
         three
+        settings={<MusicControls />}
       />
     );
   }

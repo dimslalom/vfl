@@ -1,0 +1,27 @@
+/* Flat controls, the club's way: plates, ink fills, right angles. */
+.row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); }
+.row[data-off] .volume { opacity: .4; }
+.label { display: flex; flex-direction: column; gap: 2px; min-width: 0; text-align: left; }
+.label b { font-size: var(--fs-body); }
+.label small { color: var(--muted); font-size: 12px; line-height: 1.4; }
+.toggle { min-width: 72px; min-height: var(--tap-min); padding: 0 var(--sp-3); border: 2px solid var(--line-bracket); background: transparent; color: var(--ink); font: inherit; font-size: var(--fs-label); font-weight: 700; cursor: pointer; }
+.toggle[data-on] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+
+.volume { display: flex; align-items: center; gap: var(--sp-3); }
+.volume b { min-width: 3ch; font: 700 var(--fs-label)/1 var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; }
+.volume input {
+  width: clamp(120px, 22vw, 200px);
+  height: var(--tap-min);
+  margin: 0;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+.volume input:disabled { cursor: default; }
+.volume input::-webkit-slider-runnable-track { height: 6px; background: linear-gradient(to right, var(--ink) var(--fill), var(--plate-inset) var(--fill)); }
+.volume input::-moz-range-track { height: 6px; background: var(--plate-inset); }
+.volume input::-moz-range-progress { height: 6px; background: var(--ink); }
+.volume input::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 22px; margin-top: -8px; border: 0; background: var(--ink); }
+.volume input::-moz-range-thumb { width: 14px; height: 22px; border: 0; border-radius: 0; background: var(--ink); }
+.volume input:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }

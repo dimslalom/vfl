@@ -3,8 +3,8 @@ import { assetPath } from '../../../shared/src/lib/utils';
 import { signInHref } from '../../lib/account';
 import { t } from '../../lib/i18n';
 import { resetHints } from '../../lib/clubOnboarding';
-import { setMusic, useMusic } from '../../lib/music';
 import LanguagePicker from '../LanguagePicker';
+import MusicControls from '../MusicControls';
 import club from '../../pages/Club.module.css';
 import styles from './ClubEntry.module.css';
 import { DEFAULT_MAP } from './clubSummary';
@@ -57,7 +57,6 @@ function AccountRows({ account, onSignOut, onDeleteAccount }) {
 // where the save lives. Rows are flat plates in one list, no boxes inside boxes.
 export default function ClubSettings({ prefs, onChange, onBack, onPrimer, account, onSignOut, onDeleteAccount }) {
   const [reset, setReset] = useState(false);
-  const music = useMusic();
   return (
     <div className={club.stage}>
       <header className={club.hud}>
@@ -90,10 +89,7 @@ export default function ClubSettings({ prefs, onChange, onBack, onPrimer, accoun
             <button type="button" className={club.small} disabled={reset} onClick={() => { onChange(resetHints(prefs)); setReset(true); }}>{reset ? t('Done') : t('Reset')}</button>
           </li>
           <li className={styles.groupHead}>{t('This device')}</li>
-          <li>
-            <span><b>{t('Music')}</b><small>{t('Background music while you play.')}</small></span>
-            <Toggle on={music} label={t('Music')} onChange={setMusic} />
-          </li>
+          <MusicControls as="li" />
           <li>
             <span><b>{t('Language')}</b></span>
             <LanguagePicker />

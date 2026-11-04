@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { playUiSound } from '../../shared/src/lib/gameAudio';
 import { assetPath } from '../../shared/src/lib/utils';
-import { cueMusic } from '../lib/music';
+import { startMatchMusic } from '../lib/music';
 import ClubLogo from './ClubLogo';
 import styles from './MatchIntro.module.css';
 
@@ -13,8 +13,6 @@ const HOLD = 1100;
 const OPEN = 500;
 const DROP = 1400;
 const STILL = 600;
-// Where the background track's beat drop is, in seconds.
-const DROP_AT = 18;
 
 const initials = name => name.replace(/[^A-Za-z0-9 ]/g, '').split(' ').map(word => word[0]).join('').slice(0, 2).toUpperCase();
 
@@ -71,8 +69,8 @@ export default function MatchIntro({ you, them, stage, bestOf, ready, reducedMot
     const first = requestAnimationFrame(() => setPhase('hold'));
     if (!reducedMotion) playUiSound('lock_in');
     // The music's beat drop (0:18) lands one second in, as the last player rises:
-    // start a second before it and fade in over that second.
-    cueMusic(DROP_AT - 1, 1000);
+    // it starts a second before the drop and fades in over that second.
+    startMatchMusic();
     const hold = setTimeout(() => setHeld(true), reducedMotion ? STILL : ENTER + HOLD);
     return () => { cancelAnimationFrame(first); clearTimeout(hold); };
   }, [reducedMotion]);

@@ -7,6 +7,7 @@ import { refillTacticHand, settleTactic } from '../engine/endless/seriesCards';
 import { namedSeriesMaps, pickSeriesMaps, roundBoard, roundResult } from '../prototype/boardSetup';
 import ChipPayout from '../chip3d/ChipPayout';
 import MatchIntro from './MatchIntro';
+import { settleMatchMusic, stopMatchMusic } from '../lib/music';
 import { STAT_LABELS, STAT_LABELS_FULL } from '../../shared/src/data/statFields';
 import styles from './BoardSeries.module.css';
 
@@ -132,7 +133,8 @@ function Pips({ total, won, side }) {
 // Pixi board as the fallback when WebGL or three.js can't start.
 // intro: { you: { club, cards }, them: { club, cards }, stage } plays the match
 // intro over the board while it loads, then drops the 3D camera into the first deal.
-export default function BoardSeries({ squad, opponent, opponentName, bestOf, seed, hand, onDone, onLeave, doneLabel = 'Continue', fixed = false, three = false, arena = 'tint', mapNames = null, intro = null }) {
+// settings: controls shown in a panel behind the gear beside Leave (the Club passes its music controls).
+export default function BoardSeries({ squad, opponent, opponentName, bestOf, seed, hand, onDone, onLeave, doneLabel = 'Continue', fixed = false, three = false, arena = 'tint', mapNames = null, intro = null, settings = null }) {
   const hostRef = useRef(null);
   const stageRef = useRef(null);
   const chipHostRef = useRef(null);
@@ -148,6 +150,15 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
   const [failed, setFailed] = useState(false);
   const [introOn, setIntroOn] = useState(Boolean(intro));
   const [boardReady, setBoardReady] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  // Match music lasts as long as the match does.
+  useEffect(() => () => stopMatchMusic(), []);
+  useEffect(() => {
+    if (!settingsOpen) return undefined;
+    const onKey = (event) => { if (event.key === 'Escape') setSettingsOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [settingsOpen]);
   const introRef = useRef(introOn);
   // The first round's pieces, for preloading behind the intro without making the
   // board's setup effect depend on arrays the parent rebuilds every render.
@@ -336,7 +347,7 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
   // Stable, so the intro's effects don't re-run on every board update.
   const openIntro = useCallback(() => playRoundRef.current(), []);
   const skipDrop = useCallback(() => stageRef.current?.skipDrop?.(), []);
-  const endIntro = useCallback(() => setIntroOn(false), []);
+  const endIntro = useCallback(() => { settleMatchMusic(); setIntroOn(false); }, []);
 
   function retry() {
     setFailed(false);
@@ -379,10 +390,20 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
           onDone={endIntro}
         />
       )}
-      {onLeave && !failed && (
-        <button type="button" className={styles.leave} data-armed={leaving || undefined} onBlur={() => setLeaving(false)} onClick={() => (leaving ? onLeave() : setLeaving(true))}>
-          {leaving ? 'Leave and replay later' : 'Leave'}
-        </button>
+      {!failed && (onLeave || settings) && (
+        <div className={styles.tools}>
+          {settings && (
+            <button type="button" className={styles.tool} aria-label="Settings" aria-expanded={settingsOpen} onClick={() => setSettingsOpen(!settingsOpen)}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8" /><path d="M14 4v6M8 14v6" /></svg>
+            </button>
+          )}
+          {onLeave && (
+            <button type="button" className={styles.leave} data-armed={leaving || undefined} onBlur={() => setLeaving(false)} onClick={() => (leaving ? onLeave() : setLeaving(true))}>
+              {leaving ? 'Leave and replay later' : 'Leave'}
+            </button>
+          )}
+          {settings && settingsOpen && <div className={styles.settingsPanel} role="dialog" aria-label="Settings">{settings}</div>}
+        </div>
       )}
       <div className={styles.head} aria-label={`Round ${shownRound + 1}, best of ${bestOf}, ${maps[shownRound].name} against ${opponentName}`}>
         <b key={shownRound} className={styles.mapTitle}>{maps[shownRound].name}</b>

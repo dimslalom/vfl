@@ -1,135 +1,173 @@
 import { useSyncExternalStore } from 'react';
 import { assetPath } from '../../shared/src/lib/utils';
 
-// Background music: one looping track, quiet under the game's sounds. Browsers
-// won't play sound before the player interacts, so it starts on the first tap or
-// key press. It fades in and out, pauses while the tab is hidden, and the choice
-// to have it on or off is kept on this device.
+// Match music: one track, heard only during matches. The match intro starts it at
+// 0:17 and fades it in over a second so the beat drop (0:18) lands as the lineups
+// finish rising; once the intro ends it settles to a quiet bed under the match,
+// and it fades out when the match is over.
+//
+// It plays through Web Audio from a decoded buffer rather than an <audio> element:
+// the host doesn't answer range requests, and without them an <audio> element
+// can't jump to 0:17. A buffer starts at any offset, to the sample.
 //
 // "Video Game" by AtlasAudio, from Pixabay (credited in Club settings and the README).
 
-const KEY = 'vfl-music';
 // Kept in public/audio, not public/assets: that folder belongs to the shared repo.
 const SRC = '/audio/atlasaudio-video-game.mp3';
-const VOLUME = 0.28;
-const FADE_IN_MS = 1600;
-const FADE_OUT_MS = 450;
-const CUE_DIP_MS = 120;
+const ON_KEY = 'vfl-music';
+const VOLUME_KEY = 'vfl-music-volume';
+// Levels before the player's volume: the intro is the loud moment, the match a bed.
+const INTRO_LEVEL = 0.55;
+const BED_LEVEL = 0.16;
+const DEFAULT_VOLUME = 0.8;
+export const DROP_AT = 18;
 
-let element = null;
-let fading = 0;
-let unlocked = false;
-let on = readPref();
+let context = null;
+let gain = null;
+let buffer = null;
+let loading = null;
+let source = null;
+let mode = 'off'; // 'off' | 'intro' | 'bed'
+let on = readOn();
+let volume = readVolume();
 const listeners = new Set();
 
-function readPref() {
-  try { return globalThis.localStorage?.getItem(KEY) !== 'off'; } catch { return true; }
+function readOn() {
+  try { return globalThis.localStorage?.getItem(ON_KEY) !== 'off'; } catch { return true; }
 }
 
-function track() {
-  if (!element && typeof Audio !== 'undefined') {
-    element = new Audio(assetPath(SRC));
-    element.loop = true;
-    element.preload = 'auto';
-    element.volume = 0;
+function readVolume() {
+  try {
+    const raw = globalThis.localStorage?.getItem(VOLUME_KEY);
+    const stored = Number(raw);
+    return raw !== null && raw !== undefined && Number.isFinite(stored) ? Math.min(1, Math.max(0, stored)) : DEFAULT_VOLUME;
+  } catch {
+    return DEFAULT_VOLUME;
   }
-  return element;
 }
 
-function fadeTo(target, ms, then) {
-  const audio = track();
-  if (!audio) return;
-  cancelAnimationFrame(fading);
-  if (ms <= 0) {
-    audio.volume = target;
-    then?.();
-    return;
+function audio() {
+  if (typeof window === 'undefined') return null;
+  const AudioContext = window.AudioContext ?? window.webkitAudioContext;
+  if (!AudioContext) return null;
+  if (!context) {
+    context = new AudioContext();
+    gain = context.createGain();
+    gain.gain.value = 0;
+    gain.connect(context.destination);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) context.suspend().catch(() => null);
+      else if (mode !== 'off') context.resume().catch(() => null);
+    });
   }
-  const from = audio.volume;
-  const start = performance.now();
-  const step = (now) => {
-    const k = Math.min(1, Math.max(0, (now - start) / ms));
-    audio.volume = from + (target - from) * k;
-    if (k < 1) fading = requestAnimationFrame(step);
-    else then?.();
-  };
-  fading = requestAnimationFrame(step);
+  return context;
 }
 
-function play() {
-  const audio = track();
-  if (!audio || !unlocked || !on || document.hidden) return;
-  audio.play().then(() => fadeTo(VOLUME, FADE_IN_MS)).catch(() => null);
+function levelFor(which) {
+  if (!on || which === 'off') return 0;
+  return (which === 'intro' ? INTRO_LEVEL : BED_LEVEL) * volume;
 }
 
-function pause(ms = FADE_OUT_MS) {
-  const audio = track();
-  if (!audio || audio.paused) return;
-  fadeTo(0, ms, () => audio.pause());
+// Glide to the current mode's level. setTargetAtTime never clicks.
+function glide(seconds) {
+  if (!gain) return;
+  const now = context.currentTime;
+  gain.gain.cancelScheduledValues(now);
+  gain.gain.setValueAtTime(gain.gain.value, now);
+  gain.gain.setTargetAtTime(levelFor(mode), now, Math.max(0.01, seconds / 4));
+}
+
+/** Fetch and decode the track ahead of the first match. Safe to call often. */
+export function preloadMusic() {
+  const ctx = audio();
+  if (!ctx) return Promise.resolve(null);
+  if (!loading) {
+    loading = fetch(assetPath(SRC))
+      .then(response => (response.ok ? response.arrayBuffer() : Promise.reject(new Error('music'))))
+      .then(bytes => ctx.decodeAudioData(bytes))
+      .then((decoded) => { buffer = decoded; return decoded; })
+      .catch(() => { loading = null; return null; });
+  }
+  return loading;
 }
 
 /**
- * Jump the music to `at` seconds, fading in over `fadeMs` so it's at full level
- * exactly `fadeMs` later. The match intro uses this to land the track's beat drop
- * (0:18) as the lineups finish rising. Whatever was playing dips out first.
+ * The match intro: start at `DROP_AT - 1` and fade in over one second, so the
+ * drop lands one second after this call. If the track is still loading, it starts
+ * the moment it's ready, at the offset it would have reached by then.
  */
-export function cueMusic(at, fadeMs) {
-  const audio = track();
-  if (!audio || !on || document.hidden) return;
-  unlocked = true; // only ever called from a tap (Play)
-  // The dip takes time too, so jump that much further in and fade that much
-  // shorter: the cued moment still lands exactly `fadeMs` after the call.
-  const dip = audio.paused ? 0 : CUE_DIP_MS;
-  const jump = () => {
-    try { audio.currentTime = at + dip / 1000; } catch { /* not seekable yet: plays from where it is */ }
-    audio.play().then(() => fadeTo(VOLUME, Math.max(0, fadeMs - dip))).catch(() => null);
+export function startMatchMusic() {
+  const ctx = audio();
+  if (!ctx) return;
+  ctx.resume().catch(() => null);
+  const cuedAt = ctx.currentTime;
+  mode = 'intro';
+  const begin = (decoded) => {
+    if (!decoded || mode === 'off') return;
+    try { source?.stop(); } catch { /* already stopped */ }
+    const now = ctx.currentTime;
+    const late = Math.max(0, now - cuedAt);
+    const next = ctx.createBufferSource();
+    next.buffer = decoded;
+    next.loop = true;
+    next.connect(gain);
+    next.start(now, (DROP_AT - 1 + late) % decoded.duration);
+    source = next;
+    // Full level exactly at the drop (or straight away, if loading ate the fade).
+    gain.gain.cancelScheduledValues(now);
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(levelFor('intro'), Math.max(now + 0.05, cuedAt + 1));
   };
-  if (dip) {
-    fadeTo(0, dip, jump);
-  } else {
-    audio.volume = 0;
-    jump();
-  }
+  if (buffer) begin(buffer);
+  else preloadMusic().then(begin);
 }
 
-export function musicOn() {
-  return on;
+/** The intro is over: settle under the match. */
+export function settleMatchMusic() {
+  if (mode !== 'intro') return;
+  mode = 'bed';
+  glide(1.4);
+}
+
+/** The match is over or left: fade out, then stop. */
+export function stopMatchMusic() {
+  if (mode === 'off' || !context) return;
+  mode = 'off';
+  glide(0.8);
+  const ending = source;
+  source = null;
+  setTimeout(() => { try { ending?.stop(); } catch { /* already stopped */ } }, 1000);
+}
+
+function changed() {
+  listeners.forEach(listener => listener());
 }
 
 export function setMusic(next) {
   on = next;
-  try { globalThis.localStorage?.setItem(KEY, next ? 'on' : 'off'); } catch { /* private window: on for this visit only */ }
-  if (next) play();
-  else pause();
-  listeners.forEach(listener => listener());
+  try { globalThis.localStorage?.setItem(ON_KEY, next ? 'on' : 'off'); } catch { /* this visit only */ }
+  glide(0.3);
+  changed();
 }
 
+export function setMusicVolume(next) {
+  volume = Math.min(1, Math.max(0, next));
+  try { globalThis.localStorage?.setItem(VOLUME_KEY, String(volume)); } catch { /* this visit only */ }
+  glide(0.15);
+  changed();
+}
+
+let snapshot = { on, volume };
+function read() {
+  if (snapshot.on !== on || snapshot.volume !== volume) snapshot = { on, volume };
+  return snapshot;
+}
+
+/** { on, volume } for the settings controls. */
 export function useMusic() {
   return useSyncExternalStore(
     listener => { listeners.add(listener); return () => listeners.delete(listener); },
-    musicOn,
-    musicOn,
+    read,
+    read,
   );
-}
-
-/** Start the music on the first tap or key press, and follow the tab's visibility. Call once. */
-export function startMusic() {
-  if (typeof window === 'undefined') return () => {};
-  const unlock = () => {
-    unlocked = true;
-    play();
-    window.removeEventListener('pointerdown', unlock);
-    window.removeEventListener('keydown', unlock);
-  };
-  const visibility = () => (document.hidden ? pause(0) : play());
-  if (!unlocked) {
-    window.addEventListener('pointerdown', unlock);
-    window.addEventListener('keydown', unlock);
-  }
-  document.addEventListener('visibilitychange', visibility);
-  return () => {
-    window.removeEventListener('pointerdown', unlock);
-    window.removeEventListener('keydown', unlock);
-    document.removeEventListener('visibilitychange', visibility);
-  };
 }
