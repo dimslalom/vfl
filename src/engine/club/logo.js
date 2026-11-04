@@ -204,7 +204,11 @@ const DRAW = {
   // First letter and its reflection share a spine: GG, RR.
   mirror(p, t) {
     const lead = [...p.letters].find(ch => !(ch in NARROW)) ?? p.letters[0];
-    return word(lead + lead, { cx: 50, cy: 50, w: 84, h: 66, stroke: 1.5, color: t.main, gap: 0, mirrorLast: true });
+    // The letter in one ink, its reflection in the other.
+    return [
+      word(lead, { cx: 29, cy: 50, w: 42, h: 63, stroke: 1.5, color: t.main, gap: 0 }),
+      word(lead, { cx: 71, cy: 50, w: 42, h: 63, stroke: 1.5, color: t.second, gap: 0, mirrorLast: true }),
+    ].join('');
   },
   // Shield with a chevron band and the initials riding it, the Furia and Liquid frame.
   shield(p, t) {
