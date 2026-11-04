@@ -1,6 +1,7 @@
 // Spanish for every player-facing string. English sources are the keys;
 // test/i18n.test.js fails if any string is missing or stale.
 export default {
+  "Change crest": "Cambiar escudo",
   "Choose club crest": "Elegir escudo del club",
   "Pick a crest": "Elige un escudo",
   "Colour": "Color",

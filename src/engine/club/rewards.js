@@ -11,6 +11,7 @@ import {
   GOLD_PITY, GOLD_RATING, NAME_MAX, RENAME_PRICE, REROLL_PRICE, SESSION_PRICE, TAPE_MAX, TRAIN_SLOTS_MAX, payPacks, squadMax, stock,
 } from './economy.js';
 import { CONTRACT_MAX, SKILL_SESSIONS, rollChipOffer, squadCards, trainingOffer } from './season.js';
+import { LOGO_STYLES, LOGO_TONES } from './logo.js';
 
 export const PICKS = 3;
 
@@ -149,6 +150,13 @@ export function canRename(state, name) {
 export function renameClub(state, name) {
   if (!canRename(state, name)) return state;
   return { ...payPacks(state, RENAME_PRICE), name: cleanName(name) };
+}
+
+/** A new crest is free: the style and colourway must be real ones, and the club still in charge. */
+export function setClubCrest(state, style, tone) {
+  const real = LOGO_STYLES.some(option => option.id === style) && Number.isInteger(tone) && Boolean(LOGO_TONES[tone]);
+  if (!real || state.phase === 'over' || (state.crest === style && state.tone === tone)) return state;
+  return { ...state, crest: style, tone };
 }
 
 // ── training ────────────────────────────────────────────────────────────────

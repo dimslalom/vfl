@@ -14,7 +14,7 @@ import {
   squadMax, stock,
 } from '../engine/club/economy';
 import {
-  buySession, canBuySession, canReroll, cleanName, renameClub, chooseChip, choosePick, goldDue, openBlocker, openPack, rerollChips, useTape as spendTape,
+  buySession, canBuySession, canReroll, cleanName, renameClub, setClubCrest, chooseChip, choosePick, goldDue, openBlocker, openPack, rerollChips, useTape as spendTape,
 } from '../engine/club/rewards';
 import { ROLES, chipInfo } from '../chip3d/chipData';
 import { ChipIcon } from '../chip3d/ChipPayout';
@@ -262,6 +262,14 @@ function CrestPicker({ name, value, tone, onStyle, onTone, onClose }) {
   );
 }
 
+// Changing the crest of a club that already exists. Closing keeps the choice.
+function CrestEdit({ state, onDone }) {
+  const [style, setStyle] = useState(state.crest ?? defaultLogoStyle(state.name));
+  const [tone, setTone] = useState(state.tone ?? defaultLogoTone(state.name));
+  useEscape(() => onDone(style, tone));
+  return <CrestPicker name={state.name} value={style} tone={tone} onStyle={setStyle} onTone={setTone} onClose={() => onDone(style, tone)} />;
+}
+
 function Start({ onStart, onExit, scale, exitLabel = 'Back' }) {
   const [seed] = useState(() => (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0);
   const [name, setName] = useState('');
@@ -351,7 +359,7 @@ function Start({ onStart, onExit, scale, exitLabel = 'Back' }) {
 
 // ── hub ─────────────────────────────────────────────────────────────────────
 
-function ClubMenu({ onAbandon, onSettings, onPrimer, onRename }) {
+function ClubMenu({ onAbandon, onSettings, onPrimer, onRename, onCrest }) {
   const [open, setOpen] = useState(false);
   const [armed, setArmed] = useState(false);
   useEscape(() => { setOpen(false); setArmed(false); });
@@ -363,6 +371,7 @@ function ClubMenu({ onAbandon, onSettings, onPrimer, onRename }) {
       {open && (
         <div className={styles.menu}>
           {onRename && <button type="button" onClick={onRename}>{t('Rename club')}</button>}
+          {onCrest && <button type="button" onClick={onCrest}>{t('Change crest')}</button>}
           {onPrimer && <button type="button" onClick={onPrimer}>{t('How it plays')}</button>}
           {onSettings && <button type="button" onClick={onSettings}>{t('Settings')}</button>}
           <button type="button" data-armed={armed || undefined} onBlur={() => setArmed(false)} onClick={() => (armed ? onAbandon() : setArmed(true))}>
@@ -460,7 +469,7 @@ function Home({ state, go, onAbandon, onSettings, onPrimer, size }) {
     <div className={styles.stage}>
       <Hud title={state.name} tags={[[tierName(state.tier), true], [`Year ${state.year}`], ...(started ? [[`${ordinal(pos)} in table`]] : [])]} mark={<OwnMark state={state} size={50} />}>
         <PackCounter state={state} onOpen={() => go('vault')} />
-        <ClubMenu onAbandon={onAbandon} onSettings={onSettings} onPrimer={onPrimer} onRename={() => go('rename')} />
+        <ClubMenu onAbandon={onAbandon} onSettings={onSettings} onPrimer={onPrimer} onRename={() => go('rename')} onCrest={() => go('crest')} />
       </Hud>
       <Ground map={firstMap?.image && assetPath(firstMap.image)} className={styles.home}>
         <Road state={state} />
@@ -1770,6 +1779,17 @@ export default function Club() {
     const first = nextMatch(state);
     const map = first ? pickSeriesMaps(seriesSeed(state, first), first.bestOf)[0]?.image : undefined;
     return <SeasonIntro key={state.year} state={state} map={map} reducedMotion={reducedMotion} onDone={() => show('home')} />;
+  }
+  if (screen === 'crest') {
+    return (
+      <CrestEdit
+        state={state}
+        onDone={(style, tone) => morph(() => {
+          setState(current => setClubCrest(current, style, tone));
+          setScreen('home');
+        })}
+      />
+    );
   }
   if (screen === 'rename') {
     return (

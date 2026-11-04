@@ -2,6 +2,7 @@ import PlayerCard from '../../../shared/src/components/PlayerCard';
 import { assetPath } from '../../../shared/src/lib/utils';
 import { signInHref } from '../../lib/account';
 import { t } from '../../lib/i18n';
+import ClubLogo from '../ClubLogo';
 import LanguagePicker from '../LanguagePicker';
 import club from '../../pages/Club.module.css';
 import styles from './ClubEntry.module.css';
@@ -25,7 +26,7 @@ export default function ClubLanding({ state, account, map = DEFAULT_MAP, onConti
     <div className={club.stage}>
       <header className={club.hud}>
         <div className={club.plate}>
-          <span className={club.crest} aria-hidden="true" />
+          {returning ? <ClubLogo name={state.name} style={state.crest} tone={state.tone} size={50} /> : <span className={club.crest} aria-hidden="true" />}
           <div className={club.titleBlock}>
             <b>{t('Clubs')}</b>
             {returning && (
