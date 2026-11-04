@@ -70,7 +70,7 @@ export default function ClubLanding({ state, map = DEFAULT_MAP, onContinue, onFo
           <p className={styles.note}>{t('No login. Saved on this device.')}</p>
           {returning
             ? <button type="button" className={club.primary} autoFocus onClick={onContinue}>{t('Continue')}</button>
-            : <button type="button" className={club.primary} autoFocus onClick={onFound}>{t('Found a club')}</button>}
+            : <button type="button" className={club.primary} autoFocus onClick={onFound}>{t('Create your club')}</button>}
         </div>
       </footer>
     </div>

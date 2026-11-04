@@ -53,7 +53,7 @@ export function RoadLanding({ state }) {
           <Links />
           <div className={styles.go}>
             <p className={styles.note}>{summary?.match ? `${summary.match.stage} · ${summary.match.rival}` : 'No login. Saved on this device.'}</p>
-            <button type="button" className={club.primary}>{summary ? 'Continue' : 'Found a club'}</button>
+            <button type="button" className={club.primary}>{summary ? 'Continue' : 'Create your club'}</button>
           </div>
         </>
       )}
@@ -100,9 +100,9 @@ export function PackLanding({ state }) {
             </div>
           </div>
         ) : (
-          <button type="button" className={lab.packButton} aria-label="Open your first pack and found a club">
+          <button type="button" className={lab.packButton} aria-label="Open your first pack and create your club">
             <img src={assetPath('/assets/pack3d/pack-icon.webp')} alt="" draggable={false} />
-            <span>Tap to found your club</span>
+            <span>Tap to create your club</span>
           </button>
         )}
       </div>
@@ -124,7 +124,7 @@ export function LadderLanding({ state }) {
           <Links />
           <div className={styles.go}>
             <p className={styles.note}>No login. Saved on this device.</p>
-            <button type="button" className={club.primary}>{summary ? 'Continue' : 'Found a club'}</button>
+            <button type="button" className={club.primary}>{summary ? 'Continue' : 'Create your club'}</button>
           </div>
         </>
       )}

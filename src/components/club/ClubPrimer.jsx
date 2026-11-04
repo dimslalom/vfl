@@ -82,7 +82,7 @@ export default function ClubPrimer({ onDone, onSkip, doneLabel }) {
       <footer className={styles.stepAct}>
         <button type="button" className={club.ghost} disabled={index === 0} onClick={() => setIndex(index - 1)}>{t('Back')}</button>
         <button type="button" className={club.primary} autoFocus onClick={() => (last ? onDone() : setIndex(index + 1))}>
-          {last ? (doneLabel ?? t('Found your club')) : t('Next')}
+          {last ? (doneLabel ?? t('Create your club')) : t('Next')}
         </button>
       </footer>
     </div>

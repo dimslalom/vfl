@@ -1,6 +1,8 @@
 # Club accounts: plan only
 
-Status: not built. The owner chose "real accounts later". This PR ships no login UI and changes nothing in the Worker or its secrets. Written 2026-11-04.
+Status: not built. This PR ships no login UI and changes nothing in the Worker or its secrets. Written 2026-11-04.
+
+**Decided (owner, 2026-11-04):** Clubs gets **Discord login, optional**. A guest can still create and play a club on this device. Signing in with Discord saves the club to the account and syncs it across devices. The landing's "No login. Saved on this device." line is placeholder copy until then.
 
 ## Today
 
@@ -31,8 +33,15 @@ The repo history mentions an OpVAL account flow (commit `c38f7b1`: cookie auth, 
 - Client: `clubSave.js` keeps `localStorage` as the source of truth while offline and pushes on change when signed in. On sign-in with both a local and a cloud club, ask which one to keep, with no silent merge.
 - Entry UI: a "Sync this club" row in Club settings, not on the landing.
 
+## Discord, optional: the build
+
+1. **Owner:** create a Discord application (Developer Portal, OAuth2), set the redirect URI to `https://vctfantasy.dimas.works/api/auth/discord/callback`, and add `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` as Worker secrets. Claude never sees the secret.
+2. **Worker:** `GET /api/auth/discord` (redirect with `state`), the callback (exchange the code, read `/users/@me` with the `identify` scope only, and set an `HttpOnly; Secure; SameSite=Lax` session cookie), `POST /api/auth/logout`, `GET /api/me`, `GET`/`PUT /api/club-save`, and `DELETE /api/account`. D1 migrations for `users`, `sessions` and `club_saves`.
+3. **Client:** a "Sign in with Discord" row in Club settings and a quiet button on the landing in place of the "No login" line. On the first sign-in with a device club, upload it. If both a device club and a cloud club exist, ask which one to keep.
+4. **Privacy:** store the Discord id, the username and the avatar hash only, never email. Add a line to `/legal`.
+
 ## Questions for the owner
 
-1. Which option, or option 1 now and 3 or 4 later?
+1. ~~Which option?~~ Decided: Discord, optional.
 2. Should anything (the leaderboards, a Club league table) ever require an account?
 3. Is cross-device play a real ask from players, or a nice-to-have?
