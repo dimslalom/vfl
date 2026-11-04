@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import allCards from '../../shared/src/data/cards.json';
 import { STAT_LABELS } from '../../shared/src/data/statFields';
 import PlayerCard from '../../shared/src/components/PlayerCard';
@@ -221,7 +221,7 @@ function Road({ state }) {
 
 // ── start ───────────────────────────────────────────────────────────────────
 
-function Start({ onStart, onExit, scale, exitLabel = 'Other modes' }) {
+function Start({ onStart, onExit, scale, exitLabel = 'Back' }) {
   const [seed] = useState(() => (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0);
   const [name, setName] = useState('');
   const [picks, setPicks] = useState([]);
@@ -300,7 +300,7 @@ function Start({ onStart, onExit, scale, exitLabel = 'Other modes' }) {
 
 // ── hub ─────────────────────────────────────────────────────────────────────
 
-function ClubMenu({ onExit, onAbandon, onSettings, onPrimer, onRename }) {
+function ClubMenu({ onAbandon, onSettings, onPrimer, onRename }) {
   const [open, setOpen] = useState(false);
   const [armed, setArmed] = useState(false);
   useEscape(() => { setOpen(false); setArmed(false); });
@@ -314,7 +314,6 @@ function ClubMenu({ onExit, onAbandon, onSettings, onPrimer, onRename }) {
           {onRename && <button type="button" onClick={onRename}>{t('Rename club')}</button>}
           {onPrimer && <button type="button" onClick={onPrimer}>{t('How it plays')}</button>}
           {onSettings && <button type="button" onClick={onSettings}>{t('Settings')}</button>}
-          <button type="button" onClick={onExit}>Other modes</button>
           <button type="button" data-armed={armed || undefined} onBlur={() => setArmed(false)} onClick={() => (armed ? onAbandon() : setArmed(true))}>
             {armed ? 'Tap again to delete this club' : 'Abandon club'}
           </button>
@@ -397,7 +396,7 @@ function BenchOpen({ scale, onClick }) {
     : <span className={styles.benchOpen} style={style}>{body}</span>;
 }
 
-function Home({ state, go, onExit, onAbandon, onSettings, onPrimer, size }) {
+function Home({ state, go, onAbandon, onSettings, onPrimer, size }) {
   const squad = squadCards(state, allCards);
   const match = nextMatch(state);
   const opponent = clubById(state, match.id);
@@ -410,7 +409,7 @@ function Home({ state, go, onExit, onAbandon, onSettings, onPrimer, size }) {
     <div className={styles.stage}>
       <Hud title={state.name} tags={[[tierName(state.tier), true], [`Year ${state.year}`], ...(started ? [[`${ordinal(pos)} in table`]] : [])]} logo={null}>
         <PackCounter state={state} onOpen={() => go('vault')} />
-        <ClubMenu onExit={onExit} onAbandon={onAbandon} onSettings={onSettings} onPrimer={onPrimer} onRename={() => go('rename')} />
+        <ClubMenu onAbandon={onAbandon} onSettings={onSettings} onPrimer={onPrimer} onRename={() => go('rename')} />
       </Hud>
       <Ground map={firstMap?.image && assetPath(firstMap.image)} className={styles.home}>
         <Road state={state} />
@@ -1505,7 +1504,6 @@ function readSave() {
 // ── the game ────────────────────────────────────────────────────────────────
 
 export default function Club() {
-  const navigate = useNavigate();
   const size = useCardScale();
   const [boot] = useState(readSave);
   const [state, setState] = useState(boot.state);
@@ -1684,7 +1682,6 @@ export default function Club() {
         onFound={found}
         onPrimer={() => openPrimer('landing')}
         onSettings={() => openSettings('landing')}
-        onExit={() => navigate('/run')}
       />
       {notice && <p className={styles.toast} role="status">{notice}</p>}
       </>
@@ -1760,7 +1757,6 @@ export default function Club() {
         state={state}
         size={size}
         go={(next) => { setNotice(''); show(next); }}
-        onExit={() => navigate('/run')}
         onAbandon={fresh}
         onSettings={() => openSettings('home')}
         onPrimer={() => openPrimer('home')}

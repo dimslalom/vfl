@@ -25,7 +25,7 @@ export default function Legal() {
           {t('and official VALORANT wallpapers.')}
         </p>
         <p>{t('Signing in is optional. If you sign in with Discord, VFL keeps your Discord ID, username and avatar, a sign-in cookie, and your saved club. It never sees your email or password. You can delete your account and everything on it from Club settings.')}</p>
-        <p>{t('Without signing in, your games stay on this device. A leaderboard entry stores your squad name, score and a random ID.')}</p>
+        <p>{t('Without signing in, your club stays on this device.')}</p>
         <Link className={styles.back} to="/club">{t('Back to the game')}</Link>
       </article>
     </main>

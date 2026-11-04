@@ -53,7 +53,7 @@ So "login and account entry" has nothing to reuse except the device save. Buildi
 ## 4. How the new pages follow these rules
 
 - **Same stage.** The landing and onboarding reuse `Club.module.css` primitives (`.stage`, `.hud`, `.plate`, `.ground`, `.tile`, `.primary`, `.ghost`, `.moment`, the lane-cut panel). They sit on map art under `--veil`, so going from landing to founding to hub reads as one place with no change of skin.
-- **One sentence, one Play button** (UX principle 1). A returning player sees their own club (crest, name, tier, year, next rival) and **Continue**. A new player sees one line on what the mode is and **Create your club**. Other modes are one quiet link.
+- **One sentence, one Play button** (UX principle 1). A returning player sees their own club (crest, name, tier, year, next rival) and **Continue**. A new player sees one line on what the mode is and **Create your club**. Settings and How it plays are quiet links.
 - **Teach with real pieces** (principle 3). Onboarding uses real `PlayerCard`s, a real pack still and a real tile, not illustrations. It is a short numbered sequence (principle 12, with a step count), can be skipped, and is shown once, with a seen flag like `rulesSeen`, then kept one tap away.
 - **No gate.** Whatever account entry becomes, the first Play never waits on it.
 - **Motion.** The same `groundSettle` landing and 70ms deal. No new curves.
@@ -64,7 +64,7 @@ So "login and account entry" has nothing to reuse except the device save. Buildi
 
 Owner decisions: optional Discord sign-in, one login for all of VFL (built later on this branch; see `docs/club-accounts-plan.md`); a skippable 3-step primer and first-week tips, with a settings screen to turn both off; the landing inside `/club`; Claude drafts the copy and the owner revises it.
 
-- **Landing** (`src/components/club/ClubLanding.jsx`, direction A): every visit to `/club` opens here. A new player sees one sentence and **Create your club**. A returning player sees their club, their starting five, the next fixture and **Continue**. The quiet links are How it plays, Settings and Other modes.
+- **Landing** (`src/components/club/ClubLanding.jsx`, direction A): every visit to `/club` opens here. A new player sees one sentence and **Create your club**. A returning player sees their club, their starting five, the next fixture and **Continue**. The quiet links are How it plays and Settings (Club is the only mode since the cleanup merge).
 - **Primer** (`ClubPrimer.jsx`): three steps (draft your five, play the week, climb or get sacked), each with a real piece. Skip is on every step. It runs once before the first founding draft and can be replayed from the landing, the club menu and settings.
 - **First-week tips** (`ClubHint.jsx`, `src/lib/clubOnboarding.js`): one tip per screen (home, squad, train, vault, chips, league) during year 1 until the second series. Each tip shows once, and "Turn off tips" turns them all off.
 - **Settings** (`ClubSettings.jsx`): switches for the primer and the tips, replay the primer, show tips again, language, and a plain line on where the save lives.

@@ -8,7 +8,7 @@ import styles from './LandingLab.module.css';
 const noop = () => {};
 
 const DIRECTIONS = [
-  ['a', 'A. Front door', props => <ClubLanding {...props} onContinue={noop} onFound={noop} onPrimer={noop} onSettings={noop} onExit={noop} />],
+  ['a', 'A. Front door', props => <ClubLanding {...props} onContinue={noop} onFound={noop} onPrimer={noop} onSettings={noop} />],
   ['b', 'B. Season road', props => <RoadLanding {...props} />],
   ['c', 'C. Pack first', props => <PackLanding {...props} />],
   ['d', 'D. Ladder', props => <LadderLanding {...props} />],

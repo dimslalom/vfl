@@ -28,7 +28,6 @@ const Links = () => (
   <nav className={styles.links} aria-label="More">
     <button type="button" className={styles.link}>How it plays</button>
     <button type="button" className={styles.link}>Settings</button>
-    <button type="button" className={styles.link}>Other modes</button>
   </nav>
 );
 

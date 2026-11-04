@@ -17,8 +17,8 @@ function AccountLine({ account }) {
 
 // Direction A, "Front door": the one shipped in /club. One sentence and one button.
 // A new player reads what the mode is; a returning one sees their own club and
-// Continue. Everything else is one quiet link. Signing in with Discord is optional.
-export default function ClubLanding({ state, account, map = DEFAULT_MAP, onContinue, onFound, onPrimer, onSettings, onExit }) {
+// Continue. Everything else is a quiet link. Signing in with Discord is optional.
+export default function ClubLanding({ state, account, map = DEFAULT_MAP, onContinue, onFound, onPrimer, onSettings }) {
   const summary = clubSummary(state);
   const returning = Boolean(summary);
   return (
@@ -73,7 +73,6 @@ export default function ClubLanding({ state, account, map = DEFAULT_MAP, onConti
         <nav className={styles.links} aria-label={t('More')}>
           <button type="button" className={styles.link} onClick={onPrimer}>{t('How it plays')}</button>
           <button type="button" className={styles.link} onClick={onSettings}>{t('Settings')}</button>
-          <button type="button" className={styles.link} onClick={onExit}>{t('Other modes')}</button>
         </nav>
         <div className={styles.go}>
           <AccountLine account={account} />

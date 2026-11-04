@@ -6,8 +6,6 @@ import { t } from './lib/i18n';
 import useLang from './lib/useLang';
 
 const Collection = lazy(() => import('./pages/Collection'));
-const PerfectRun = lazy(() => import('./pages/PerfectRun'));
-const Multiplayer = lazy(() => import('./pages/Multiplayer'));
 const Legal = lazy(() => import('./pages/Legal'));
 const BoardPrototype = lazy(() => import('./pages/BoardPrototype'));
 const Club = lazy(() => import('./pages/Club'));
@@ -48,11 +46,12 @@ export default function App() {
                   {/* Renamed from /collection - kept as a redirect so old links still work. */}
                   <Route path="/collection" element={<Navigate to="/cards" replace />} />
                   <Route path="/cards" element={<Collection />} />
-                  <Route path="/prematch" element={<Navigate to="/run" replace />} />
-                  <Route path="/match" element={<Navigate to="/run" replace />} />
-                  <Route path="/pack" element={<Navigate to="/run" replace />} />
+                  {/* The Gauntlet (/run) and its old entry points were retired; Club is the game. */}
+                  <Route path="/run" element={<Navigate to="/club" replace />} />
+                  <Route path="/prematch" element={<Navigate to="/club" replace />} />
+                  <Route path="/match" element={<Navigate to="/club" replace />} />
+                  <Route path="/pack" element={<Navigate to="/club" replace />} />
                   <Route path="/club" element={<Club />} />
-                  <Route path="/run" element={<PerfectRun />} />
                   <Route path="/legal" element={<Legal />} />
                   <Route path="/board" element={<BoardPrototype />} />
                                     <Route path="/lab/pack" element={<PackLab />} />
@@ -61,8 +60,8 @@ export default function App() {
                   <Route path="/lab/fx" element={<FxLab />} />
                   <Route path="/lab/arena" element={<ArenaLab />} />
                   <Route path="/lab/landing" element={<LandingLab />} />
-                  <Route path="/multiplayer" element={<Multiplayer />} />
-                  <Route path="/lobby/:code" element={<Multiplayer />} />
+                  <Route path="/multiplayer" element={<Navigate to="/club" replace />} />
+                  <Route path="/lobby/:code" element={<Navigate to="/club" replace />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
