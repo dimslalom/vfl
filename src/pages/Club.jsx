@@ -10,11 +10,11 @@ import useReducedMotion from '../../shared/src/lib/useReducedMotion';
 import BoardSeries from '../components/BoardSeries';
 import PackTear from '../pack3d/Pack3DTear';
 import {
-  GOLD_PITY, PACK_KEYS, PACK_VALUE, REROLL_PRICE, SESSION_PRICE, TAPE_MAX, TITLES_PER_ICON, TRAIN_SLOTS_MAX, clubFatigueExtra, packValue,
+  GOLD_PITY, NAME_MAX, PACK_KEYS, PACK_VALUE, RENAME_PRICE, REROLL_PRICE, SESSION_PRICE, TAPE_MAX, TITLES_PER_ICON, TRAIN_SLOTS_MAX, clubFatigueExtra, packValue,
   squadMax, stock,
 } from '../engine/club/economy';
 import {
-  buySession, canBuySession, canReroll, chooseChip, choosePick, goldDue, openBlocker, openPack, rerollChips, useTape as spendTape,
+  buySession, canBuySession, canReroll, cleanName, renameClub, chooseChip, choosePick, goldDue, openBlocker, openPack, rerollChips, useTape as spendTape,
 } from '../engine/club/rewards';
 import { ROLES, chipInfo } from '../chip3d/chipData';
 import { ChipIcon } from '../chip3d/ChipPayout';
@@ -34,9 +34,11 @@ import ClubPrimer from '../components/club/ClubPrimer';
 import ClubSettings from '../components/club/ClubSettings';
 import ClubHint from '../components/club/ClubHint';
 import ClubSyncChoice from '../components/club/ClubSyncChoice';
+import ClubRename from '../components/club/ClubRename';
 import useClubSync from '../lib/useClubSync';
 import { hintFor, loadOnboarding, markHintSeen, primerDue, saveOnboarding } from '../lib/clubOnboarding';
 import { t } from '../lib/i18n';
+import entry from '../components/club/ClubEntry.module.css';
 import styles from './Club.module.css';
 
 const cardById = new Map(allCards.map(card => [card.id, card]));
@@ -226,6 +228,11 @@ function Start({ onStart, onExit, scale, exitLabel = 'Other modes' }) {
   // Each draft pack is torn open before its cards can be picked.
   const [torn, setTorn] = useState(false);
   const done = picks.length >= DRAFT_PACKS;
+  const enter = () => {
+    if (!done) return;
+    playUiSound('lock_in');
+    onStart(seed, cleanName(name) || t('Your club'), picks.map(card => card.id));
+  };
   const offers = useMemo(() => (done ? [] : draftPack(seed, picks.length, picks.map(card => card.id), allCards)), [seed, picks, done]);
   useEffect(() => {
     if (!torn || done) return undefined;
@@ -238,10 +245,14 @@ function Start({ onStart, onExit, scale, exitLabel = 'Other modes' }) {
       <header className={styles.hud}>
         <div className={styles.plate}>
           <span className={styles.crest} aria-hidden="true" />
-          <label className={styles.nameField}>
-            <span>Club name</span>
-            <input value={name} maxLength={18} placeholder="Your club" onChange={event => setName(event.target.value)} />
-          </label>
+          {/* The name can be typed any time during the draft; once the five are in,
+              naming becomes the screen's one task. */}
+          {done ? <div className={styles.titleBlock}><b>{cleanName(name) || t('Your club')}</b></div> : (
+            <label className={styles.nameField}>
+              <span>{t('Club name')}</span>
+              <input value={name} maxLength={NAME_MAX} placeholder={t('Your club')} onChange={event => setName(event.target.value)} />
+            </label>
+          )}
         </div>
         <div className={styles.chips}>
           <BackButton onClick={onExit} label={exitLabel} />
@@ -249,7 +260,16 @@ function Start({ onStart, onExit, scale, exitLabel = 'Other modes' }) {
         </div>
       </header>
       <main className={`${styles.play} ${styles.centered}`}>
-        {done && <div className={styles.moment}>Squad ready</div>}
+        {done && (
+          <form className={entry.naming} onSubmit={(event) => { event.preventDefault(); enter(); }}>
+            <div className={styles.moment}>{t('Squad ready')}</div>
+            <label className={entry.nameBig}>
+              <span>{t('Name your club')}</span>
+              <input autoFocus value={name} maxLength={NAME_MAX} placeholder={t('Your club')} onChange={event => setName(event.target.value)} />
+            </label>
+            <p className={styles.sub}>{t('Naming it is free now. Renaming later costs {n} packs.', { n: RENAME_PRICE })}</p>
+          </form>
+        )}
         {!done && !torn && (
           // The pack stands as tall as the cards that come out of it.
           <div className={styles.packSpot} style={{ '--pack-scale': (580 * scale * 1.25) / 283, height: 580 * scale * 1.25 }}>
@@ -272,7 +292,7 @@ function Start({ onStart, onExit, scale, exitLabel = 'Other modes' }) {
             ? <Card key={picks[index].id} card={picks[index]} scale={scale * 0.5} />
             : <span key={index} className={styles.empty} style={{ width: 400 * scale * 0.5, height: 580 * scale * 0.5 }}>Open</span>))}
         </div>
-        <button type="button" className={styles.primary} disabled={!done} onClick={() => { playUiSound('lock_in'); onStart(seed, name.trim() || 'Your club', picks.map(card => card.id)); }}>Enter league</button>
+        <button type="button" className={styles.primary} disabled={!done} onClick={enter}>{t('Enter league')}</button>
       </footer>
     </div>
   );
@@ -280,7 +300,7 @@ function Start({ onStart, onExit, scale, exitLabel = 'Other modes' }) {
 
 // ── hub ─────────────────────────────────────────────────────────────────────
 
-function ClubMenu({ onExit, onAbandon, onSettings, onPrimer }) {
+function ClubMenu({ onExit, onAbandon, onSettings, onPrimer, onRename }) {
   const [open, setOpen] = useState(false);
   const [armed, setArmed] = useState(false);
   useEscape(() => { setOpen(false); setArmed(false); });
@@ -291,6 +311,7 @@ function ClubMenu({ onExit, onAbandon, onSettings, onPrimer }) {
       </button>
       {open && (
         <div className={styles.menu}>
+          {onRename && <button type="button" onClick={onRename}>{t('Rename club')}</button>}
           {onPrimer && <button type="button" onClick={onPrimer}>{t('How it plays')}</button>}
           {onSettings && <button type="button" onClick={onSettings}>{t('Settings')}</button>}
           <button type="button" onClick={onExit}>Other modes</button>
@@ -389,7 +410,7 @@ function Home({ state, go, onExit, onAbandon, onSettings, onPrimer, size }) {
     <div className={styles.stage}>
       <Hud title={state.name} tags={[[tierName(state.tier), true], [`Year ${state.year}`], ...(started ? [[`${ordinal(pos)} in table`]] : [])]} logo={null}>
         <PackCounter state={state} onOpen={() => go('vault')} />
-        <ClubMenu onExit={onExit} onAbandon={onAbandon} onSettings={onSettings} onPrimer={onPrimer} />
+        <ClubMenu onExit={onExit} onAbandon={onAbandon} onSettings={onSettings} onPrimer={onPrimer} onRename={() => go('rename')} />
       </Hud>
       <Ground map={firstMap?.image && assetPath(firstMap.image)} className={styles.home}>
         <Road state={state} />
@@ -1693,6 +1714,19 @@ export default function Club() {
   if (screen === 'vault') return withHint(<Vault state={state} onBack={() => show('home')} onOpenPack={openThePack} onWindow={state.phase === 'review' ? () => show('window') : null} />, 'vault');
   if (screen === 'chips') {
     return withHint(<ChipPick key={state.chipOffer?.attempt ?? 'hand'} state={state} onBack={() => show('home')} onTake={takeChip} onPass={() => morph(() => { setState(current => chooseChip(current, null)); setScreen('home'); })} onReroll={() => setState(current => rerollChips(current))} />, 'chips');
+  }
+  if (screen === 'rename') {
+    return (
+      <ClubRename
+        state={state}
+        onBack={() => show('home')}
+        onRename={(name) => morph(() => {
+          setState(current => renameClub(current, name));
+          setNotice(t('Renamed to {name}', { name: cleanName(name) }));
+          setScreen('home');
+        })}
+      />
+    );
   }
   if (screen === 'squad') return withHint(<Squad state={state} size={size} onBack={() => show('home')} onMove={(from, to) => morph(() => setState(current => moveSquad(current, from, to)))} />, 'squad');
   const match = nextMatch(state);

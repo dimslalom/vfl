@@ -604,4 +604,19 @@ export default {
   "Couldn’t sign in with Discord. Try again.": "No se pudo iniciar sesión con Discord. Inténtalo de nuevo.",
   "Signing in is optional. If you sign in with Discord, VFL keeps your Discord ID, username and avatar, a sign-in cookie, and your saved club. It never sees your email or password. You can delete your account and everything on it from Club settings.": "Iniciar sesión es opcional. Si inicias sesión con Discord, VFL guarda tu ID de Discord, tu nombre de usuario y tu avatar, una cookie de sesión y tu club guardado. Nunca ve tu correo ni tu contraseña. Puedes eliminar tu cuenta y todo lo que contiene desde los ajustes del club.",
   "Without signing in, your games stay on this device. A leaderboard entry stores your squad name, score and a random ID.": "Sin iniciar sesión, tus partidas se quedan en este dispositivo. Una entrada en la clasificación guarda el nombre de tu equipo, tu puntuación y un ID aleatorio.",
+
+  // Club names: free when founding, paid to change.
+  "Back to the club": "Volver al club",
+  "Rename club": "Renombrar club",
+  "New name": "Nuevo nombre",
+  "Costs": "Cuesta",
+  "You have": "Tienes",
+  "Win a series to earn more packs.": "Gana una serie para conseguir más sobres.",
+  "Rename for {n} packs": "Renombrar por {n} sobres",
+  "Club name": "Nombre del club",
+  "Squad ready": "Equipo listo",
+  "Name your club": "Ponle nombre a tu club",
+  "Naming it is free now. Renaming later costs {n} packs.": "Ponerle nombre ahora es gratis. Renombrarlo después cuesta {n} sobres.",
+  "Enter league": "Entrar en la liga",
+  "Renamed to {name}": "Renombrado a {name}",
 };

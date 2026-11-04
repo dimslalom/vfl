@@ -66,6 +66,21 @@
 @keyframes settle { from { opacity: 0; transform: perspective(1200px) rotateX(4.5deg) translateY(10px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .step, .settings, .intro, .cardRow, .fixture { animation: none; } }
 
+/* ── naming ──────────────────────────────────────────────────────────────── */
+/* One big field: the club's name is the screen's one task. */
+.naming { width: min(560px, 100%); display: flex; flex-direction: column; align-items: center; gap: var(--sp-4); margin: auto 0; text-align: center; animation: settle .34s cubic-bezier(.22, 1, .36, 1) both; }
+.nameBig { width: 100%; display: flex; flex-direction: column; gap: var(--sp-2); }
+.nameBig span { font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.nameBig input { width: 100%; box-sizing: border-box; min-height: 72px; padding: 0 var(--sp-4); border: 0; outline: 0; background: var(--plate); color: var(--ink); font: inherit; font-size: var(--fs-heading); font-weight: 700; text-align: center; box-shadow: inset 0 -3px 0 var(--line-bracket); }
+.nameBig input:focus-visible { box-shadow: none; }
+.nameBig input::placeholder { color: var(--faint); }
+.cost { margin: 0; display: flex; gap: 2px; }
+.cost > span { min-width: 96px; padding: var(--sp-2) var(--sp-3); display: flex; flex-direction: column; gap: 2px; background: var(--plate); }
+.cost small { font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.cost b { font-size: var(--fs-title); }
+.cost > span[data-short] b { color: var(--accent); }
+@media (prefers-reduced-motion: reduce) { .naming { animation: none; } }
+
 /* ── sync choice ─────────────────────────────────────────────────────────── */
 .sync { width: min(860px, 100%); margin: auto 0; display: flex; flex-direction: column; align-items: center; gap: var(--sp-5); text-align: center; animation: settle .34s cubic-bezier(.22, 1, .36, 1) both; }
 .syncPair { width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; }

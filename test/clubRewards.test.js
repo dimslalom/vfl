@@ -6,7 +6,7 @@ import {
   GOLD_PITY, PACK_VALUE, grantPacks, packValue, payPacks, settlePacks, squadMax,
 } from '../src/engine/club/economy.js';
 import {
-  buySession, canBuySession, choosePick, chooseChip, openBlocker, openPack, rerollChips, useTape,
+  buySession, canBuySession, canRename, choosePick, cleanName, renameClub, chooseChip, openBlocker, openPack, rerollChips, useTape,
 } from '../src/engine/club/rewards.js';
 import {
   STARTERS, WEEKS, draftPack, finishSeries, newClub, nextMatch, rollChipOffer, train, trainingOffer, clubCard, squadCards,
@@ -246,4 +246,22 @@ test('a version 1 save loads with the new fields filled in', () => {
   assert.equal(state.gold, 0);
   assert.deepEqual(state.pity, { gold: 0 });
   assert.equal(CLUB_SAVE_KEY, 'vfl-club-save');
+});
+
+test('the founding name is free; a new name later costs 3 in pack value', () => {
+  const picks = [];
+  for (let index = 0; index < STARTERS; index += 1) picks.push(draftPack(7, index, picks, allCards)[0].id);
+  const state = newClub({ seed: 7, name: 'Night Shift', picks, cards: allCards });
+  assert.equal(packValue(state), 3, 'a new club starts with exactly one rename in the bank');
+  const renamed = renameClub(state, '  Day   Shift ');
+  assert.equal(renamed.name, 'Day Shift');
+  assert.equal(packValue(renamed), 0);
+  assert.equal(canRename(renamed, 'Again'), false, 'no packs left');
+  assert.equal(renameClub(renamed, 'Again'), renamed);
+  assert.equal(canRename(state, 'Night Shift'), false, 'the same name is not a rename');
+  assert.equal(canRename(state, '   '), false, 'a name is needed');
+  assert.equal(canRename({ ...state, phase: 'over' }, 'Ghosts'), false, 'a sacked club cannot rename');
+  const rich = grantPacks(state, { gold: 1 });
+  assert.equal(packValue(renameClub(rich, 'Gold Rush')), packValue(rich) - 3);
+  assert.equal(cleanName('x'.repeat(40)).length, 18);
 });
