@@ -371,4 +371,12 @@ export default {
   "Team names, logos and player names belong to their owners.": "Nomes de equipes, logos e nomes de jogadores pertencem aos seus donos.",
   "Plays during matches, loudest as one starts.": "Toca durante as partidas, mais alto quando uma começa.",
   "Music volume": "Volume da música",
+  "Squad power: you {you}, them {them}": "Força da equipe: você {you}, eles {them}",
+  "No moves yet. Clubs trade in the window after the playoffs.": "Nenhuma movimentação ainda. Os clubes negociam na janela depois dos playoffs.",
+  "to {club}": "para {club}",
+  "This week": "Esta semana",
+  "Latest moves": "Últimas movimentações",
+  "Record": "Campanha",
+  "Rounds": "Rounds",
+  "Table": "Tabela",
 };

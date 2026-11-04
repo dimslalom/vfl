@@ -1,13 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import PlayerCard from '../../../shared/src/components/PlayerCard';
 import { assetPath } from '../../../shared/src/lib/utils';
+import useReducedMotion from '../../../shared/src/lib/useReducedMotion';
 import { attention } from '../../engine/club/attention';
 import { clubById, clubPower, clubRoster, findCard, nextMatch, standings } from '../../engine/club/season';
 import { t } from '../../lib/i18n';
 import ClubLogo from '../ClubLogo';
 import styles from './HubFeed.module.css';
 
-// Everything here is a picture first: a bar, a face, an icon with a number.
-// Words are kept for the slide titles and for assistive text.
+// How long each slide plays before the next, like a story.
+const SLIDE_MS = 7000;
+const SWIPE_PX = 40;
 
 const ICONS = {
   contracts: <path d="M6 3h8l4 4v14H6zM14 3v4h4M9 12h6M9 16h6" />,
@@ -27,139 +30,228 @@ const ATTENTION_LABEL = {
   places: n => (n === 1 ? t('1 squad place open') : t('{n} squad places open', { n })),
 };
 
+const ordinalPos = pos => t('{pos} of 6', { pos });
+
 function Icon({ name }) {
-  return <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="miter" strokeLinecap="square" aria-hidden="true">{ICONS[name]}</svg>;
+  return <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="miter" strokeLinecap="square" aria-hidden="true">{ICONS[name]}</svg>;
 }
 
-function Opponent({ state, cards }) {
+function Chevron() {
+  return <svg className={styles.chevron} viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>;
+}
+
+// A player's face, or a flat head-and-shoulders shape when there's no photo yet.
+function Face({ card }) {
+  return (
+    <span className={styles.face}>
+      {card.photo && !card.photo.includes('placeholder')
+        ? <img src={assetPath(card.photo)} alt="" loading="lazy" />
+        : <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="15" r="7" /><path d="M6 40c1-9 6-14 14-14s13 5 14 14z" /></svg>}
+    </span>
+  );
+}
+
+function Crest({ club, size }) {
+  return club?.logo
+    ? <img className={styles.crest} src={assetPath(club.logo)} alt="" style={{ width: size, height: size }} />
+    : <span className={styles.crest} style={{ width: size, height: size }} />;
+}
+
+// Scouting report: the edge as one tug bar with a number at each end, then
+// their best three as real cards, then where they stand.
+function Opponent({ state, cards, cardScale }) {
   const match = nextMatch(state);
   const rival = match && clubById(state, match.id);
-  if (!rival) return <div className={styles.blank} role="img" aria-label={t('No match scheduled')} />;
-  const rows = standings(state, cards);
-  const pos = rows.find(row => row.id === rival.id)?.pos;
-  const mine = clubPower(state, 'you', cards);
-  const theirs = clubPower(state, rival.id, cards);
-  const top = Math.max(mine, theirs, 1);
+  if (!rival) return <p className={styles.empty}>{t('No match scheduled')}</p>;
+  const mine = Math.round(clubPower(state, 'you', cards));
+  const theirs = Math.round(clubPower(state, rival.id, cards));
+  const share = (mine / Math.max(1, mine + theirs)) * 100;
+  const record = state.table?.[rival.id] ?? { w: 0, l: 0, rd: 0 };
+  const pos = state.results.length > 0 ? standings(state, cards).find(row => row.id === rival.id)?.pos : null;
   const best = clubRoster(state, rival, cards).filter(Boolean).sort((a, b) => b.rating - a.rating).slice(0, 3);
   return (
     <>
-      <div className={styles.power} role="img" aria-label={`${state.name} ${Math.round(mine)}, ${rival.name} ${Math.round(theirs)}`}>
-        <div><ClubLogo name={state.name} style={state.crest} tone={state.tone} size={26} /><i style={{ width: `${(mine / top) * 100}%` }} data-you /><em>{Math.round(mine)}</em></div>
-        <div>{rival.logo ? <img src={assetPath(rival.logo)} alt="" /> : <span />}<i style={{ width: `${(theirs / top) * 100}%` }} /><em>{Math.round(theirs)}</em></div>
+      <div className={styles.tug} role="img" aria-label={t('Squad power: you {you}, them {them}', { you: mine, them: theirs })}>
+        <span className={styles.tugEnd}><ClubLogo name={state.name} style={state.crest} tone={state.tone} size={24} /><b>{mine}</b></span>
+        <span className={styles.tugBar}><i style={{ width: `${share}%` }} /></span>
+        <span className={styles.tugEnd} data-them><b>{theirs}</b><Crest club={rival} size={24} /></span>
       </div>
-      <ul className={styles.faces} aria-label={t('Their best')}>
-        {best.map(card => (
-          <li key={card.id}>
-            <img src={assetPath(card.photo)} alt="" loading="lazy" />
-            <b>{card.rating}</b>
-          </li>
-        ))}
-      </ul>
-      {pos && (
-        <div className={styles.table} role="img" aria-label={t('{pos} of 6', { pos })}>
-          {rows.map(row => <i key={row.id} data-here={row.id === rival.id || undefined} data-you={row.you || undefined} />)}
+      <div className={styles.best}>
+        <span className={styles.label}>{t('Their best')}</span>
+        <div className={styles.cards}>
+          {best.map(card => <PlayerCard key={card.id} card={card} displayScale={cardScale} tilt={false} canDrag={false} />)}
         </div>
-      )}
+      </div>
+      <dl className={styles.facts}>
+        <div><dt>{t('Record')}</dt><dd>{record.w}–{record.l}</dd></div>
+        <div><dt>{t('Rounds')}</dt><dd>{record.rd > 0 ? `+${record.rd}` : record.rd}</dd></div>
+        <div><dt>{t('Table')}</dt><dd>{pos ? ordinalPos(pos) : '–'}</dd></div>
+      </dl>
+      {/* The phone strip has no room for cards: their best as faces and ratings. */}
+      <ul className={styles.facesRow} aria-label={t('Their best')}>
+        {best.map(card => <li key={card.id}><Face card={card} /><b>{card.rating}</b></li>)}
+      </ul>
     </>
   );
 }
 
+// Needs attention: what it is in words, its count, and where a tap goes.
 function Attention({ state, onGo }) {
   const items = attention(state, 4);
   if (items.length === 0) {
     return (
-      <div className={styles.clear} role="img" aria-label={t('All clear this week')}>
-        <svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="square" aria-hidden="true"><path d="M4 12.5 9.5 18 20 6.5" /></svg>
+      <div className={styles.clear}>
+        <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="square" aria-hidden="true"><path d="M4 12.5 9.5 18 20 6.5" /></svg>
+        <b>{t('All clear this week')}</b>
       </div>
     );
   }
   return (
-    <ul className={styles.tiles}>
-      {items.map(item => {
-        const label = ATTENTION_LABEL[item.key](item.n);
-        return (
-          <li key={item.key}>
-            <button type="button" aria-label={label} title={label} onClick={() => onGo(item.go)}>
-              <Icon name={item.key} />
-              {item.key !== 'open-pack' && item.key !== 'chip-offer' && <b>{item.n}</b>}
-            </button>
-          </li>
-        );
-      })}
+    <ul className={styles.rows}>
+      {items.map(item => (
+        <li key={item.key}>
+          <button type="button" className={styles.row} onClick={() => onGo(item.go)}>
+            <span className={styles.icon}><Icon name={item.key} /></span>
+            <span className={styles.rowText}>{ATTENTION_LABEL[item.key](item.n)}</span>
+            <Chevron />
+          </button>
+        </li>
+      ))}
     </ul>
   );
 }
 
-// A player and the club he now plays for: face, arrow, crest.
+// League news: who moved, and where to.
 function News({ state, cards }) {
   const rows = (state.news ?? []).slice(0, 3).map(entry => ({
     entry,
     card: findCard(state, cards, entry.id),
     club: entry.kind === 'out' ? null : clubById(state, entry.club),
   })).filter(row => row.card);
+  if (rows.length === 0) return <p className={styles.empty}>{t('No moves yet. Clubs trade in the window after the playoffs.')}</p>;
   return (
-    <ul className={styles.news}>
-      {Array.from({ length: 3 }, (_, i) => {
-        const row = rows[i];
-        if (!row) return <li key={i} className={styles.ghost} aria-hidden="true"><span /><svg className={styles.arrow} viewBox="0 0 24 8" aria-hidden="true"><path d="M0 4h20M16 0l4 4-4 4" /></svg><span /></li>;
-        const crest = row.club?.logo;
-        return (
-          <li key={`${row.entry.id}-${row.entry.year}-${row.entry.kind}`} aria-label={`${row.card.player} ${row.club?.name ?? state.name}`}>
-            <span className={styles.face}><img src={assetPath(row.card.photo)} alt="" loading="lazy" /><b>{row.card.rating}</b></span>
-            <svg className={styles.arrow} viewBox="0 0 24 8" aria-hidden="true"><path d="M0 4h20M16 0l4 4-4 4" /></svg>
-            {row.entry.kind === 'out'
-              ? <ClubLogo name={state.name} style={state.crest} tone={state.tone} size={44} />
-              : crest ? <img className={styles.crest} src={assetPath(crest)} alt="" /> : <span className={styles.crest} />}
-          </li>
-        );
-      })}
+    <ul className={styles.rows}>
+      {rows.map(({ entry, card, club }) => (
+        <li key={`${entry.id}-${entry.year}-${entry.kind}`} className={styles.move}>
+          <Face card={card} />
+          <span className={styles.rowText}>
+            <b>{card.player}</b>
+            <small>{t('to {club}', { club: club?.name ?? state.name })}</small>
+          </span>
+          {entry.kind === 'out'
+            ? <ClubLogo name={state.name} style={state.crest} tone={state.tone} size={28} />
+            : <Crest club={club} size={28} />}
+        </li>
+      ))}
     </ul>
   );
 }
 
-// One tall panel of slides you scroll through, one snapping into place with the
-// next peeking in. The pips on the right jump to a slide.
-export default function HubFeed({ state, cards, width, height, horizontal = false, onGo }) {
-  const rail = useRef(null);
+/**
+ * The club feed, played like stories: one slide at a time, sliding sideways,
+ * with a bar per slide across the top that fills while it plays. Tap the right
+ * side for the next, the left for the one before, or swipe. Hovering, focus or a
+ * held press pauses it; with reduced motion it waits to be moved by hand.
+ */
+export default function HubFeed({ state, cards, width, height, compact = false, onGo }) {
+  const reducedMotion = useReducedMotion();
   const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const press = useRef(null);
+  const match = nextMatch(state);
+  const rival = match && clubById(state, match.id);
+  // The rival's three cards fill the slide: as wide as three fit, and no taller
+  // than the room left by the bars, title, tug bar and facts (about 250 px).
+  const cardScale = Math.max(0.12, Math.min(0.3, ((width ?? 320) - 56) / 3 / 400, ((height ?? 400) - 250) / 580));
   const slides = [
-    { key: 'opponent', title: t('Scouting report'), body: <Opponent state={state} cards={cards} /> },
-    { key: 'attention', title: t('Needs attention'), body: <Attention state={state} onGo={onGo} /> },
-    { key: 'news', title: t('League news'), body: <News state={state} cards={cards} /> },
+    { key: 'opponent', title: t('Scouting report'), sub: rival?.name, body: <Opponent state={state} cards={cards} cardScale={cardScale} /> },
+    { key: 'attention', title: t('Needs attention'), sub: t('This week'), body: <Attention state={state} onGo={onGo} /> },
+    { key: 'news', title: t('League news'), sub: t('Latest moves'), body: <News state={state} cards={cards} /> },
   ];
-  useEffect(() => {
-    const el = rail.current;
-    if (!el) return undefined;
-    const step = () => {
-      const first = el.children[0];
-      const second = el.children[1];
-      return first && second ? (horizontal ? second.offsetLeft - first.offsetLeft : second.offsetTop - first.offsetTop) : 1;
-    };
-    const onScroll = () => setIndex(Math.max(0, Math.min(slides.length - 1, Math.round((horizontal ? el.scrollLeft : el.scrollTop) / step()))));
-    el.addEventListener('scroll', onScroll, { passive: true });
-    return () => el.removeEventListener('scroll', onScroll);
-  }, [slides.length, horizontal]);
-  const jump = i => {
-    const first = rail.current?.children[0];
-    const second = rail.current?.children[1];
-    const step = first && second ? (horizontal ? second.offsetLeft - first.offsetLeft : second.offsetTop - first.offsetTop) : 1;
-    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    rail.current?.scrollTo({ [horizontal ? 'left' : 'top']: i * step, behavior: reduced ? 'auto' : 'smooth' });
+  const count = slides.length;
+  const go = useCallback(step => setIndex(current => (current + step + count) % count), [count]);
+
+  // Arrow keys while the feed has focus.
+  const onKeyDown = (event) => {
+    if (event.key === 'ArrowRight') { event.preventDefault(); go(1); }
+    if (event.key === 'ArrowLeft') { event.preventDefault(); go(-1); }
   };
+  // A tap on the slide's background moves like a story; taps on its buttons don't.
+  const onPointerDown = (event) => {
+    press.current = { x: event.clientX, y: event.clientY, onButton: Boolean(event.target.closest('button')) };
+    setPaused(true);
+  };
+  const onPointerUp = (event) => {
+    const start = press.current;
+    press.current = null;
+    setPaused(false);
+    if (!start || start.onButton) return;
+    const dx = event.clientX - start.x;
+    if (Math.abs(dx) > SWIPE_PX && Math.abs(dx) > Math.abs(event.clientY - start.y)) { go(dx < 0 ? 1 : -1); return; }
+    const box = event.currentTarget.getBoundingClientRect();
+    go(event.clientX - box.left < box.width / 3 ? -1 : 1);
+  };
+
+  useEffect(() => {
+    if (!press.current) return undefined;
+    const cancel = () => { press.current = null; setPaused(false); };
+    window.addEventListener('pointercancel', cancel);
+    return () => window.removeEventListener('pointercancel', cancel);
+  });
+
   return (
-    <aside className={`${styles.feed} ${horizontal ? styles.horizontal : ''}`} style={{ width, height }} aria-label={t('Club feed')}>
-      <div className={styles.rail} ref={rail} tabIndex={0}>
-        {slides.map(slide => (
-          <section key={slide.key} className={styles.slide}>
-            <h3>{slide.title}</h3>
-            {slide.body}
-          </section>
+    <aside
+      className={styles.feed}
+      data-compact={compact || undefined}
+      style={{ width, height }}
+      aria-label={t('Club feed')}
+      aria-roledescription="carousel"
+      tabIndex={0}
+      onKeyDown={onKeyDown}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={() => setPaused(false)}
+    >
+      <div className={styles.bars} role="tablist" aria-label={t('Feed pages')}>
+        {slides.map((slide, i) => (
+          <button
+            key={slide.key}
+            type="button"
+            role="tab"
+            aria-selected={i === index}
+            aria-label={slide.title}
+            className={styles.bar}
+            data-state={i < index ? 'done' : i === index ? 'now' : 'next'}
+            onClick={() => setIndex(i)}
+          >
+            {/* Keyed by index so the fill restarts whenever this slide comes up. */}
+            {i === index && (
+              <i
+                key={index}
+                data-still={reducedMotion || undefined}
+                style={{ animationDuration: `${SLIDE_MS}ms`, animationPlayState: paused ? 'paused' : 'running' }}
+                onAnimationEnd={() => go(1)}
+              />
+            )}
+          </button>
         ))}
       </div>
-      <div className={styles.pips} role="group" aria-label={t('Feed pages')}>
-        {slides.map((slide, i) => (
-          <button key={slide.key} type="button" aria-label={slide.title} aria-pressed={i === index} onClick={() => jump(i)} />
-        ))}
+      <div className={styles.window} onPointerDown={onPointerDown} onPointerUp={onPointerUp}>
+        <div className={styles.track} style={{ transform: `translateX(${-index * 100}%)` }} data-still={reducedMotion || undefined}>
+          {slides.map((slide, i) => (
+            <section key={slide.key} className={styles.slide} data-key={slide.key} aria-hidden={i !== index || undefined} inert={i !== index}>
+              <header className={styles.head}>
+                <span>
+                  <b>{slide.title}</b>
+                  {slide.sub && <small>{slide.sub}</small>}
+                </span>
+                {slide.tag && <span className={styles.tag}>{slide.tag}</span>}
+              </header>
+              {slide.body}
+            </section>
+          ))}
+        </div>
       </div>
     </aside>
   );
