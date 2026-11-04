@@ -6,7 +6,7 @@
 
 **Run a club. Sign VCT pros. Win the league, year after year.**
 
-A fan-made Valorant card game built on real VCT players. Draft five cards, place them on the board, and climb from Challengers to the International tier. No account, no login, no money.
+A fan-made Valorant card game built on real VCT players. Draft five cards, place them on the board, and climb from Challengers to the International tier. No account needed, no money.
 
 [![Play now](https://img.shields.io/badge/Play-vctfantasy.dimas.works-black?style=for-the-badge)](https://vctfantasy.dimas.works)
 
@@ -31,11 +31,11 @@ Clubs sits in between. You build a squad of real pros, but every match is a smal
 - **Contracts, not a roster you keep forever:** every player has one to three years left, and anyone on their last year can move. Nothing in the window is a dice roll. A rival only takes your player if you let them.
 - **Training:** raise a stat, learn a skill, or rest. Players grow, tire and age on a career clock.
 - **Packs you tear open:** Silver, Gold and Icons packs, in a 3D pack you rip by hand. Spend a pack in the market, or open it to pick one of three players. A pity counter guarantees a Gold, and every second title earns an Icons pack.
-- **Saves on your device:** the game is fully client-side and your club lives in your browser's local storage.
+- **Saves on your device, or to your account:** the game runs in your browser and your club lives in local storage. Signing in with Discord is optional and saves the club to your account so it follows you to any device.
 
 ## Play
 
-**[Play it in your browser](https://vctfantasy.dimas.works)**, no install and no sign-up. A desktop or laptop is the best fit for now.
+**[Play it in your browser](https://vctfantasy.dimas.works)**, no install and no sign-up needed. A desktop or laptop is the best fit for now.
 
 1. Name your club and tear open five packs. From each, keep one of three players.
 2. Press **Play** on the home screen for this week's fixture.
@@ -123,9 +123,9 @@ The ratings are not real match stats. Every card carries five synthetic stats (a
 
 Clubs is early and still changing quickly. It replaced two older modes, the Gauntlet and Multiplayer. The notes on what was removed are in [docs/club-cleanup-plan.md](docs/club-cleanup-plan.md).
 
-- **English only for now.** The language picker and the Spanish and Portuguese text exist for the card library, but the Club screens are not translated yet.
+- **Languages:** English, Portuguese (Brazil) and Spanish.
 - **Some players have no photo yet** and show a silhouette.
-- **Browser storage is the only save.** Clear your site data, or switch browsers or devices, and the club is gone.
+- **Without an account, browser storage is the only save.** Clear your site data, or switch browsers or devices, and the club is gone. Signing in with Discord (optional) keeps it in the cloud.
 - **Leftover server code.** The Worker still contains daily-score and lobby code from the removed modes. Nothing in the app calls it.
 
 ## Build from source
