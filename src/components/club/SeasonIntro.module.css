@@ -1,0 +1,52 @@
+/* The season intro: a poster, then the fixture draw. Flat plates on the map
+   ground, the house curves, no glow. Reduced motion shows the finished frame. */
+.ground { justify-content: center; gap: var(--sp-6); cursor: pointer; }
+
+/* Poster: tier, the year as a numeral, the club. */
+.poster { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); text-align: center; transition: transform var(--dur-deal) var(--ease-out); }
+.year { display: flex; flex-direction: column; align-items: center; }
+.year small { font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .2em; text-transform: uppercase; color: var(--muted); }
+.year b { font-size: clamp(96px, 22vh, 220px); font-weight: 900; line-height: .85; letter-spacing: -.05em; font-variant-numeric: tabular-nums; }
+.name { font-size: var(--fs-heading); font-weight: 800; text-transform: uppercase; letter-spacing: -.01em; overflow-wrap: anywhere; }
+
+/* The tier: when it changed, last year's tag lifts away and this year's lands. */
+.tiers { position: relative; display: grid; place-items: center; min-height: 22px; }
+.tiers > * { grid-area: 1 / 1; }
+.tiers [data-old] { animation: tierOut .32s var(--ease-in) .55s both; }
+.tiers [data-new] { animation: tierIn .32s var(--ease-out) .8s both; }
+@keyframes tierOut { to { opacity: 0; transform: translateY(-14px); } }
+@keyframes tierIn { from { opacity: 0; transform: translateY(14px); } }
+
+/* Each beat lands the way club screens do: from below, settling. */
+.poster, .five .card, .road { opacity: 0; }
+.ground[data-phase='poster'] .poster, .ground[data-phase='draw'] .poster { opacity: 1; animation: rise .48s var(--ease-out) both; }
+.year b { display: inline-block; }
+.ground[data-phase='poster'] .year b { animation: numeral .6s var(--ease-out) both; }
+@keyframes numeral { from { opacity: 0; transform: scale(1.18); } }
+@keyframes rise { from { opacity: 0; transform: translateY(18px); } }
+
+.five { display: flex; justify-content: center; gap: var(--sp-2); }
+.five .card { filter: var(--shadow-rest); }
+.ground[data-phase='poster'] .five .card, .ground[data-phase='draw'] .five .card { opacity: 1; animation: deal var(--dur-deal) var(--ease-out) both; animation-delay: calc(320ms + var(--i) * 70ms); }
+@keyframes deal { from { opacity: 0; transform: translateY(40px) scale(.9); } }
+
+/* The draw: the road slides up under the five; each week fills as it is drawn. */
+.road { max-width: 960px; }
+.ground[data-phase='draw'] .road { opacity: 1; animation: rise .4s var(--ease-out) both; }
+.road li { transition: background-color var(--dur-micro) var(--ease-out); }
+.road li[data-drawn] { animation: drawn .26s var(--ease-out) both; }
+@keyframes drawn { 0% { transform: translateY(-10px); } 60% { transform: translateY(2px); } 100% { transform: none; } }
+.draw b { animation: rise .26s var(--ease-out) both; }
+
+@media (max-width: 759px) {
+  .ground { gap: var(--sp-4); }
+  .year b { font-size: clamp(88px, 16vh, 140px); }
+  .five { gap: 4px; }
+  .five .card:nth-child(n+4) { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .poster, .five .card, .road { opacity: 1; animation: none !important; }
+  .tiers [data-old] { display: none; }
+  .tiers [data-new], .road li[data-drawn], .draw b, .year b { animation: none !important; }
+}

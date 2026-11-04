@@ -37,6 +37,13 @@ import {
 import styles from './TableStage.module.css';
 
 const PITCH = (74 * Math.PI) / 180;      // top-down, as the user asked
+// The match intro's camera drop: from a little higher (1.45 times as far), a
+// little steeper and turned 10 degrees, down into the playing view over 1.4 s.
+// Kept short so the frame never reaches past the arena's edges.
+const DROP_PITCH = (82 * Math.PI) / 180;
+const DROP_HEIGHT = 0.45;
+const DROP_YAW = (10 * Math.PI) / 180;
+const DROP_SECONDS = 1.4;
 const TAP = 6;
 // How far an arena slides on a map change: its own half width (26, set in
 // build_arena.py) plus the widest view past the lanes, so it fully clears the screen.
@@ -172,6 +179,14 @@ export default class TableStage {
 
   // ── dealing ──────────────────────────────────────────────────────────────
 
+  /** Load a round's card art and arena ahead of its deal, so the deal itself is instant. */
+  async preload({ cards, mapName }) {
+    await Promise.all([
+      Promise.all(cards.map(card => Promise.all(cardArt(card).map(loadImage)))),
+      this.arenaPalette !== 'off' ? preloadArena(mapName, 2500) : null,
+    ]);
+  }
+
   async deal(game) {
     const fromRound = Boolean(this.board) && !this.reducedMotion;
     this.timeline?.kill();
@@ -195,6 +210,7 @@ export default class TableStage {
     this.oppShown = [0, 1];
     this.clear();
     this.build(arts);
+    if (this.dropPending) this.dropCamera();
     this.dealIn(fromRound);
     this.emit();
   }
@@ -1238,17 +1254,55 @@ export default class TableStage {
     const halfDepth = ((zNear - zFar) / 2) * Math.sin(PITCH) + 0.2;
     const d = Math.max(halfW / (tanV * this.camera.aspect), halfDepth / (tanV * free)) * 1.02;
     const target = new Vector3(0, 0, (zNear + zFar) / 2);
-    this.camera.position.set(target.x, target.y + Math.sin(PITCH) * d, target.z + Math.cos(PITCH) * d);
-    this.camera.lookAt(target);
-    this.camera.near = Math.max(0.5, d * 0.5);
-    this.camera.far = d * 2 + 20;
-    this.camera.updateProjectionMatrix();
+    this.view = { target, d };
+    this.placeCamera();
     this.camera.setViewOffset(W, H, 0, (this.inset.bottom - this.inset.top) / 2, W, H);
     // The shadow box covers whatever the layout spans.
     const reach = Math.max(halfW, (zNear - zFar) / 2 + Math.abs(target.z)) + 1;
     Object.assign(this.sun.shadow.camera, { left: -reach, right: reach, top: reach, bottom: -reach });
     this.sun.shadow.camera.updateProjectionMatrix();
     this.mark();
+  }
+
+  // The camera sits on the board's framing (`this.view`), raised by `this.lift`:
+  // 0 is the playing view; 1 is high overhead, looking straight down, turned a
+  // little. The match intro lowers it from 1 to 0 while the first round deals.
+  placeCamera() {
+    if (!this.view) return;
+    const { target, d } = this.view;
+    const t = this.lift ?? 0;
+    const pitch = PITCH + (DROP_PITCH - PITCH) * t;
+    const dist = d * (1 + DROP_HEIGHT * t);
+    const yaw = DROP_YAW * t;
+    const flat = Math.cos(pitch) * dist;
+    this.camera.position.set(target.x + Math.sin(yaw) * flat, target.y + Math.sin(pitch) * dist, target.z + Math.cos(yaw) * flat);
+    this.camera.lookAt(target);
+    this.camera.near = Math.max(0.5, dist * 0.5);
+    this.camera.far = dist * 2 + 20;
+    this.camera.updateProjectionMatrix();
+    this.mark();
+  }
+
+  /** Raise the camera now, so the next deal lowers it into place (the match intro). */
+  raiseForDrop() {
+    if (this.reducedMotion) return;
+    this.dropPending = true;
+    gsap.killTweensOf(this, 'lift');
+    this.lift = 1;
+    this.placeCamera();
+  }
+
+  dropCamera() {
+    this.dropPending = false;
+    gsap.to(this, { lift: 0, duration: DROP_SECONDS, ease: 'power3.inOut', onUpdate: () => this.placeCamera() });
+  }
+
+  /** A tap during the intro: land the camera at once. */
+  skipDrop() {
+    this.dropPending = false;
+    gsap.killTweensOf(this, 'lift');
+    this.lift = 0;
+    this.placeCamera();
   }
 
   resize() {
@@ -1435,6 +1489,7 @@ export default class TableStage {
 
   destroy() {
     this.alive = false;
+    gsap.killTweensOf(this);
     if (this.arena) gsap.killTweensOf(this.arena.root.position);
     this.arena?.dispose();
     this.softFocus?.dispose();

@@ -313,4 +313,11 @@ export default {
   "Cancel": "Cancelar",
   "On": "Ligado",
   "Off": "Desligado",
+
+  // Season intro.
+  "Year": "Ano",
+  "Season calendar": "Calendário da temporada",
+  "Playoffs": "Playoffs",
+  "Window": "Janela",
+  "Transfers": "Transferências",
 };

@@ -313,4 +313,11 @@ export default {
   "Cancel": "Cancelar",
   "On": "Activado",
   "Off": "Desactivado",
+
+  // Season intro.
+  "Year": "Año",
+  "Season calendar": "Calendario de la temporada",
+  "Playoffs": "Playoffs",
+  "Window": "Mercado",
+  "Transfers": "Fichajes",
 };

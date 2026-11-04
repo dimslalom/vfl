@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { playUiSound } from '../../shared/src/lib/gameAudio';
 import useReducedMotion from '../../shared/src/lib/useReducedMotion';
 import { BOARD_SKILLS, hasSkill } from '../engine/board/board';
@@ -6,6 +6,7 @@ import { seriesWinner, winsNeeded } from '../engine/board/mapLanes';
 import { refillTacticHand, settleTactic } from '../engine/endless/seriesCards';
 import { namedSeriesMaps, pickSeriesMaps, roundBoard, roundResult } from '../prototype/boardSetup';
 import ChipPayout from '../chip3d/ChipPayout';
+import MatchIntro from './MatchIntro';
 import { STAT_LABELS, STAT_LABELS_FULL } from '../../shared/src/data/statFields';
 import styles from './BoardSeries.module.css';
 
@@ -129,7 +130,9 @@ function Pips({ total, won, side }) {
 // Buttons stay in the DOM, so keyboard and screen reader support comes free.
 // three: play on the 2.5D board (one three.js scene, chips included), with the
 // Pixi board as the fallback when WebGL or three.js can't start.
-export default function BoardSeries({ squad, opponent, opponentName, bestOf, seed, hand, onDone, onLeave, doneLabel = 'Continue', fixed = false, three = false, arena = 'tint', mapNames = null }) {
+// intro: { you: { club, cards }, them: { club, cards }, stage } plays the match
+// intro over the board while it loads, then drops the 3D camera into the first deal.
+export default function BoardSeries({ squad, opponent, opponentName, bestOf, seed, hand, onDone, onLeave, doneLabel = 'Continue', fixed = false, three = false, arena = 'tint', mapNames = null, intro = null }) {
   const hostRef = useRef(null);
   const stageRef = useRef(null);
   const chipHostRef = useRef(null);
@@ -141,7 +144,18 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
   const [state, setState] = useState({ phase: 'loading', legal: false, placed: 0, moves: 1 });
   const [score, setScore] = useState({ you: 0, them: 0 });
   const [outcome, setOutcome] = useState(null);
+  // false, or why the board couldn't start: 'webgl' (this browser can't draw 3D) or 'load'.
   const [failed, setFailed] = useState(false);
+  const [introOn, setIntroOn] = useState(Boolean(intro));
+  const [boardReady, setBoardReady] = useState(false);
+  const introRef = useRef(introOn);
+  // The first round's pieces, for preloading behind the intro without making the
+  // board's setup effect depend on arrays the parent rebuilds every render.
+  const firstRef = useRef({ cards: [...squad, ...opponent], mapName: maps[0].name });
+  useEffect(() => {
+    introRef.current = introOn;
+    firstRef.current = { cards: [...squad, ...opponent], mapName: maps[0].name };
+  });
   const [attempt, setAttempt] = useState(0);
   const [leaving, setLeaving] = useState(false);
   const [chipView, setChipView] = useState(null);
@@ -164,7 +178,7 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
     stageRef.current?.deal(roundBoard({ seed, round, map: maps[round], you: squad, them: opponent, tactics: run.hand }))
       .catch((error) => {
         if (import.meta.env.DEV) console.error(error);
-        setFailed(true);
+        setFailed('load');
       });
   }
 
@@ -227,16 +241,30 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
             if (await stage.init()) {
               if (cancelled) return;
               stageRef.current = stage;
-              playRoundRef.current();
+              // With an intro, the first deal waits for the panels to part.
+              if (introRef.current) {
+                stage.raiseForDrop();
+                await stage.preload(firstRef.current).catch(() => null);
+                if (cancelled) return;
+                setBoardReady(true);
+              } else {
+                playRoundRef.current();
+              }
               return;
             }
+            // init() is false only when the browser won't give us a WebGL context.
+            stage.destroy();
+            if (!cancelled) setFailed('webgl');
+            return;
           } catch {
-            // Fall through to the flat board below.
+            stage?.destroy();
+            if (!cancelled) setFailed('load');
+            return;
           }
-          stage?.destroy();
-          stage = null;
-          if (cancelled) return;
         }
+        // The flat board below serves only the labs that ask for it (three=false).
+        // The Club board is 3D or nothing: a flat stand-in looks broken, so a
+        // failure says what happened and offers a retry instead.
         // The 3D chips are a nicety: if three.js or WebGL fails, the board keeps its flat chips.
         try {
           const { default: ChipStack } = await import('../chip3d/ChipStack.js');
@@ -278,7 +306,7 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
         }
       } catch {
         // No WebGL, or the board's code or images could not load.
-        if (!cancelled) setFailed(true);
+        if (!cancelled) setFailed('load');
       }
     })();
     return () => {
@@ -305,6 +333,11 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
     return () => observer.disconnect();
   });
 
+  // Stable, so the intro's effects don't re-run on every board update.
+  const openIntro = useCallback(() => playRoundRef.current(), []);
+  const skipDrop = useCallback(() => stageRef.current?.skipDrop?.(), []);
+  const endIntro = useCallback(() => setIntroOn(false), []);
+
   function retry() {
     setFailed(false);
     setAttempt(value => value + 1);
@@ -320,14 +353,31 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
       <div className={styles.chips} key={`chips${attempt}`} ref={chipHostRef} aria-hidden="true" />
       <ChipPayout chipKey={chipView?.selected} at={chipView?.anchor} />
       {cardView && <CardView view={cardView} stageRef={stageRef} hostRef={hostRef} onPlaceLane={lane => stageRef.current?.placePicked(lane)} onBack={() => stageRef.current?.unplace()} />}
-      {phase === 'loading' && !failed && <p className={styles.notice} role="status">Dealing the board</p>}
+      {phase === 'loading' && !failed && !introOn && <p className={styles.notice} role="status">Dealing the board</p>}
       {failed && (
         <div className={styles.result} role="alert">
-          <h2 data-won="false">The board couldn't start</h2>
-          <p className={styles.hint}>Check your connection, then try again. Your club is saved.</p>
+          <h2 data-won="false">{failed === 'webgl' ? 'This browser can’t show the 3D board' : 'The board couldn’t load'}</h2>
+          <p className={styles.hint}>
+            {failed === 'webgl'
+              ? 'Turn on hardware acceleration in your browser settings, or open the game in another browser. Your club is saved.'
+              : 'Check your connection, then try again. Your club is saved.'}
+          </p>
           <button type="button" className={styles.primary} onClick={retry}>Try again</button>
           {onLeave && <button type="button" className={styles.secondary} onClick={onLeave}>Back to club</button>}
         </div>
+      )}
+      {introOn && intro && !failed && (
+        <MatchIntro
+          you={intro.you}
+          them={intro.them}
+          stage={intro.stage}
+          bestOf={bestOf}
+          ready={boardReady}
+          reducedMotion={reducedMotion}
+          onOpen={openIntro}
+          onSkipDrop={skipDrop}
+          onDone={endIntro}
+        />
       )}
       {onLeave && !failed && (
         <button type="button" className={styles.leave} data-armed={leaving || undefined} onBlur={() => setLeaving(false)} onClick={() => (leaving ? onLeave() : setLeaving(true))}>

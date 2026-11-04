@@ -35,6 +35,8 @@ import ClubSettings from '../components/club/ClubSettings';
 import ClubHint from '../components/club/ClubHint';
 import ClubSyncChoice from '../components/club/ClubSyncChoice';
 import ClubRename from '../components/club/ClubRename';
+import SeasonIntro from '../components/club/SeasonIntro';
+import { stageLabel } from '../components/club/clubSummary';
 import useClubSync from '../lib/useClubSync';
 import { hintFor, loadOnboarding, markHintSeen, primerDue, saveOnboarding } from '../lib/clubOnboarding';
 import { t } from '../lib/i18n';
@@ -207,7 +209,7 @@ function Road({ state }) {
   return (
     <ol className={styles.road} aria-label="Season calendar">
       {cells.map(cell => (
-        <li key={cell.key} data-status={cell.status} aria-label={cell.aria ? `${cell.when}, ${cell.name}, ${cell.aria}` : undefined} aria-current={cell.status === 'now' ? 'step' : undefined}>
+        <li key={cell.key} data-status={cell.status} style={{ viewTransitionName: `road-${cell.key}` }} aria-label={cell.aria ? `${cell.when}, ${cell.name}, ${cell.aria}` : undefined} aria-current={cell.status === 'now' ? 'step' : undefined}>
           <span className={styles.when}><span className={styles.long}>{cell.when}</span><span className={styles.short} aria-hidden="true">{cell.short}</span></span>
           <span className={styles.who}>
             {cell.club && <Crest club={cell.club} size={22} />}
@@ -1601,7 +1603,7 @@ export default function Club() {
   function start(seed, name, picks) {
     morph(() => {
       setState(newClub({ seed, name, picks, cards: allCards }));
-      setScreen('home');
+      setScreen('season');
     });
   }
 
@@ -1651,9 +1653,11 @@ export default function Club() {
   }
 
   function closeTheWindow(decisions) {
+    const next = closeWindow(state, decisions, allCards);
     morph(() => {
-      setState(current => closeWindow(current, decisions, allCards));
-      setScreen('home');
+      setState(next);
+      // A closed window opens a new year, and a new year opens with its intro.
+      setScreen(next !== state && next.phase === 'league' && next.week === 0 ? 'season' : 'home');
     });
   }
 
@@ -1712,6 +1716,12 @@ export default function Club() {
   if (screen === 'chips') {
     return withHint(<ChipPick key={state.chipOffer?.attempt ?? 'hand'} state={state} onBack={() => show('home')} onTake={takeChip} onPass={() => morph(() => { setState(current => chooseChip(current, null)); setScreen('home'); })} onReroll={() => setState(current => rerollChips(current))} />, 'chips');
   }
+  if (screen === 'season') {
+    // The ground is the first match's map, as it will be on the hub.
+    const first = nextMatch(state);
+    const map = first ? pickSeriesMaps(seriesSeed(state, first), first.bestOf)[0]?.image : undefined;
+    return <SeasonIntro key={state.year} state={state} map={map} reducedMotion={reducedMotion} onDone={() => show('home')} />;
+  }
   if (screen === 'rename') {
     return (
       <ClubRename
@@ -1729,11 +1739,18 @@ export default function Club() {
   const match = nextMatch(state);
   if (screen === 'match' && match) {
     const club = clubById(state, match.id);
+    const yours = squadCards(state, allCards).slice(0, STARTERS);
+    const theirs = clubRoster(state, club, allCards);
     return (
       <BoardSeries
         key={`${state.year}:${state.week}:${match.stage}`}
-        squad={squadCards(state, allCards).slice(0, STARTERS)}
-        opponent={clubRoster(state, club, allCards)}
+        squad={yours}
+        opponent={theirs}
+        intro={{
+          you: { club: { name: state.name, logo: null }, cards: yours },
+          them: { club: { name: club.name, logo: club.logo }, cards: theirs.slice(0, STARTERS) },
+          stage: stageLabel(match),
+        }}
         opponentName={club.name}
         bestOf={match.bestOf}
         seed={seriesSeed(state, match)}
