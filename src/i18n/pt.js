@@ -1,6 +1,7 @@
 // Brazilian Portuguese for every player-facing string. English sources are the
 // keys; test/i18n.test.js fails if any string is missing or stale.
 export default {
+  "Change crest": "Trocar escudo",
   "Choose club crest": "Escolher escudo do clube",
   "Pick a crest": "Escolha um escudo",
   "Colour": "Cor",

@@ -49,3 +49,16 @@ test('colourway is a second axis: eight tones times ten styles, all different', 
   assert.equal(logoSvg('Night Wolves', 'shield'), logoSvg('Night Wolves', 'shield', defaultLogoTone('Night Wolves')));
   assert.equal(logoSvg('Night Wolves', 'shield', 99), logoSvg('Night Wolves', 'shield'));
 });
+
+test('an existing club can change its crest for free, but only to a real style and colour', async () => {
+  const { setClubCrest } = await import('../src/engine/club/rewards.js');
+  const state = { phase: 'league', packs: 3 };
+  const next = setClubCrest(state, 'hex', 2);
+  assert.equal(next.crest, 'hex');
+  assert.equal(next.tone, 2);
+  assert.equal(next.packs, 3);
+  assert.equal(setClubCrest(next, 'hex', 2), next);
+  assert.equal(setClubCrest(state, 'nope', 2), state);
+  assert.equal(setClubCrest(state, 'hex', 99), state);
+  assert.equal(setClubCrest({ phase: 'over' }, 'hex', 2).crest, undefined);
+});
