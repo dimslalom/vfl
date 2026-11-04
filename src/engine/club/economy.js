@@ -80,3 +80,11 @@ export function clubFatigueExtra(dev) {
 export function rewardDefaults() {
   return { gold: 0, icons: 0, pity: { gold: 0 }, tapes: 0, opens: 0, opening: null, chipOffer: null };
 }
+
+const NEWS_KEPT = 8;
+
+/** The league's move log with `entries` added at the front, newest first. Each is { id, year, club, kind }:
+ *  `kind` 'in' is a rival signing your player, 'out' is a player leaving a rival for you. */
+export function withNews(state, entries) {
+  return [...entries.map(entry => ({ ...entry, year: state.year })), ...(state.news ?? [])].slice(0, NEWS_KEPT);
+}

@@ -253,7 +253,7 @@ const DRAW = {
   roundel(p, t) {
     const id = `ring${p.seed}`;
     // The name repeats round the whole ring, so the text fills it at any length.
-    const unit = `${(p.name || 'CLUB').slice(0, 22)} \u2022 `;
+    const unit = `${(p.name || 'CLUB').slice(0, 22)} / `;
     const label = unit.repeat(Math.max(1, Math.ceil(16 / unit.length))).trimEnd();
     const radius = 36;
     const round = 2 * Math.PI * radius;
