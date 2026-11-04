@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="public/favicon.svg" alt="The Clubs card logo" width="70" />
+<img src="docs/brand/vfl-logo.webp" alt="VFL" width="140" />
 
 # Clubs
 
@@ -127,30 +127,3 @@ Clubs is early and still changing quickly. It replaced two older modes, the Gaun
 - **Some players have no photo yet** and show a silhouette.
 - **Without an account, browser storage is the only save.** Clear your site data, or switch browsers or devices, and the club is gone. Signing in with Discord (optional) keeps it in the cloud.
 - **Leftover server code.** The Worker still contains daily-score and lobby code from the removed modes. Nothing in the app calls it.
-
-## Build from source
-
-You need [Node.js](https://nodejs.org) 22 and Git. Card art and data come from a submodule ([cards-val](https://github.com/dimslalom/cards-val)), so clone with submodules.
-
-```bash
-git clone --recurse-submodules https://github.com/dimslalom/vfl.git
-cd vfl
-npm install
-npm run dev
-```
-
-The dev server opens at `http://localhost:5173`. Other useful commands:
-
-```bash
-npm test          # every Node test
-npm run build     # production build into dist/
-npm run check     # lint, tests, build and a Wrangler dry run (the CI gate)
-```
-
-Built with React, Vite, three.js and Pixi.js, deployed as static assets behind a Cloudflare Worker. For how the code is laid out, see [docs/architecture.md](docs/architecture.md). The visual system is in [DESIGN.md](DESIGN.md).
-
-## Credits and disclaimer
-
-Player and team data is synced from [vlr.gg](https://www.vlr.gg) by the [cards-val](https://github.com/dimslalom/cards-val) repo.
-
-Clubs is a fan project with no monetization. It isn't affiliated with or endorsed by Riot Games. VALORANT, the VCT and related names belong to Riot Games. Team logos and player names belong to their owners.
