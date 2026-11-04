@@ -17,7 +17,7 @@ import { maxSignableRating } from '../endless/stature.js';
 import { tickWorldYear } from '../endless/world.js';
 import { createTacticInstance, TACTIC_LIST } from '../endless/seriesCards.js';
 import {
-  BENCH_XP, TITLES_PER_ICON, TRAIN_SLOTS_MAX, clubFatigueExtra, grantPacks, packValue, rewardDefaults, withSignings,
+  BENCH_XP, TITLES_PER_ICON, TRAIN_SLOTS_MAX, clubFatigueExtra, grantPacks, packValue, rewardDefaults, withNews,
   settlePacks, squadMax,
 } from './economy.js';
 
@@ -175,7 +175,7 @@ export function newClub({ seed, name, picks, cards, crest, tone }) {
     seriesWon: 0,
     roundsWon: 0,
     yearsAtClub: {},
-    signings: [],
+    news: [],
   };
   return startYear(base, cards);
 }
@@ -618,6 +618,7 @@ export function closeWindow(state, decisions, cards) {
   const contracts = { ...state.contracts };
   const moved = { ...state.moved };
   const leaving = new Set();
+  const sold = [];
   const expiringIds = new Set(offers.mine.map(item => item.card.id));
   for (const item of offers.mine) {
     if (own[item.card.id] === 'keep') contracts[item.card.id] = CONTRACT_MAX;
@@ -625,7 +626,10 @@ export function closeWindow(state, decisions, cards) {
       leaving.add(item.card.id);
       delete contracts[item.card.id];
       const club = item.suitor && clubById(state, item.suitor.id);
-      if (club) moved[item.card.id] = { org: club.id, name: club.name, logo: club.logo };
+      if (club) {
+        moved[item.card.id] = { org: club.id, name: club.name, logo: club.logo };
+        sold.push({ id: item.card.id, club: club.id });
+      }
     }
   }
   for (const id of drop) {
@@ -647,8 +651,11 @@ export function closeWindow(state, decisions, cards) {
   const filling = trialists(state, cards, squad).slice(0, Math.max(0, STARTERS - squad.length)).map(card => card.id);
   for (const id of filling) contracts[id] = 1;
   squad.push(...filling);
-  const signings = withSignings(state, signed.map(item => item.card.id), 'window');
-  return startYear({ ...settlePacks(state, totals.packs), squad, contracts, moved, signings, year: state.year + 1, tier: nextTier(state) }, cards);
+  const news = withNews(state, [
+    ...sold.map(({ id, club }) => ({ id, club, kind: 'in' })),
+    ...signed.filter(item => item.club).map(item => ({ id: item.card.id, club: item.club.id, kind: 'out' })),
+  ]);
+  return startYear({ ...settlePacks(state, totals.packs), squad, contracts, moved, news, year: state.year + 1, tier: nextTier(state) }, cards);
 }
 
 function nextTier(state) {

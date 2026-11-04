@@ -1,6 +1,8 @@
 // Spanish for every player-facing string. English sources are the keys;
 // test/i18n.test.js fails if any string is missing or stale.
 export default {
+  "Scouting report": "Informe del rival",
+  "League news": "Noticias de la liga",
   "Their best": "Sus mejores",
   "A pack is open. Pick a player.": "Hay un sobre abierto. Elige un jugador.",
   "A chip pick is waiting": "Hay una ficha por elegir",
@@ -13,12 +15,7 @@ export default {
   "{n} squad places open": "{n} plazas libres en la plantilla",
   "No match scheduled": "Sin partido programado",
   "All clear this week": "Todo en orden esta semana",
-  "No signings yet. Open a pack or work the transfer window.": "Aún no hay fichajes. Abre un sobre o usa el mercado de fichajes.",
-  "From a pack": "De un sobre",
-  "Transfer window": "Mercado de fichajes",
-  "Next opponent": "Próximo rival",
   "Needs attention": "Requiere atención",
-  "Recent signings": "Fichajes recientes",
   "Club feed": "Panel del club",
   "Feed pages": "Páginas del panel",
   "Change crest": "Cambiar escudo",

@@ -68,7 +68,7 @@ const seriesSeed = (state, match) => (state.seed ^ (state.year * 977 + state.wee
 // and `squadSlot` fits a 3 + 2 grid on phones so cards on the Squad screen can be bigger.
 function useCardScale() {
   const read = () => {
-    if (typeof window === 'undefined') return { scale: 0.4, slot: 0.27, homeSlot: 0.27, feed: false, feedWidth: 300, feedHeight: 340, squadSlot: 0.27, phone: false };
+    if (typeof window === 'undefined') return { scale: 0.4, slot: 0.27, homeSlot: 0.27, feed: false, stripFeed: false, feedWidth: 300, feedHeight: 340, squadSlot: 0.27, phone: false };
     const { innerWidth: w, innerHeight: h } = window;
     const phone = w < 760;
     const scale = phone ? Math.min(0.22, (h - 240) / 2200) : h < 560 ? 0.24 : h < 760 ? 0.32 : 0.4;
@@ -83,8 +83,10 @@ function useCardScale() {
     // The feed floats above the Play button, in the width the cards leave on the right,
     // so it costs the cards width but no height.
     const feed = !phone && w >= 1100 && h >= 640;
-    const feedWidth = w < 1500 ? 260 : 300;
-    const feedHeight = Math.max(260, Math.min(420, h - 520));
+    // On a phone the same feed is a swipe strip in the gap under the squad.
+    const stripFeed = phone && h >= 640;
+    const feedWidth = w < 1500 ? 280 : 360;
+    const feedHeight = Math.max(280, Math.min(480, h - 480));
     const homeWidth = phone ? slotWidth : Math.min(240, (room - (feed ? feedWidth + 28 : 0)) / 5) - 4;
     const homeSlot = phone ? slot : Math.max(0.12, Math.min(0.5, homeWidth / 400, maxSlotH));
     // On the Squad screen on phones, starters wrap 3 on top + 2 below so each card is ~30% larger.
@@ -92,7 +94,7 @@ function useCardScale() {
     const squadWidth = phone ? (w - 56) / 3 : slotWidth;
     const maxSquadH = phone ? (h - 340) / 1500 : maxSlotH;
     const squadSlot = phone ? Math.max(0.14, Math.min(0.3, squadWidth / 400, maxSquadH)) : slot;
-    return { scale: Math.max(0.14, scale), slot, homeSlot, feed, feedWidth, feedHeight, squadSlot, phone };
+    return { scale: Math.max(0.14, scale), slot, homeSlot, feed, stripFeed, feedWidth, feedHeight, squadSlot, phone };
   };
   const [size, setSize] = useState(read);
   useEffect(() => {
@@ -495,6 +497,7 @@ function Home({ state, go, onAbandon, onSettings, onPrimer, size }) {
             </div>
           </div>
         </section>
+        {size.stripFeed && <HubFeed horizontal state={state} cards={allCards} height={176} onGo={go} />}
         <div className={styles.homeFoot}>
           {/* The week's business, as tiles: each shows the number that matters. */}
           <div className={styles.tileRow}>

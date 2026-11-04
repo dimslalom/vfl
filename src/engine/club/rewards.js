@@ -8,7 +8,7 @@ import { mulberry32, pickN } from '../../../shared/src/engine/perfectRun.js';
 import { bankTactics } from '../endless/seriesCards.js';
 import { maxSignableRating } from '../endless/stature.js';
 import {
-  GOLD_PITY, GOLD_RATING, NAME_MAX, RENAME_PRICE, REROLL_PRICE, SESSION_PRICE, TAPE_MAX, TRAIN_SLOTS_MAX, payPacks, squadMax, stock, withSignings,
+  GOLD_PITY, GOLD_RATING, NAME_MAX, RENAME_PRICE, REROLL_PRICE, SESSION_PRICE, TAPE_MAX, TRAIN_SLOTS_MAX, payPacks, squadMax, stock,
 } from './economy.js';
 import { CONTRACT_MAX, SKILL_SESSIONS, rollChipOffer, squadCards, trainingOffer } from './season.js';
 import { LOGO_STYLES, LOGO_TONES } from './logo.js';
@@ -104,7 +104,6 @@ export function choosePick(state, id) {
     squad: [...state.squad, id],
     contracts: { ...state.contracts, [id]: CONTRACT_MAX },
     moved,
-    signings: withSignings(state, [id], 'pack'),
   };
 }
 

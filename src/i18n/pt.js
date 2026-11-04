@@ -1,6 +1,8 @@
 // Brazilian Portuguese for every player-facing string. English sources are the
 // keys; test/i18n.test.js fails if any string is missing or stale.
 export default {
+  "Scouting report": "Relatório do adversário",
+  "League news": "Notícias da liga",
   "Their best": "Os melhores deles",
   "A pack is open. Pick a player.": "Há um pacote aberto. Escolha um jogador.",
   "A chip pick is waiting": "Há uma ficha para escolher",
@@ -13,12 +15,7 @@ export default {
   "{n} squad places open": "{n} vagas livres no elenco",
   "No match scheduled": "Nenhuma partida marcada",
   "All clear this week": "Tudo certo esta semana",
-  "No signings yet. Open a pack or work the transfer window.": "Ainda sem contratações. Abra um pacote ou use a janela de transferências.",
-  "From a pack": "De um pacote",
-  "Transfer window": "Janela de transferências",
-  "Next opponent": "Próximo adversário",
   "Needs attention": "Precisa de atenção",
-  "Recent signings": "Contratações recentes",
   "Club feed": "Painel do clube",
   "Feed pages": "Páginas do painel",
   "Change crest": "Trocar escudo",

@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import PlayerCard from '../../../shared/src/components/PlayerCard';
 import { assetPath } from '../../../shared/src/lib/utils';
 import { attention } from '../../engine/club/attention';
 import { clubById, clubPower, clubRoster, findCard, nextMatch, standings } from '../../engine/club/season';
 import { t } from '../../lib/i18n';
 import ClubLogo from '../ClubLogo';
-import { stageLabel } from './clubSummary';
 import styles from './HubFeed.module.css';
 
 // Everything here is a picture first: a bar, a face, an icon with a number.
@@ -45,15 +43,8 @@ function Opponent({ state, cards }) {
   const best = clubRoster(state, rival, cards).filter(Boolean).sort((a, b) => b.rating - a.rating).slice(0, 3);
   return (
     <>
-      <div className={styles.rival}>
-        {rival.logo ? <img src={assetPath(rival.logo)} alt="" /> : <span className={styles.crestFallback} aria-hidden="true" />}
-        <div>
-          <b>{rival.name}</b>
-          <small>{stageLabel(match)} · {t('Best of {n}', { n: match.bestOf })}</small>
-        </div>
-      </div>
       <div className={styles.power} role="img" aria-label={`${state.name} ${Math.round(mine)}, ${rival.name} ${Math.round(theirs)}`}>
-        <div><ClubLogo name={state.name} style={state.crest} tone={state.tone} size={22} /><i style={{ width: `${(mine / top) * 100}%` }} data-you /><em>{Math.round(mine)}</em></div>
+        <div><ClubLogo name={state.name} style={state.crest} tone={state.tone} size={26} /><i style={{ width: `${(mine / top) * 100}%` }} data-you /><em>{Math.round(mine)}</em></div>
         <div>{rival.logo ? <img src={assetPath(rival.logo)} alt="" /> : <span />}<i style={{ width: `${(theirs / top) * 100}%` }} /><em>{Math.round(theirs)}</em></div>
       </div>
       <ul className={styles.faces} aria-label={t('Their best')}>
@@ -66,7 +57,7 @@ function Opponent({ state, cards }) {
       </ul>
       {pos && (
         <div className={styles.table} role="img" aria-label={t('{pos} of 6', { pos })}>
-          {rows.map((row, i) => <i key={row.id} data-here={row.id === rival.id || undefined} data-you={row.you || undefined} style={{ order: i }} />)}
+          {rows.map(row => <i key={row.id} data-here={row.id === rival.id || undefined} data-you={row.you || undefined} />)}
         </div>
       )}
     </>
@@ -99,26 +90,26 @@ function Attention({ state, onGo }) {
   );
 }
 
-function Signings({ state, cards, onGo }) {
-  const rows = (state.signings ?? []).slice(0, 3).map(entry => ({ entry, card: findCard(state, cards, entry.id) })).filter(row => row.card);
+// A player and the club he now plays for: face, arrow, crest.
+function News({ state, cards }) {
+  const rows = (state.news ?? []).slice(0, 3).map(entry => ({
+    entry,
+    card: findCard(state, cards, entry.id),
+    club: entry.kind === 'out' ? null : clubById(state, entry.club),
+  })).filter(row => row.card);
   return (
-    <ul className={styles.signed}>
+    <ul className={styles.news}>
       {Array.from({ length: 3 }, (_, i) => {
         const row = rows[i];
-        if (!row) {
-          return (
-            <li key={i}>
-              <button type="button" className={styles.emptyCard} aria-label={t('No signings yet. Open a pack or work the transfer window.')} onClick={() => onGo('vault')}>
-                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="square" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
-              </button>
-            </li>
-          );
-        }
-        const via = row.entry.via === 'pack' ? t('From a pack') : t('Transfer window');
+        if (!row) return <li key={i} className={styles.ghost} aria-hidden="true"><span /><svg className={styles.arrow} viewBox="0 0 24 8" aria-hidden="true"><path d="M0 4h20M16 0l4 4-4 4" /></svg><span /></li>;
+        const crest = row.club?.logo;
         return (
-          <li key={`${row.entry.id}-${row.entry.year}`} title={`${row.card.player} · ${via} · ${t('Year {n}', { n: row.entry.year })}`}>
-            <PlayerCard card={row.card} displayScale={0.2} tilt={false} canDrag={false} />
-            <span className={styles.via} data-via={row.entry.via}><Icon name={row.entry.via === 'pack' ? 'packs' : 'places'} /><i>{row.entry.year}</i></span>
+          <li key={`${row.entry.id}-${row.entry.year}-${row.entry.kind}`} aria-label={`${row.card.player} ${row.club?.name ?? state.name}`}>
+            <span className={styles.face}><img src={assetPath(row.card.photo)} alt="" loading="lazy" /><b>{row.card.rating}</b></span>
+            <svg className={styles.arrow} viewBox="0 0 24 8" aria-hidden="true"><path d="M0 4h20M16 0l4 4-4 4" /></svg>
+            {row.entry.kind === 'out'
+              ? <ClubLogo name={state.name} style={state.crest} tone={state.tone} size={44} />
+              : crest ? <img className={styles.crest} src={assetPath(crest)} alt="" /> : <span className={styles.crest} />}
           </li>
         );
       })}
@@ -128,32 +119,35 @@ function Signings({ state, cards, onGo }) {
 
 // One tall panel of slides you scroll through, one snapping into place with the
 // next peeking in. The pips on the right jump to a slide.
-export default function HubFeed({ state, cards, width, height, onGo }) {
+export default function HubFeed({ state, cards, width, height, horizontal = false, onGo }) {
   const rail = useRef(null);
   const [index, setIndex] = useState(0);
   const slides = [
-    { key: 'opponent', title: t('Next opponent'), body: <Opponent state={state} cards={cards} /> },
+    { key: 'opponent', title: t('Scouting report'), body: <Opponent state={state} cards={cards} /> },
     { key: 'attention', title: t('Needs attention'), body: <Attention state={state} onGo={onGo} /> },
-    { key: 'signings', title: t('Recent signings'), body: <Signings state={state} cards={cards} onGo={onGo} /> },
+    { key: 'news', title: t('League news'), body: <News state={state} cards={cards} /> },
   ];
-  const step = () => {
-    const first = rail.current?.children[0];
-    const second = rail.current?.children[1];
-    return first && second ? second.offsetTop - first.offsetTop : 1;
-  };
   useEffect(() => {
     const el = rail.current;
     if (!el) return undefined;
-    const onScroll = () => setIndex(Math.max(0, Math.min(slides.length - 1, Math.round(el.scrollTop / step()))));
+    const step = () => {
+      const first = el.children[0];
+      const second = el.children[1];
+      return first && second ? (horizontal ? second.offsetLeft - first.offsetLeft : second.offsetTop - first.offsetTop) : 1;
+    };
+    const onScroll = () => setIndex(Math.max(0, Math.min(slides.length - 1, Math.round((horizontal ? el.scrollLeft : el.scrollTop) / step()))));
     el.addEventListener('scroll', onScroll, { passive: true });
     return () => el.removeEventListener('scroll', onScroll);
-  }, [slides.length]);
+  }, [slides.length, horizontal]);
   const jump = i => {
+    const first = rail.current?.children[0];
+    const second = rail.current?.children[1];
+    const step = first && second ? (horizontal ? second.offsetLeft - first.offsetLeft : second.offsetTop - first.offsetTop) : 1;
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    rail.current?.scrollTo({ top: i * step(), behavior: reduced ? 'auto' : 'smooth' });
+    rail.current?.scrollTo({ [horizontal ? 'left' : 'top']: i * step, behavior: reduced ? 'auto' : 'smooth' });
   };
   return (
-    <aside className={styles.feed} style={{ width, height }} aria-label={t('Club feed')}>
+    <aside className={`${styles.feed} ${horizontal ? styles.horizontal : ''}`} style={{ width, height }} aria-label={t('Club feed')}>
       <div className={styles.rail} ref={rail} tabIndex={0}>
         {slides.map(slide => (
           <section key={slide.key} className={styles.slide}>
