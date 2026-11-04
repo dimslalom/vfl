@@ -243,7 +243,7 @@ function simSeries(rng, powerA, powerB, bestOf) {
   return { a, b };
 }
 
-function clubPower(state, id, cards) {
+export function clubPower(state, id, cards) {
   if (id === YOU) return averageRating(squadCards(state, cards).slice(0, STARTERS));
   return averageRating(clubRoster(state, clubById(state, id), cards));
 }
