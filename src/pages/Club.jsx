@@ -282,7 +282,7 @@ function ClubMenu({ onExit, onAbandon }) {
       </button>
       {open && (
         <div className={styles.menu}>
-          <button type="button" onClick={onExit}>Back to the run</button>
+          <button type="button" onClick={onExit}>Other modes</button>
           <button type="button" data-armed={armed || undefined} onBlur={() => setArmed(false)} onClick={() => (armed ? onAbandon() : setArmed(true))}>
             {armed ? 'Tap again to delete this club' : 'Abandon club'}
           </button>

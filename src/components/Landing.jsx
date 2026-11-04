@@ -17,7 +17,7 @@ import hub from '../styles/hub.module.css';
 export default function Landing({
   fanCards, savedRun, challenge, dailyPlayed, records, hall,
   panelOpen, boardTab, boardData, todayBest,
-  onResume, onStart, onChallenge, onDaily, onNations, onMultiplayer,
+  onClub, onResume, onStart, onChallenge, onDaily, onNations, onMultiplayer,
   onOpenBoard, onCloseBoard, onRetryBoard,
 }) {
   const [hallOpen, setHallOpen] = useState(false);
@@ -83,6 +83,10 @@ export default function Landing({
         </div>
 
         <nav className={`${styles.landingLinks} ${styles.rise} ${styles.riseC}`} aria-label={t('Other modes')}>
+          <button onClick={onClub}>
+            <b>{t('Club')}</b>
+            <span>{t('Run a club across seasons: sign, train, play the league.')}</span>
+          </button>
           {dailyPlayed ? (
             <button onClick={() => onOpenBoard('today')}>
               <b>{t('Daily')}<i>{t('played')}</i></b>

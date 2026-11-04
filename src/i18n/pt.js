@@ -75,6 +75,7 @@ export default {
   "Climb or fall each year": "Suba ou caia a cada ano",
   "Close": "Fechar",
   "Club": "Clube",
+  "Run a club across seasons: sign, train, play the league.": "Comande um clube ao longo das temporadas: contrate, treine e dispute a liga.",
   "Club Icon": "Ícone do clube",
   "Competitor not found.": "Competidor não encontrado.",
   "Competitors": "Competidores",

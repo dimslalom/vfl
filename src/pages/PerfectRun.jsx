@@ -2403,6 +2403,7 @@ export default function PerfectRun() {
           boardTab={boardTab}
           boardData={boardData}
           todayBest={todayBest}
+          onClub={() => navigate('/club')}
           onResume={resumeEndlessRun}
           onStart={() => requestRun('solo')}
           onChallenge={() => requestRun('challenge', 'endless', { challenge })}
