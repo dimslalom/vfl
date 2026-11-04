@@ -67,22 +67,26 @@ const seriesSeed = (state, match) => (state.seed ^ (state.year * 977 + state.wee
 // and `squadSlot` fits a 3 + 2 grid on phones so cards on the Squad screen can be bigger.
 function useCardScale() {
   const read = () => {
-    if (typeof window === 'undefined') return { scale: 0.4, slot: 0.27, squadSlot: 0.27, phone: false };
+    if (typeof window === 'undefined') return { scale: 0.4, slot: 0.27, homeSlot: 0.27, squadSlot: 0.27, phone: false };
     const { innerWidth: w, innerHeight: h } = window;
     const phone = w < 760;
     const scale = phone ? Math.min(0.22, (h - 240) / 2200) : h < 560 ? 0.24 : h < 760 ? 0.32 : 0.4;
     // The squad is the hero, sized to the width it has.
-    // Desktop: five starters and two bench cards at 0.6 share the width, nothing beside them.
+    // Desktop: the five starters share the width, nothing beside them.
     const room = phone ? w - 24 - 4 * 4 : Math.min(w, 1600) - 80 - 48 - 6 * 14 - 64;
     const slotWidth = Math.min(200, room / (phone ? 5 : 6.2)) - (phone ? 2 : 4);
     const maxSlotH = phone ? (h - 330) / 960 : (h - 280) / 1100;
     const slot = Math.max(0.12, Math.min(0.5, slotWidth / 400, maxSlotH));
+    // The hub shows the starting five only (the bench lives on the Squad screen), so on
+    // desktop they get the width the bench cards used to take.
+    const homeWidth = phone ? slotWidth : Math.min(240, room / 5.2) - 4;
+    const homeSlot = phone ? slot : Math.max(0.12, Math.min(0.5, homeWidth / 400, maxSlotH));
     // On the Squad screen on phones, starters wrap 3 on top + 2 below so each card is ~30% larger.
     // Subtract stage padding (24), ground padding (16), and 2 column gaps (16) = 56px.
     const squadWidth = phone ? (w - 56) / 3 : slotWidth;
     const maxSquadH = phone ? (h - 340) / 1500 : maxSlotH;
     const squadSlot = phone ? Math.max(0.14, Math.min(0.3, squadWidth / 400, maxSquadH)) : slot;
-    return { scale: Math.max(0.14, scale), slot, squadSlot, phone };
+    return { scale: Math.max(0.14, scale), slot, homeSlot, squadSlot, phone };
   };
   const [size, setSize] = useState(read);
   useEffect(() => {
@@ -480,17 +484,8 @@ function Home({ state, go, onAbandon, onSettings, onPrimer, size }) {
             <span className={styles.groupLabel}>Starting five</span>
             <div className={styles.homeRow}>
               {squad.slice(0, STARTERS).map((card, index) => (
-                <Slot key={card.id} vt={`card-${card.id}`} card={card} scale={size.slot} tab={index === 0 ? 'IGL' : card.role?.slice(0, 3).toUpperCase()} lit={index === 0} years={state.contracts[card.id]} note={state.contracts[card.id] === 1 ? 'Last year' : ''} noteLit onClick={() => go('squad')} />
+                <Slot key={card.id} vt={`card-${card.id}`} card={card} scale={size.homeSlot} tab={index === 0 ? 'IGL' : card.role?.slice(0, 3).toUpperCase()} lit={index === 0} years={state.contracts[card.id]} note={state.contracts[card.id] === 1 ? 'Last year' : ''} noteLit onClick={() => go('squad')} />
               ))}
-            </div>
-          </div>
-          <div className={styles.homeGroup}>
-            <span className={styles.groupLabel}>Bench {Math.max(0, squad.length - STARTERS)} / {max - STARTERS}</span>
-            <div className={styles.homeRow}>
-              {squad.slice(STARTERS).map(card => (
-                <Slot key={card.id} vt={`card-${card.id}`} card={card} scale={size.slot * 0.6} tab="" years={state.contracts[card.id]} onClick={() => go('squad')} />
-              ))}
-              {Array.from({ length: Math.max(0, max - squad.length) }, (_, index) => <BenchOpen key={index} scale={size.slot * 0.6} onClick={() => go('vault')} />)}
             </div>
           </div>
         </section>
