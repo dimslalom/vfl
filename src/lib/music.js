@@ -14,6 +14,7 @@ const SRC = '/audio/atlasaudio-video-game.mp3';
 const VOLUME = 0.28;
 const FADE_IN_MS = 1600;
 const FADE_OUT_MS = 450;
+const CUE_DIP_MS = 120;
 
 let element = null;
 let fading = 0;
@@ -65,6 +66,30 @@ function pause(ms = FADE_OUT_MS) {
   const audio = track();
   if (!audio || audio.paused) return;
   fadeTo(0, ms, () => audio.pause());
+}
+
+/**
+ * Jump the music to `at` seconds, fading in over `fadeMs` so it's at full level
+ * exactly `fadeMs` later. The match intro uses this to land the track's beat drop
+ * (0:18) as the lineups finish rising. Whatever was playing dips out first.
+ */
+export function cueMusic(at, fadeMs) {
+  const audio = track();
+  if (!audio || !on || document.hidden) return;
+  unlocked = true; // only ever called from a tap (Play)
+  // The dip takes time too, so jump that much further in and fade that much
+  // shorter: the cued moment still lands exactly `fadeMs` after the call.
+  const dip = audio.paused ? 0 : CUE_DIP_MS;
+  const jump = () => {
+    try { audio.currentTime = at + dip / 1000; } catch { /* not seekable yet: plays from where it is */ }
+    audio.play().then(() => fadeTo(VOLUME, Math.max(0, fadeMs - dip))).catch(() => null);
+  };
+  if (dip) {
+    fadeTo(0, dip, jump);
+  } else {
+    audio.volume = 0;
+    jump();
+  }
 }
 
 export function musicOn() {
