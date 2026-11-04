@@ -198,18 +198,13 @@ const DRAW = {
     const n = p.letters.length;
     return [
       word(p.letters, { cx: 50, cy: 50, w: 88, h: n > 2 ? 40 : 54, stroke: 1.3, color: t.main, skew: 0.28, gap: 1.4 }),
-      `<path d="M8 66 L92 40" stroke="${t.ground}" stroke-width="3.4"/>`,
-      `<path d="M14 80 L86 80" stroke="${t.second}" stroke-width="2.4"/>`,
+      `<path d="M4 70 L96 38" stroke="${t.ground}" stroke-width="6"/>`,
     ].join('');
   },
   // First letter and its reflection share a spine: GG, RR.
   mirror(p, t) {
     const lead = [...p.letters].find(ch => !(ch in NARROW)) ?? p.letters[0];
-    return [
-      `<path d="M50 6 L50 94" stroke="${t.second}" stroke-width="1.6"/>`,
-      word(lead + lead, { cx: 50, cy: 50, w: 84, h: 62, stroke: 1.5, color: t.main, gap: 0, mirrorLast: true }),
-      p.letters.length > 1 ? `<path d="M26 90 L74 90" stroke="${t.second}" stroke-width="3"/>` : '',
-    ].join('');
+    return word(lead + lead, { cx: 50, cy: 50, w: 84, h: 66, stroke: 1.5, color: t.main, gap: 0, mirrorLast: true });
   },
   // Shield with a chevron band and the initials riding it, the Furia and Liquid frame.
   shield(p, t) {
@@ -253,14 +248,18 @@ const DRAW = {
   // Ring, the name running round it, the initials in the middle.
   roundel(p, t) {
     const id = `ring${p.seed}`;
-    const label = (p.name || 'CLUB').slice(0, 22);
+    // The name repeats round the whole ring, so the text fills it at any length.
+    const unit = `${(p.name || 'CLUB').slice(0, 22)} \u2022 `;
+    const label = unit.repeat(Math.max(1, Math.ceil(16 / unit.length))).trimEnd();
+    const radius = 36;
+    const round = 2 * Math.PI * radius;
     return [
       `<circle cx="50" cy="50" r="46" fill="${t.ground}"/>`,
       `<circle cx="50" cy="50" r="46" fill="none" stroke="${t.main}" stroke-width="3"/>`,
-      `<circle cx="50" cy="50" r="32" fill="none" stroke="${t.second}" stroke-width="1"/>`,
-      `<defs><path id="${id}" d="M50 50 m-39 0 a39 39 0 1 1 78 0 a39 39 0 1 1 -78 0"/></defs>`,
-      `<text font-family="Familjen Grotesk, system-ui, sans-serif" font-size="8.4" font-weight="700" letter-spacing="2.4" fill="${t.main}"><textPath href="#${id}" startOffset="0">${label}</textPath></text>`,
-      word(p.letters.slice(0, 2), { cx: 50, cy: 50, w: 36, h: 24, stroke: 1.5, color: t.second, gap: 1.2 }),
+      `<circle cx="50" cy="50" r="29" fill="none" stroke="${t.second}" stroke-width="1"/>`,
+      `<defs><path id="${id}" d="M50 50 m-${radius} 0 a${radius} ${radius} 0 1 1 ${radius * 2} 0 a${radius} ${radius} 0 1 1 -${radius * 2} 0"/></defs>`,
+      `<text font-family="Familjen Grotesk, system-ui, sans-serif" font-size="7" font-weight="700" fill="${t.main}"><textPath href="#${id}" startOffset="0" textLength="${f(round - 3)}" lengthAdjust="spacing">${label}</textPath></text>`,
+      word(p.letters.slice(0, 2), { cx: 50, cy: 50, w: 32, h: 22, stroke: 1.5, color: t.second, gap: 1.2 }),
     ].join('');
   },
   // A picture pulled from a word in the name, over a plate, initials beneath.
@@ -275,9 +274,9 @@ const DRAW = {
   // Italic letters on a speed plate with slashes, the T1 and NaVi family.
   slash(p, t) {
     return [
-      poly('M16 22 L96 22 L84 78 L4 78 Z', t.main),
-      `<path d="M2 86 L74 86 M10 92 L58 92" stroke="${t.second}" stroke-width="2.4"/>`,
-      word(p.letters, { cx: 50, cy: 50, w: 66, h: 34, stroke: 1.6, color: t.ground, skew: 0.3, gap: 1.2 }),
+      poly('M30 22 L96 22 L84 78 L18 78 Z', t.main),
+      poly('M8 78 L20 22 L25 22 L13 78 Z', t.second),
+      word(p.letters, { cx: 58, cy: 50, w: 56, h: 34, stroke: 1.6, color: t.ground, skew: 0.3, gap: 1.2 }),
     ].join('');
   },
   // Initials inside two angular branches, the M8 wreath.
