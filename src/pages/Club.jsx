@@ -211,7 +211,7 @@ function Road({ state }) {
 
 // ── start ───────────────────────────────────────────────────────────────────
 
-function Start({ onStart, scale }) {
+function Start({ onStart, onExit, scale }) {
   const [seed] = useState(() => (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0);
   const [name, setName] = useState('');
   const [picks, setPicks] = useState([]);
@@ -236,6 +236,7 @@ function Start({ onStart, scale }) {
           </label>
         </div>
         <div className={styles.chips}>
+          <BackButton onClick={onExit} label="Other modes" />
           <div className={styles.chip}><b>{Math.min(picks.length + 1, DRAFT_PACKS)} / {DRAFT_PACKS}</b><span>Pack</span></div>
         </div>
       </header>
@@ -1570,7 +1571,7 @@ export default function Club() {
   const alerts = saveFailed && <p className={styles.alert} role="alert">Progress isn't saving on this device</p>;
 
   if (damaged) return <Damaged onReset={fresh} />;
-  if (screen === 'start' || !state) return <Start onStart={start} scale={size.scale} />;
+  if (screen === 'start' || !state) return <Start onStart={start} onExit={() => navigate('/run')} scale={size.scale} />;
   if (screen === 'train') {
     return <Train state={state} size={size} onBack={() => show('home')} onTrain={trainPlayer} onTape={tapePlayer} onBuy={() => setState(buySession(state))} canBuy={canBuySession(state)} />;
   }
