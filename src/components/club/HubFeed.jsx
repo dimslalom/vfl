@@ -20,7 +20,7 @@ function Opponent({ state, cards }) {
   const rival = match && clubById(state, match.id);
   if (!rival) return <p className={styles.empty}>{t('No match scheduled')}</p>;
   const pos = standings(state, cards).find(row => row.id === rival.id)?.pos;
-  const best = clubRoster(state, rival, cards).filter(Boolean).sort((a, b) => b.rating - a.rating).slice(0, 3);
+  const star = clubRoster(state, rival, cards).filter(Boolean).sort((a, b) => b.rating - a.rating)[0];
   return (
     <>
       <div className={styles.rival}>
@@ -30,21 +30,14 @@ function Opponent({ state, cards }) {
       <p className={styles.meta}>{stageLabel(match)} · {t('Best of {n}', { n: match.bestOf })}</p>
       <dl className={styles.facts}>
         {pos && <><dt>{t('Table')}</dt><dd>{t('{pos} of 6', { pos })}</dd></>}
+        {star && <><dt>{t('Their best')}</dt><dd>{star.player} {star.rating}</dd></>}
       </dl>
-      {best.length > 0 && (
-        <>
-          <h4 className={styles.sub}>{t('Their best')}</h4>
-          <ul className={styles.list}>
-            {best.map(card => <li key={card.id} className={styles.line}><b>{card.player}</b><span>{card.rating}</span></li>)}
-          </ul>
-        </>
-      )}
     </>
   );
 }
 
 function Attention({ state, onGo }) {
-  const items = attention(state);
+  const items = attention(state, 3);
   if (items.length === 0) return <p className={styles.empty}>{t('All clear this week')}</p>;
   return (
     <ul className={styles.list}>
@@ -58,7 +51,7 @@ function Attention({ state, onGo }) {
 }
 
 function Signings({ state, cards }) {
-  const rows = (state.signings ?? []).slice(0, 4).map(entry => ({ entry, card: findCard(state, cards, entry.id) })).filter(row => row.card);
+  const rows = (state.signings ?? []).slice(0, 3).map(entry => ({ entry, card: findCard(state, cards, entry.id) })).filter(row => row.card);
   if (rows.length === 0) return <p className={styles.empty}>{t('No signings yet. Open a pack or work the transfer window.')}</p>;
   return (
     <ul className={styles.list}>
