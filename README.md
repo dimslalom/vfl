@@ -1,415 +1,156 @@
-# Valorant Fantasy League (VFL)
+<div align="center">
 
-A fan-made VCT (Valorant Champions Tour) fantasy card game: draft real pro
-players as cards, build a 5-card squad, and run them through simulated
-tournaments. "FIFA Ultimate Team, but for VCT." Not affiliated with Riot
-Games. No monetization.
+<img src="public/favicon.svg" alt="The Clubs card logo" width="70" />
 
-React + Vite SPA, deployed as static assets behind a Cloudflare Worker.
-Solo play is entirely client-side (a deterministic, seeded simulation engine
-with no server round-trips). Multiplayer adds a Cloudflare Durable Object per
-lobby (authoritative game state, WebSocket broadcast) and a D1 table for the
-daily-challenge leaderboard.
+# Clubs
 
-This file is meant to be enough, on its own, to orient an agent working in
-this codebase. `DESIGN.md` (visual system) and `VCT_GAME_KNOWLEDGE_BASE.md`
-(original game-design vision doc - some of it predates and diverges from what
-shipped) are supplementary reading, not prerequisites.
+**Run a club. Sign VCT pros. Win the league, year after year.**
 
-## Repos
+A fan-made Valorant card game built on real VCT players. Draft five cards, place them on the board, and climb from Challengers to the International tier. No account, no login, no money.
 
-Card UI, card data and art come from the `shared/` submodule ([cards-val](https://github.com/dimslalom/cards-val)), so clone with `git clone --recurse-submodules`. `public/assets` is a symlink into it. Edit shared code in cards-val, not in `shared/`.
+[![Play now](https://img.shields.io/badge/Play-vctfantasy.dimas.works-black?style=for-the-badge)](https://vctfantasy.dimas.works)
 
-The D1 database is shared with [OpVAL](https://github.com/dimslalom/opval), which owns the schema and migrations. VFL only uses `daily_scores`, so a change to that table has to land in OpVAL's `migrations/`.
+<img src="docs/screenshots/demo-match.webp" alt="A match on the 3D board: five cards are dragged onto three lanes, the lineup is locked in, and the lanes resolve one by one" width="820" />
 
-## Architecture at a glance
+<sub>One match round, from the app. The placing is sped up about ten times, and the lock-in and the lane results play at normal speed.</sub>
 
-```
-Browser (React SPA, client-only routing via react-router)
-  │
-  ├─ Solo mode ("Perfect Run"): all state lives in React state on the client.
-  │  src/engine/perfectRun.js is pure, deterministic, seeded - no network.
-  │  Only network call: POST/GET the daily-challenge score to the Worker's D1
-  │  API when playing the "daily" seed variant.
-  │
-  └─ Multiplayer: WebSocket to the Worker → routed to a per-lobby Durable
-     Object ("Lobby" class in worker/index.js). The DO owns the authoritative
-     game state and re-imports the SAME engine as solo mode:
-     src/engine/multiplayer.js, which itself calls into perfectRun.js for
-     card pool logic, tournament brackets, and match simulation. Every
-     client sees the same `applyCommand` / `publicSnapshot` functions the DO
-     runs - the engine module is the single source of truth for game rules,
-     shared between server and any client-side prediction.
+</div>
 
-Cloudflare Worker (worker/index.js)
-  ├─ Serves the built SPA (dist/) as static assets, SPA-fallback to index.html
-  ├─ /api/lobbies, /api/lobbies/:code/join → create/join a multiplayer lobby
-  ├─ /ws/:code → upgrades to WebSocket, proxied into the lobby's Durable Object
-  ├─ /api/daily-scores (POST), /api/leaderboard/daily|overall (GET) → D1
-  └─ Durable Object class `Lobby`: one instance per lobby code, holds game
-     state in `ctx.storage`, schedules `alarm()` for deadlines (draft clocks,
-     match-ready countdowns, lobby TTL cleanup), broadcasts state_patch to
-     every connected WebSocket on every command.
-```
+## Why
 
-There is no separate backend framework and no ORM - the Worker file *is* the
-backend, D1 is queried with raw SQL, and the Durable Object *is* the
-multiplayer session store.
+Fantasy games usually ask you to pick a team and wait. Card games usually ask you to open packs and hope.
 
-## The three real game modes (and three legacy stubs)
+Clubs sits in between. You build a squad of real pros, but every match is a small puzzle you play yourself: where does each card go, and what does the other club expect? Between matches you train, renew contracts and shop in a transfer window, so a good club is something you grow over several years, not a lucky pull.
 
-The nav rail (`src/components/ModeRail.jsx`) only ever links to three
-routes - these are the product:
+## Features
 
-| Route | Page | What it is |
-|---|---|---|
-| `/cards` | `src/pages/Collection.jsx` | Browsable/filterable/sortable table of every card in `cards.json`. Click a row/card to open `CardFocusOverlay`. |
-| `/run` | `src/pages/PerfectRun.jsx` (the largest file in the app; `Landing`, `Desk` and `DeskPanels` were split out of it) | Solo mode: draft a squad, run it through a seeded tournament season. See below. |
-| `/multiplayer` and `/lobby/:code` | `src/pages/Multiplayer.jsx` | Create/join a lobby with other humans, same draft→tournament shape as solo but state-machine-driven over WebSocket. |
+- **Real players:** more than 1,000 cards, one for each pro from VCT, Challengers and the all-time Icons, with their teams, countries, roles and agents.
+- **A match you play, not watch:** drag five cards onto three lanes, then lock in. Your rival's lineup stays hidden until you do.
+- **Chips:** tactic cards that multiply a lane. Win a series and pick one of three. Your hand holds up to seven.
+- **A league that remembers:** five weeks of fixtures, a top-four playoff and a transfer window each year. A strong year gets you promoted. Finish last twice in the bottom tier and you are sacked.
+- **Contracts, not a roster you keep forever:** every player has one to three years left, and anyone on their last year can move. Nothing in the window is a dice roll. A rival only takes your player if you let them.
+- **Training:** raise a stat, learn a skill, or rest. Players grow, tire and age on a career clock.
+- **Packs you tear open:** Silver, Gold and Icons packs, in a 3D pack you rip by hand. Spend a pack in the market, or open it to pick one of three players. A pity counter guarantees a Gold, and every second title earns an Icons pack.
+- **Saves on your device:** the game is fully client-side and your club lives in your browser's local storage.
 
-`/legal` holds the disclaimer. `/prematch`, `/match` and `/pack` now redirect
-to `/run`, and `/collection` redirects to `/cards`. `PreMatch.jsx`, `Match.jsx`
-and `PackOpening.jsx` are old prototypes with no route; packs are dealt inside
-`PerfectRun`/`Multiplayer`.
+## Play
 
-## Domain model
+**[Play it in your browser](https://vctfantasy.dimas.works)**, no install and no sign-up. A desktop or laptop is the best fit for now.
 
-### Cards - `shared/src/data/cards.json`
+1. Name your club and tear open five packs. From each, keep one of three players.
+2. Press **Play** on the home screen for this week's fixture.
+3. Drag your five players onto the three lanes (one to three per lane), then press **Lock in**.
+4. Use your IGL's rotate if you want to move a player after seeing the lanes, or go without.
+5. Win two lanes to take a map, and two maps to take the series (Bo3 in the league, Bo5 in the final).
 
-A flat array of ~900 player cards, one per real VCT/Challengers pro. **Never
-hand-edit this file** - it's regenerated by the vlr.gg sync (see "Data sync"
-below); per-player manual corrections go in `PLAYER_OVERRIDES` in
-`scripts/vlr-players.config.js` so they survive a re-sync.
+| Do this | To |
+| --- | --- |
+| <kbd>Space</kbd> or <kbd>Enter</kbd> | Tear open a pack |
+| Drag a card | Place it on a lane |
+| **Lock in** | Commit your lineup |
+| **Go without rotating** | Skip the IGL rotate |
+| **Next round** | Move on to the next map |
+| <kbd>Esc</kbd> | Go back, or close the club menu |
 
-Shape (see `src/lib/utils.js` for the accessor helpers):
+### How a match works
 
-```js
-{
-  id, player, org, org_name, org_logo,       // identity + team branding
-  region, nationality,                        // "EMEA"/"Americas"/"Pacific"/"China"; ISO2 country
-  tier, palette, edition,                     // bronze | silver | gold | icon (+ prestige/iconic editions)
-  rating,                                     // 0-99 overall, drives tier and pack sort order
-  role,                                       // Duelist | Initiator | Controller | Sentinel (roleAbbr() → DLT/INI/CTL/SEN)
-  agents,                                     // agent name pool, also drives auto-granted "One Trick" specialty
-  stats: { aim, positioning, ability, mentality, synergy },  // 0-99 each, what the sim actually rolls against
-  photo, head, headGeom, hair,                // image compositing inputs (see PlayerPortrait)
-  league,                                     // vct | t2 | icon → shown as "VCT" | "Challengers" | "Icons"
-  igl, stints, noKitSwap,
-}
-```
+A series is a set of maps, and each map has three lanes. Every lane scores one stat (aim, ability, mentality, positioning or synergy), so the same five players are worth different amounts in different places.
 
-Tier thresholds (set at sync time): rating **>80 → gold, 70–80 → silver, <70
-→ bronze**. There is no acs/kd/real-match-stat field anywhere - the whole
-simulation runs on the five synthetic `stats`, not scraped match stats.
+- A lane is a plain sum of its players' stat. Combos add on top: a role pair is worth +20, teammates +15 and a shared country +8.
+- Skills bend the rules. **One Trick** adds 20 on maps that suit the agent, **Flick** scores a player's best stat when they play a lane alone, **Mastermind** gives an IGL two rotates, and **Aura** takes 15 from the enemy on that lane.
+- Only a chip multiplies. Chips pay by who is on the lane, in half steps (x1.5, x2, x2.5) you can work out in your head.
+- A chip you play on a won map comes back to your hand. One you play on a lost map is burned.
 
-**Specialties** (`src/data/specialties.js`) are *derived*, not stored: up to
-5 named traits (`flex`, `flick`, `one_trick`, `mastermind`, `aura`) assigned
-via a curated name→keys map, each giving a situational sim bonus (e.g.
-`mastermind` boosts positioning/mentality when that card is IGL). Call
-`getCardSpecialties(card)` rather than reading a field.
+## Screenshots
 
-**`runFx`** is a *synthetic, runtime-only* field: `applyRunEffects()` in
-`perfectRun.js` returns a shallow-cloned card with adjusted `rating`/`stats`
-and a `runFx` array of active fatigue/boost effects - this is what feeds the
-booster-icon chips on `PlayerCard`. It is not present in the raw card and not
-persisted.
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/club-home.png" alt="The club home screen with the starting five, the season calendar and the next fixture" /></td>
+    <td width="50%"><img src="docs/screenshots/club-league.png" alt="The league table with the playoff line and the semifinal bracket" /></td>
+  </tr>
+  <tr>
+    <td align="center">Home: your five, the week's fixture and the season calendar</td>
+    <td align="center">League table, playoff line and bracket</td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/club-train.png" alt="The training screen showing a player going from 69 to 71 aim" /></td>
+    <td width="50%"><img src="docs/screenshots/club-chips.png" alt="The chip pick screen after a won series, offering three chips" /></td>
+  </tr>
+  <tr>
+    <td align="center">Train a stat, learn a skill or rest</td>
+    <td align="center">Win a series, then pick one of three chips</td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/club-review.png" alt="The year review showing a title, the packs earned and a promotion to Ascension" /></td>
+    <td width="50%"><img src="docs/screenshots/club-window.png" alt="The transfer market with free agents and rivals' players" /></td>
+  </tr>
+  <tr>
+    <td align="center">Year review: a title, packs and a promotion</td>
+    <td align="center">The transfer window</td>
+  </tr>
+  <tr>
+    <td colspan="2"><img src="docs/screenshots/demo-draft.webp" alt="A pack is torn open and one of three players is picked, twice" /></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center">Founding your club: tear a pack, keep one of three</td>
+  </tr>
+</table>
 
-### Squad / roster
+## The seasons
 
-Every mode converges on the same shape: a 5-card array (`ROSTER_SIZE = 5` in
-`perfectRun.js`) plus an `iglId` (in-game leader) and a computed **power**
-number with a **chemistry** modifier (role coverage, org/nationality
-synergy - see the `power`/`chem` calculation in `perfectRun.js`, reused
-verbatim by `multiplayer.js`). IGL matters mechanically: `mastermind`
-specialty cards get a mentality/positioning boost only while IGL, and swap
-logic (`swapInto` in `PerfectRun.jsx`, `chooseSwap` in `multiplayer.js`)
-re-picks the strongest available IGL automatically if the current IGL is the
-card being swapped out.
+| Tier | What it means |
+| --- | --- |
+| Challengers | Where every club starts. A first squad is drafted to sit here, so year one is a climb. |
+| Ascension | Promotion after a strong year, against stronger rivals. |
+| International | The top. Reaching it unlocks an extra bench place, and your club's reputation decides which stars you can sign, up to the Icons. |
 
-## Solo mode - "Perfect Run" (`shared/src/engine/perfectRun.js`, `src/pages/PerfectRun.jsx`)
+A year is five league weeks, a top-four playoff, a review and one transfer window. Each series win earns a Silver pack, and the year end pays three more. A title adds two Silver and two Gold, a top-three finish adds one Gold, and every second title adds an Icons pack.
 
-Pure, deterministic, seeded - `mulberry32(seed)` PRNG, `hashSeed(str)` for
-turning a date/name into a seed, `todaySeed()` for the shared daily-challenge
-seed. Every RNG consumer is written to draw a *fixed, documented* number of
-calls per step so the same seed always produces the same run (this is why
-sampling functions have comments like "consumes exactly n rng calls").
+There is no hidden difficulty dial. Which tier you are in is the difficulty: a club that keeps losing drops to a league it can beat, and one that keeps winning is promoted to rivals that can beat it.
 
-**Draft**: either "Normal" unboxing (`samplePack` - 5 uniformly-random
-undrafted cards, `PACK_SIZE = 5`) or nationality-rolled (`rollNationality` +
-`draftChoices` - every undrafted card from one weighted-random country, used
-by ENC mode). Draft 5, name an IGL, review chemistry, go.
+## Design notes
 
-**Season structure**: three single-elimination 16-team brackets - two
-"Masters" then one "Champions" - each named after a random world city
-(`buildSeason`). Masters draws from the top-30-by-power field (so an upset
-contender can sneak in); Champions takes exactly the top 15 plus the player.
-*Every* match in the bracket is simulated, not just the player's.
+The pack and reward system was planned in [docs/club-rewards-plan.md](docs/club-rewards-plan.md), and its choices lean on a few observations from other card games. The sources there are mostly community guides, with no developer postmortems and no FIFA Ultimate Team economy data, so treat them as direction, not proof.
 
-**Match sim**: `simMap`/round-by-round resolution lives in `perfectRun.js`
-and is rendered by `src/components/MapCanvas.jsx` + `src/engine/roundEvents.js`
-(derives round descriptions/streaks/match-point state from raw scores without
-touching the simulation itself).
+- **Keep a deterministic path next to the random one.** Marvel Snap shows one card you don't own in its Token Shop, as the counterpart to random caches ([Naavik](https://naavik.co/digest/marvel-snap-card-acquisition-spotlight-caches/)). The transfer window is Clubs' version: you can always buy the player you want.
+- **Cap the worst dry streak.** Gacha design literature lays a fixed pity counter over a variable reward, and recommends showing the counter ([DiGRA](https://dl.digra.org/index.php/dl/article/download/2731/2717/2777)). The vault shows how close the next Gold is.
+- **Don't make the fallback stingy.** Pokemon TCG Pocket drew complaints for restrictive pity points and for long animations ([OneEsports](https://www.oneesports.gg/gaming/pokemon-tcg-pocket-pity-system-explained/)), so every pack tear can be skipped.
+- **Packs as the reward for play.** FUT's Squad Building Challenges pay packs and consume the items you hand in ([EA help](https://help.ea.com/en/articles/ea-sports-fc/squad-building-challenges/)). Clubs pays packs for series, titles and promotion.
 
-**Series cards** (`src/engine/endless/seriesCards.js`): Endless series are
-played with cards. A series deals a hand of maps and the sides draft them in
-turn, higher seed first. Each map then takes one tactic card from your hand
-against one of the opponent's, and tactics counter each other in a soft
-triangle. A map card adds to your edge for role fit and mastery (`mapActivation`), and a
-tactic multiplies it for roster fit (`tacticActivation`). `seriesEdge` is the one
-formula, base plus map, times tactic, plus any counter, and it is power added
-for that map only. Screens show it times ten (`edgePoints`). A won map returns its tactic to your hand, a lost one burns it. Off-screen
-series resolve through the same functions (`resolveEndlessNpcMatches`).
+The ratings are not real match stats. Every card carries five synthetic stats (aim, positioning, ability, mentality, synergy) from 0 to 99, and the whole simulation runs on those.
 
-**Modes layered on the base loop** (all still `perfectRun.js`):
-- **Daily challenge** (`mode === 'daily'`): shared seed for everyone that
-  day, one attempt, one year of Endless rules, then the run ends on its own.
-  The score goes to the Worker's D1 leaderboard via
-  `src/lib/leaderboardClient.js` (identity = a locally-minted anonymous UUID,
-  no accounts). The overall board counts only scores from
-  `DAILY_BOARD_START_MS` onward (`src/lib/dailyRules.js`).
-- **Challenge links** (`mode === 'challenge'`, `src/lib/challenge.js`): a run's
-  seed, score and length in the URL. A friend gets the same opening draw and
-  plays the same length. Never submitted to a leaderboard.
-- **ENC - Esports Nations Cup** (`mode === 'enc'`): draft is
-  nationality-based instead of packs; `eligibleNationalPools` requires
-  `MIN_NATIONAL_POOL = 7` eligible players per country; CPU opponents are
-  full national rosters (`eligibleOrgs`/CPU roster builder), bracket sizing
-  adapts to however many nations qualify.
-- **Endless** (`src/engine/endless/*`): a living world rather than a repeated
-  season. There are no lives - the run ends only when the player stops or
-  prestiges. Its systems:
-  - **Circuit ladder** (`ladder.js`): three tiers - Challengers, Ascension,
-    International - classified straight off the cards' `league` field. The
-    tier picks the field AND the bracket size (`TIER_FIELD_SIZE = [8, 16, 16]`,
-    so a Challengers title is three series away, not four). A strong year
-    promotes, a poor one relegates; that self-correction is what replaced the
-    old lives/difficulty ramp.
-  - **Form + compression** (`field.js`): the ENC mechanism, reused. Each
-    entrant rolls `tournamentForm`, and power is compressed toward the FIELD
-    average - so matches inside a tier are unpredictable while the gap
-    between tiers survives.
-  - **Careers** (`career.js`): players age on a clock derived from real
-    `stints` data. Growth, decline, role conversion, fatigue and legend
-    status. Every anti-decline mechanic multiplies the DECLINE term only, so
-    a veteran always trends down - just slowly enough that a well-managed
-    favourite stays yours.
-  - **Chemistry bonds** (`bonds.js`): per-pair, capped, decaying. Fed into
-    `teamChemistry` through its `opts.extra` seam.
-  - **Market** (`market.js`): shared scarcity, poach offers on your stars,
-    targeted signings priced in packs and gated by reputation, and prestige
-    banking with a compounding multiplier.
-  - Solo runs autosave management, active brackets, map/tactic decisions,
-    rewards, and results to their own storage keys. Calculated map outcomes
-    and RNG state are saved before playback; resuming skips interrupted
-    presentation without replaying the tournament or paying rewards twice.
-    Older management-only saves remain supported (`src/lib/endlessRunSave.js`).
-- **Consolation pack**: solo banks packs (won by taking a title) and spends
-  them from the dock; multiplayer deals a turn-based consolation pack to
-  everyone except the champion. Either way the incoming card swaps for a
-  squad member - see `PackPhase` in `PerfectRun.jsx` and
-  `SquadSheet`/`SquadDock` below for the picker UI.
+## Status
 
-## Multiplayer (`src/engine/multiplayer.js`, `src/pages/Multiplayer.jsx`, `worker/index.js`)
+Clubs is early and still changing quickly. It replaced two older modes, the Gauntlet and Multiplayer. The notes on what was removed are in [docs/club-cleanup-plan.md](docs/club-cleanup-plan.md).
 
-Same domain concepts as solo (cards, squads, IGL, packs, brackets - literally
-imports card-pool/bracket/match functions from `perfectRun.js`), but driven
-by an explicit **phase state machine** replicated on server and client:
+- **English only for now.** The language picker and the Spanish and Portuguese text exist for the card library, but the Club screens are not translated yet.
+- **Some players have no photo yet** and show a silhouette.
+- **Browser storage is the only save.** Clear your site data, or switch browsers or devices, and the club is gone.
+- **Leftover server code.** The Worker still contains daily-score and lobby code from the removed modes. Nothing in the app calls it.
 
-```
-lobby → draft → igl_select → tournament ⇄ series_prep or match_ready ⇄ match_transition
-                                   ↓
-                            (non-champion each event) consolation
-                                   ↓
-                              season_over
-```
+## Build from source
 
-- The **Worker** (`worker/index.js`) is thin routing: `POST /api/lobbies`
-  mints a 6-char code and creates a Durable Object; `POST
-  /api/lobbies/:code/join` and `GET/Upgrade /ws/:code` proxy straight into
-  that lobby's DO.
-- The **`Lobby` Durable Object** owns state in `ctx.storage`, authenticates
-  WebSocket connections by a SHA-256-hashed session token
-  (`authenticate`/`hashToken`/`timingSafeHashEqual` - reconnect-safe, no
-  cookies), and is the only place `applyCommand()` actually runs. Every
-  accepted command triggers `persistAndSchedule()` (write state, recompute
-  the next `alarm()` fire time) and a `broadcast()` of a fresh
-  `publicSnapshot()` to all sockets.
-- `alarm()` is how deadline-driven transitions happen without a client
-  connected - draft clocks, match-ready countdowns, consolation timers, and
-  eventual lobby garbage collection (`LOBBY_TTL_MS`) all fire from the DO's
-  own alarm, not a client tick.
-- `settings.gameLength` is `'year'` (fixed 3-event season, mirrors solo) or
-  `'endless'`; `settings.unboxing` is `'normal'` (5-card pack) or
-  nationality-based, same duality as solo mode.
-- `settings.seriesCards` adds `series_prep` before each human series: both
-  squads pick maps and tactics privately by a deadline, and `advanceDeadlines`
-  auto-picks with `chooseNpcMap` and `npcTactic` for anyone who times out or
-  drops. `publicSnapshot(state, now, viewerId)` hides hands, picks and the seed,
-  so the `Lobby` DO builds one snapshot per socket. On by default for new
-  lobbies; `migrateLobbyState()` leaves older ones off.
-- There is **no shop**: the credits/lives/fatigue/boosts economy was removed
-  in rules V2, and `migrateLobbyState()` strips those fields from any lobby
-  still carrying them. `buy_item`/`shop_done` now throw `unsupported_command`.
-- An **endless lobby shares one living world** (`state.world`): a single
-  `dev` map keyed by card id, one `signedIds` market and one news feed. The
-  card pool is already lobby-wide, so a player a rival develops - or an org
-  that fades - is the same for every competitor. Per-pair chemistry stays
-  private to each squad, because a bond is a property of who has actually
-  played together. The world turns once per completed year, driven by
-  `nextRandom(state)` so the run stays replayable from `(seed, rngCounter)`.
-- `migrateLobbyState()` exists specifically so old persisted DO state
-  (from before a shape change) doesn't need a fleet-wide reset - check it
-  before assuming a new field is present on every stored lobby.
-
-Client-side, `src/lib/multiplayerClient.js` owns the WebSocket connection
-and reconnection logic; `Multiplayer.jsx` is otherwise a fairly direct
-render of whatever `publicSnapshot()` phase the DO reports, plus the same
-`SquadSheet`/`SquadDock`/`PlayerCard` components solo mode uses.
-
-## Shared squad-viewing UI (used by both modes)
-
-- **`PlayerCard.jsx`** - the actual card face (400×580 native, scaled via a
-  `displayScale` prop since CSS media queries can't reach it): rating, role,
-  flag, specialty rail, name, the 5 stats, org/region logos. `flippable`
-  shows a stat-bar "scouting report" back face. This is the one true
-  card-rendering component - every other "card preview" in the app is this
-  component at a different scale, not a bespoke re-implementation.
-- **`SquadDock.jsx`** - the persistent bottom-bar mini roster (small
-  `PlayerCard` tiles, hover raises a bigger one). No open/close state; every
-  tile is legible at rest.
-- **`SquadSheet.jsx`** - the full-roster modal (photos-only overlapping
-  faces, à la a scoreboard), used both for "just look at your squad" and for
-  picking a card to act on (name IGL, swap out for a pack pick, apply a shop
-  item). Hovering/tapping a face raises a real `PlayerCard` preview above the
-  sheet (`src/lib/squadSheetPreview.js` holds the pure sizing math, kept
-  outside the JSX file so it's testable under plain `node --test`). Touch
-  devices get an arm/confirm two-tap instead of committing on the first tap.
-- **`CardFocusOverlay.jsx`** - single-card full-screen detail view (flip to
-  see stats), opened by clicking a dock chip or a Collection row.
-- **`usePeekKey.js`** - hold-Tab-to-peek at the squad sheet without pinning
-  it open; deliberately doesn't handle Escape (that's the sheet's own job).
-
-## Directory map
-
-```
-src/
-  pages/          One file per route (see table above). PerfectRun.jsx and
-                   Multiplayer.jsx are the two real "screens" and are large
-                   by necessity - they each render every phase of their mode.
-  engine/         perfectRun.js (solo + shared primitives), multiplayer.js
-                   (lobby state machine, imports from perfectRun.js),
-                   roundEvents.js (round-log → display derivation).
-  components/     Shared UI. PlayerCard/PlayerPortrait/SquadDock/SquadSheet/
-                   CardFocusOverlay form the card-viewing system described
-                   above. AppFrame/StatusStrip/ModeRail are page chrome.
-                   MatchBackdrop/MapCanvas render live match visuals.
-  lib/            Small framework-agnostic hooks/utilities: useMediaQuery,
-                   usePeekKey, useCardTilt, useReducedMotion,
-                   useSkippableTimeline, utils.js (asset paths, role/country
-                   label helpers), leaderboardClient.js (daily-score API),
-                   multiplayerClient.js (WebSocket client), and pure logic
-                   split out of JSX components specifically so it's
-                   importable by node:test (squadSheetPreview.js).
-  data/           cards.json (generated, don't hand-edit), specialties.js
-                   (derivation logic + catalog), backdrops.js, heads.json/
-                   kits.json (portrait-compositing inputs).
-  styles/         tokens.css (design tokens - colors, type ramp, spacing,
-                   motion durations/easings), hub.module.css.
-worker/index.js  Entire backend: static-asset serving, lobby REST + WebSocket
-                   upgrade routing, D1 leaderboard endpoints, the `Lobby`
-                   Durable Object class, security headers.
-migrations/      D1 schema migrations (0001_daily_scores.sql so far).
-scripts/         Offline data pipeline: vlr-to-json.js (scrape → cards.json),
-                   vlr-players.config.js (which players/events to pull +
-                   PLAYER_OVERRIDES for manual corrections), process_avatars.py
-                   (rembg background removal), build_portraits.py (400x412
-                   canvas compositing), sheet-to-json.js (legacy Google
-                   Sheets importer, superseded by the vlr sync).
-test/            node:test files, run directly against source (no Babel/JSX
-                   loader configured - pure-logic modules only, see
-                   squadSheetPreview.js's split-out-of-JSX pattern above).
-```
-
-## Design system
-
-`DESIGN.md` is the source of truth for visual language (colors, type ramp,
-spacing, motion) and is machine-readable frontmatter consumed by the
-`impeccable` Claude Code plugin's design-lint hook, which runs automatically
-on edits to `.jsx`/`.module.css` files in this repo and will flag things like
-literal font-sizes off the documented type ramp or AI-generated-UI tells
-(rounded card grids, glow effects, unearned gradients). The house look is
-sharp/flat, broadcast-HUD-inspired, VALORANT red (`--accent`) - not the
-generic "friendly SaaS" rounded-corner aesthetic. All colors/spacing/motion
-timing should come from `src/styles/tokens.css` CSS variables, not literals.
-
-## Data sync (cards from vlr.gg)
-
-Cards, kits and card art live in [cards-val](https://github.com/dimslalom/cards-val), which also holds the sync scripts. To pick up new cards here:
+You need [Node.js](https://nodejs.org) 22 and Git. Card art and data come from a submodule ([cards-val](https://github.com/dimslalom/cards-val)), so clone with submodules.
 
 ```bash
-git submodule update --remote shared
-```
-
-## Testing
-
-`node --test`, run directly against source - **there is no Babel/JSX loader
-configured**, so any file imported by a test must be plain `.js`, not `.jsx`.
-This is why pure logic that a JSX component needs (e.g. `isTypingTarget` in
-`usePeekKey.js`, `previewScale` in `squadSheetPreview.js`) is written and
-exported from a plain module the component then imports, rather than living
-inline in the component file.
-
-```sh
-npm test                  # everything in test/*.test.js
-npm run test:perfect-run  # solo engine + endless + round-event tests
-npm run test:multiplayer  # lobby state machine tests
-npm run test:hover        # peek-key + squad-sheet-preview UI-logic tests
-```
-
-## Getting started
-
-```sh
+git clone --recurse-submodules https://github.com/dimslalom/vfl.git
+cd vfl
 npm install
-npm run dev        # http://localhost:5173
+npm run dev
 ```
 
-The Vite server is enough for solo UI work. To exercise the Worker APIs,
-WebSockets, Durable Objects, and D1 together, build once and run Wrangler:
+The dev server opens at `http://localhost:5173`. Other useful commands:
 
-```sh
-npm run build
-npx wrangler dev
+```bash
+npm test          # every Node test
+npm run build     # production build into dist/
+npm run check     # lint, tests, build and a Wrangler dry run (the CI gate)
 ```
 
-## Production checks and deployment
+Built with React, Vite, three.js and Pixi.js, deployed as static assets behind a Cloudflare Worker. For how the code is laid out, see [docs/architecture.md](docs/architecture.md). The visual system is in [DESIGN.md](DESIGN.md).
 
-Run the same release gate used by CI:
+## Credits and disclaimer
 
-```sh
-npm run check
-```
+Player and team data is synced from [vlr.gg](https://www.vlr.gg) by the [cards-val](https://github.com/dimslalom/cards-val) repo.
 
-This runs the full ESLint configuration, every Node test, the optimized Vite
-build, and a Wrangler deployment dry-run. Production deploys are handled by
-`.github/workflows/deploy.yml`; the workflow applies pending D1 migrations
-before deploying the Worker. It requires `CLOUDFLARE_ACCOUNT_ID` and
-`CLOUDFLARE_API_TOKEN` as GitHub environment secrets for `production`.
-
-## Conventions worth knowing before editing
-
-- **No hand-written defaults for the `.jsx`/`.module.css` design lint** - see
-  "Design system" above; a hook runs on save and expects tokens, not literals.
-- **CSS Modules per component** (`Foo.jsx` + `Foo.module.css`), imported as
-  `styles` and referenced as `styles.thing` - no global class names outside
-  `src/styles/`.
-- **Comments explain *why*, not *what***, and are sparse by convention
-  throughout this codebase (see any file's header comment for the pattern:
-  one paragraph of rationale, not a changelog).
-- **The engine files are the rulebook.** If solo and multiplayer ever seem to
-  disagree on how chemistry, packs, or brackets work, `multiplayer.js`
-  importing from `perfectRun.js` means `perfectRun.js` is very likely the
-  one actually defining the behavior - check there first.
-- **Seeded determinism is load-bearing** in `perfectRun.js` - an RNG-call-order
-  change (even one that "looks" equivalent) can silently break daily-challenge
-  fairness or multiplayer client/server agreement. Read the "consumes exactly
-  N rng calls" comments before touching draft/pack sampling.
+Clubs is a fan project with no monetization. It isn't affiliated with or endorsed by Riot Games. VALORANT, the VCT and related names belong to Riot Games. Team logos and player names belong to their owners.
