@@ -49,7 +49,7 @@ function Side({ side, club, cards }) {
 /**
  * The match intro: both clubs cut in from either side on a diagonal, each with
  * its five, meet at a sharp seam, then part like doors onto the board as its
- * camera drops in. No words beyond the names and the stage, no badge between
+ * camera drops in. No words beyond the names, no badge between
  * the sides: the seam is the contest. A tap shortens it at any point.
  */
 export default function MatchIntro({ you, them, stage, bestOf, ready, reducedMotion, onOpen, onSkipDrop, onDone }) {
@@ -89,12 +89,6 @@ export default function MatchIntro({ you, them, stage, bestOf, ready, reducedMot
     <div className={styles.intro} data-phase={phase} onClick={skip} role="presentation">
       <Side side="you" club={you.club} cards={you.cards} />
       <Side side="them" club={them.club} cards={them.cards} />
-      <div className={styles.stage}>
-        <b>{stage}</b>
-        <span className={styles.pips} aria-hidden="true">
-          {Array.from({ length: bestOf }, (_, index) => <i key={index} />)}
-        </span>
-      </div>
       <p className={styles.sr} role="status">{`${stage}: ${you.club.name} against ${them.club.name}, best of ${bestOf}`}</p>
     </div>
   );

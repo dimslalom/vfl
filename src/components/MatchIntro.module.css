@@ -91,32 +91,12 @@
 .player:nth-child(5) { --x: 46%; --y: 27%; --s: .7; }
 .side[data-side='them'] .player { left: auto; right: var(--x); }
 .player img, .player svg { display: block; width: 100%; height: auto; }
-.player svg { fill: var(--plate-inset); }
+/* The photos end in a straight cut; the last sliver fades out so it isn't harsh. */
+.player img, .player svg { -webkit-mask-image: linear-gradient(to bottom, #000 86%, transparent); mask-image: linear-gradient(to bottom, #000 86%, transparent); }
+.player svg { fill: var(--faint); }
 .side[data-side='you'] .player svg { fill: color-mix(in srgb, var(--bg) 22%, var(--ink)); }
 .intro[data-phase='hold'] .player { transform: scale(var(--s)); opacity: 1; }
 .intro[data-phase='open'] .player { transform: scale(var(--s)); opacity: 1; transition: none; }
-
-/* The stage, pinned to the seam's top. */
-.stage {
-  position: absolute;
-  top: clamp(16px, 4vh, 40px);
-  left: 50%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  background: var(--bg);
-  color: var(--ink);
-  transform: translate(-50%, -12px);
-  opacity: 0;
-  transition: transform var(--dur-enter) var(--ease-out) 0.2s, opacity var(--dur-enter) var(--ease-out) 0.2s;
-}
-.stage b { font: 800 var(--fs-label)/1 var(--font-mono); letter-spacing: 0.14em; text-transform: uppercase; }
-.pips { display: flex; gap: 3px; }
-.pips i { width: 14px; height: 4px; background: var(--ink); }
-.intro[data-phase='hold'] .stage { transform: translate(-50%, 0); opacity: 1; }
-.intro[data-phase='open'] .stage { opacity: 0; transition: opacity 0.2s var(--ease-in); }
 
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
@@ -147,10 +127,8 @@
   .side[data-side='them'] .player:nth-child(n) { margin: 0 0 0 -7.5%; }
   .name { font-size: clamp(28px, 9vw, 44px); }
   .crest { width: 48px; height: 54px; font-size: var(--fs-label); }
-  .stage { top: 50%; transform: translate(-50%, -50%) scale(0.9); }
-  .intro[data-phase='hold'] .stage { transform: translate(-50%, -50%); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .side, .player, .stage { transition: none !important; }
+  .side, .player { transition: none !important; }
 }
