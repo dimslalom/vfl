@@ -459,8 +459,6 @@ export default {
   "Squad power: you {you}, them {them}": "Poder del equipo: tú {you}, ellos {them}",
   "No moves yet. Clubs trade in the window after the playoffs.": "Aún no hay movimientos. Los clubes fichan en el mercado tras los playoffs.",
   "to {club}": "a {club}",
-  "This week": "Esta semana",
-  "Latest moves": "Últimos movimientos",
   "Record": "Balance",
   "Rounds": "Rondas",
   "Table": "Tabla",

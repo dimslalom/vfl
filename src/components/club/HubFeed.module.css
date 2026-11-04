@@ -1,5 +1,5 @@
-/* The club feed: one plate, played like stories. Flat plates, the house curve,
-   green for you, slate for them, and no red: red on the hub is Play's. */
+/* The club feed: one plate, played like stories. Each slide leads with one big
+   number. Green for you, slate for them, and no red: red on the hub is Play's. */
 .feed {
   position: relative;
   flex: none;
@@ -29,64 +29,94 @@
 .track { display: flex; height: 100%; transition: transform .38s cubic-bezier(.22, 1, .36, 1); }
 .track[data-still] { transition: none; }
 .slide { flex: 0 0 100%; min-width: 0; height: 100%; display: flex; flex-direction: column; gap: var(--sp-3); box-sizing: border-box; overflow: hidden; }
-.head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-2); }
-.head > span:first-child { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.head b { font-size: var(--fs-lead); font-weight: 700; line-height: 1.2; }
-.head small { color: var(--muted); font-size: var(--fs-label); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.label { font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .empty { margin: auto 0; color: var(--muted); font-size: var(--fs-label); line-height: 1.5; }
 
-/* Scouting report */
-.tug { display: flex; align-items: center; gap: var(--sp-2); }
-.tugEnd { display: flex; align-items: center; gap: 6px; flex: none; }
-.tugEnd b { font-size: var(--fs-lead); font-variant-numeric: tabular-nums; }
-.tugBar { position: relative; flex: 1; height: 8px; background: var(--faint); }
-.tugBar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--win); transition: width .5s cubic-bezier(.2, .8, .2, 1); }
-.tugBar::after { content: ''; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 2px; background: var(--ink); transform: translateX(-1px); }
+/* Scouting report: two powers as the headline, a split bar, their best three. */
+.powers { display: grid; grid-template-columns: 1fr 1fr; row-gap: var(--sp-3); }
+.power { display: flex; flex-direction: column; gap: var(--sp-2); }
+.power[data-them] { align-items: flex-end; }
+.power b { font-size: 88px; font-weight: 700; line-height: .85; font-variant-numeric: tabular-nums; }
+.power[data-them] b { color: var(--muted); }
+.split { grid-column: 1 / -1; display: flex; gap: 4px; height: 12px; }
+.split i { flex-basis: 0; background: var(--win); transition: flex-grow .5s cubic-bezier(.2, .8, .2, 1); }
+.split i[data-them] { background: var(--faint); }
 .crest { flex: none; display: block; object-fit: contain; background: none; }
 span.crest { background: var(--plate-inset); }
-.best { display: flex; flex-direction: column; gap: var(--sp-2); }
-.cards { display: flex; gap: var(--sp-2); }
+.cards { flex: 1; min-height: 0; display: flex; align-items: flex-end; justify-content: center; gap: var(--sp-2); }
 .cards > * { filter: var(--shadow-rest); }
-.facts { margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
-.facts div { padding: var(--sp-2) var(--sp-3); display: flex; flex-direction: column; gap: 4px; background: var(--plate-inset); }
-.facts dt { font-size: var(--fs-micro); color: var(--muted); }
-.facts dd { margin: 0; font-size: var(--fs-lead); font-weight: 700; font-variant-numeric: tabular-nums; }
-.feed[data-compact] .facts { display: none; }
-.tag { flex: none; padding: 4px 8px; background: var(--plate-inset); font: 700 var(--fs-micro)/1.3 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
+.cards > [data-top] { filter: var(--shadow-lift, var(--shadow-rest)); }
+.facts { margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); background: var(--bg-deep); }
+.facts div { padding: var(--sp-3); display: flex; flex-direction: column; gap: 6px; }
+.facts div + div { box-shadow: inset 1px 0 0 var(--line); }
+.facts dt { font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.facts dd { margin: 0; font-size: var(--fs-title); font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
 
-/* Rows: attention and news share one shape. */
-.rows { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
-.row, .move { width: 100%; min-height: 52px; padding: var(--sp-2) var(--sp-3); display: flex; align-items: center; gap: var(--sp-3); box-sizing: border-box; background: var(--plate-inset); color: var(--ink); text-align: left; }
-.row { border: 0; font: inherit; cursor: pointer; }
-.row:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
-@media (hover: hover) { .row:hover { background: var(--plate-hi); } .row:hover .chevron { transform: translateX(2px); } }
-.icon { width: 32px; height: 32px; flex: none; display: grid; place-items: center; color: var(--ink); }
-.rowText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; font-size: var(--fs-label); font-weight: 600; line-height: 1.3; }
-.rowText small { color: var(--muted); font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.chevron { flex: none; color: var(--muted); transition: transform .15s cubic-bezier(.2, .8, .2, 1); }
+/* Needs attention: the count is the headline, each item a tile that goes there. */
+.slide[data-key='attention'] { justify-content: space-between; }
+.count { font-size: 220px; font-weight: 700; line-height: .8; font-variant-numeric: tabular-nums; }
+.tiles { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: var(--bg-deep); }
+.tiles li:nth-child(even) { box-shadow: inset 1px 0 0 var(--line); }
+.tiles li:nth-child(n+3) { box-shadow: inset 0 1px 0 var(--line); }
+.tiles li:nth-child(n+3):nth-child(even) { box-shadow: inset 1px 1px 0 var(--line); }
+.tile { width: 100%; min-height: 84px; padding: var(--sp-3) var(--sp-5); display: flex; align-items: center; gap: var(--sp-3); box-sizing: border-box; border: 0; background: none; color: var(--ink); font: 600 var(--fs-label)/1.3 var(--font-body); text-align: left; cursor: pointer; }
+.tile svg { flex: none; width: 28px; height: 28px; }
+.tile[data-first] { background: var(--ink); color: var(--bg); }
+.tile:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+@media (hover: hover) { .tile:not([data-first]):hover { background: var(--plate-hi); } }
 .clear { margin: auto 0; display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); color: var(--win); text-align: center; }
 .clear b { color: var(--ink); font-size: var(--fs-label); }
-.face { width: 36px; height: 36px; flex: none; overflow: hidden; background: var(--plate); clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px)); }
+
+/* League news: the latest move in its card's colour, the ones before it as faces. */
+.headline { --tier: var(--surface-alt); --tier-ink: var(--ink); position: relative; flex: 1; min-height: 0; overflow: hidden; background: var(--tier); color: var(--tier-ink); }
+.headline[data-tier='gold'] { --tier: var(--gold); --tier-ink: var(--gold-ink); }
+.headline[data-tier='silver'] { --tier: #b9bdc7; --tier-ink: #14171f; }
+.headline[data-tier='bronze'] { --tier: #b5804f; --tier-ink: #1d130a; }
+.headlineRating { position: absolute; left: var(--sp-5); top: var(--sp-4); z-index: 1; font-size: 96px; font-weight: 700; line-height: .85; font-variant-numeric: tabular-nums; }
+.headlinePhoto { position: absolute; right: 0; bottom: 64px; width: 82%; height: calc(100% - 64px); object-fit: cover; object-position: top; }
+svg.headlinePhoto { fill: color-mix(in srgb, var(--tier-ink) 22%, transparent); }
+.headlineBar { position: absolute; left: 0; right: 0; bottom: 0; height: 64px; padding: 0 var(--sp-5); display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); background: var(--bg-deep); color: var(--ink); }
+.headlineBar > b { min-width: 0; font-size: var(--fs-heading); font-weight: 700; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.route { flex: none; display: flex; align-items: center; gap: 6px; color: var(--faint); }
+.headline[data-joined] .route { color: var(--win); }
+.moreMoves { margin: 0; padding: var(--sp-3); list-style: none; display: flex; gap: var(--sp-2); background: var(--bg-sunken); }
+.moreMoves li { box-shadow: inset 0 -3px 0 var(--faint); }
+.moreMoves li[data-joined] { box-shadow: inset 0 -3px 0 var(--win); }
+.moreMoves .face { width: 44px; height: 44px; }
+
+.face { display: block; width: 36px; height: 36px; flex: none; overflow: hidden; background: var(--plate); clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px)); }
 .face img { width: 100%; height: 100%; object-fit: cover; object-position: center 18%; display: block; }
 .face svg { display: block; width: 100%; height: 100%; fill: var(--faint); }
 .facesRow { display: none; margin: 0; padding: 0; list-style: none; gap: var(--sp-3); }
 .facesRow li { display: flex; align-items: center; gap: 6px; }
 .facesRow b { font: 700 var(--fs-label)/1 var(--font-mono); font-variant-numeric: tabular-nums; }
 
-/* Phone: the same stories in the strip under the squad, with less in each. */
+/* Phone: the same stories in the 150 px strip under the squad, each cut to one row. */
 .feed[data-compact] { padding: var(--sp-2) var(--sp-4) var(--sp-3); gap: var(--sp-2); width: 100% !important; }
-.feed[data-compact] .slide { gap: var(--sp-2); }
-.feed[data-compact] .head > span:first-child { flex-direction: row; align-items: baseline; gap: var(--sp-2); }
-.feed[data-compact] .head b { font-size: var(--fs-body); }
-.feed[data-compact] .best { display: none; }
+.feed[data-compact] .slide { gap: var(--sp-2); justify-content: center; }
+.feed[data-compact] .powers { grid-template-columns: auto 1fr auto; align-items: center; column-gap: var(--sp-3); }
+.feed[data-compact] .power { flex-direction: row; align-items: center; }
+.feed[data-compact] .power[data-them] { grid-column: 3; flex-direction: row-reverse; }
+.feed[data-compact] .power b { font-size: var(--fs-heading); }
+.feed[data-compact] .split { grid-column: 2; grid-row: 1; height: 8px; }
+.feed[data-compact] .cards, .feed[data-compact] .facts { display: none; }
 .feed[data-compact] .facesRow { display: flex; }
-.feed[data-compact] .rows li:nth-child(n+3) { display: none; }
-.feed[data-compact] .row, .feed[data-compact] .move { min-height: 40px; padding: 4px var(--sp-2); }
+.feed[data-compact] .slide[data-key='attention'] { flex-direction: row; align-items: center; gap: var(--sp-3); }
+.feed[data-compact] .count { font-size: 64px; }
+.feed[data-compact] .tiles { margin: 0; flex: 1; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; background: none; }
+.feed[data-compact] .tiles li { box-shadow: none; }
+.feed[data-compact] .tile { min-height: 40px; padding: 4px var(--sp-2); background: var(--plate-inset); font-size: var(--fs-micro); }
+.feed[data-compact] .tile[data-first] { background: var(--ink); }
+.feed[data-compact] .tile svg { width: 20px; height: 20px; }
+.feed[data-compact] .headline { margin: 0; }
+.feed[data-compact] .headlineRating { font-size: var(--fs-display); top: var(--sp-2); left: var(--sp-2); }
+.feed[data-compact] .headlinePhoto { width: 40%; bottom: 0; height: 100%; right: 45%; }
+.feed[data-compact] .headlineBar { left: auto; width: 55%; top: 0; height: 100%; flex-direction: column; align-items: flex-start; justify-content: center; }
+.feed[data-compact] .headlineBar > b { font-size: var(--fs-body); }
+.feed[data-compact] .moreMoves { display: none; }
 .feed[data-compact] .clear { flex-direction: row; }
 .feed[data-compact] .clear svg { width: 24px; height: 24px; }
 
 @media (prefers-reduced-motion: reduce) {
-  .track, .tugBar i, .chevron { transition: none; }
+  .track, .split i { transition: none; }
   .bar i { animation: none; }
 }
