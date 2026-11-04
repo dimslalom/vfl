@@ -41,22 +41,22 @@
 .intro[data-phase='open'] .side[data-side='them'] { transform: translateX(100%); }
 
 /* The club: crest and name, kept inside its own side of the seam. */
-.who { max-width: 40%; display: flex; flex-direction: column; gap: var(--sp-3); }
+.who { max-width: 48%; display: flex; flex-direction: column; gap: var(--sp-4); }
 .side[data-side='them'] .who { align-items: flex-end; }
 .crest {
-  width: 64px;
-  height: 72px;
+  width: clamp(64px, 7.5vw, 104px);
+  height: clamp(72px, 8.4vw, 116px);
   display: grid;
   place-items: center;
   background: var(--bg);
   color: var(--ink);
-  font: 800 var(--fs-title)/1 var(--font-mono);
+  font: 800 var(--fs-heading)/1 var(--font-mono);
   clip-path: polygon(50% 0, 100% 10px, 100% calc(100% - 10px), 50% 100%, 0 calc(100% - 10px), 0 10px);
 }
 .side[data-side='them'] .crest { background: var(--bg); }
 .crest img { width: 78%; height: 78%; object-fit: contain; }
 .name {
-  font-size: clamp(32px, 5.6vw, 80px);
+  font-size: clamp(40px, 8vw, 128px);
   font-weight: 900;
   line-height: 0.95;
   letter-spacing: -0.02em;
@@ -64,27 +64,37 @@
   overflow-wrap: anywhere;
 }
 
-/* The five, a broadcast lineup on the bottom edge: overlapped shoulder to
-   shoulder, the IGL in front, each one rising after the last. */
-.five { display: flex; align-items: flex-end; width: 60%; }
-.side[data-side='them'] .five { flex-direction: row-reverse; }
+/* The five, an esports lineup in a V on the bottom edge: the IGL front and
+   centre at full size, two flanking just behind, two at the back raised. It
+   fits the narrow bottom of each panel without hiding anyone under the seam. */
+.five { position: relative; width: min(44vw, 720px); height: min(72vh, 40vw); margin-left: calc(-1 * clamp(4px, 1.5vw, 24px)); }
+.side[data-side='them'] .five { margin-left: 0; margin-right: calc(-1 * clamp(4px, 1.5vw, 24px)); }
 .player {
-  position: relative;
+  --x: 19%;
+  --y: 0%;
+  --s: 1;
+  position: absolute;
+  bottom: var(--y);
+  left: var(--x);
+  width: 62%;
+  margin: 0;
   z-index: calc(5 - var(--i));
-  flex: 0 0 30%;
-  margin: 0 -12.5% 0 0;
-  transform: translateY(40%);
+  transform-origin: 50% 100%;
+  transform: translateY(40%) scale(var(--s));
   opacity: 0;
   transition: transform var(--dur-deal) var(--ease-out), opacity var(--dur-enter) var(--ease-out);
   transition-delay: calc(180ms + var(--i) * 70ms);
 }
-.side[data-side='them'] .player { margin: 0 0 0 -12.5%; }
-.player:nth-child(even) { bottom: 4%; }
+.player:nth-child(2) { --x: 2%; --y: 13%; --s: .84; }
+.player:nth-child(3) { --x: 36%; --y: 13%; --s: .84; }
+.player:nth-child(4) { --x: -8%; --y: 27%; --s: .7; }
+.player:nth-child(5) { --x: 46%; --y: 27%; --s: .7; }
+.side[data-side='them'] .player { left: auto; right: var(--x); }
 .player img, .player svg { display: block; width: 100%; height: auto; }
 .player svg { fill: var(--plate-inset); }
 .side[data-side='you'] .player svg { fill: color-mix(in srgb, var(--bg) 22%, var(--ink)); }
-.intro[data-phase='hold'] .player { transform: none; opacity: 1; }
-.intro[data-phase='open'] .player { transform: none; opacity: 1; transition: none; }
+.intro[data-phase='hold'] .player { transform: scale(var(--s)); opacity: 1; }
+.intro[data-phase='open'] .player { transform: scale(var(--s)); opacity: 1; transition: none; }
 
 /* The stage, pinned to the seam's top. */
 .stage {
@@ -130,7 +140,11 @@
   .who, .five { max-width: 100%; }
   .side[data-side='them'] .five { order: -1; }
   .side[data-side='you'] .who { order: 1; padding-bottom: var(--sp-5); }
-  .five { width: 100%; }
+  .five { display: flex; align-items: flex-end; width: 100%; height: auto; }
+  .five, .side[data-side='them'] .five { margin: 0; }
+  .side .player, .side .player:nth-child(n) { --s: 1; position: relative; left: auto; right: auto; bottom: auto; flex: 0 0 26%; width: auto; margin: 0 -7.5% 0 0; }
+  .side[data-side='them'] .five { flex-direction: row-reverse; }
+  .side[data-side='them'] .player:nth-child(n) { margin: 0 0 0 -7.5%; }
   .name { font-size: clamp(28px, 9vw, 44px); }
   .crest { width: 48px; height: 54px; font-size: var(--fs-label); }
   .stage { top: 50%; transform: translate(-50%, -50%) scale(0.9); }
