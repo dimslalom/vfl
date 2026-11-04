@@ -38,7 +38,7 @@
   .road li { min-height: 60px; padding: var(--sp-2); }
   .road li b { font-size: var(--fs-body); }
   .packButton img { width: 150px; height: 218px; }
-  .packHero > div { transform: scale(.78); }
+  .packFive { transform: scale(.78); }
   .ladderSplit { grid-template-columns: 1fr; gap: var(--sp-4); align-content: center; }
   .rungs li { min-height: 56px; }
   .rungs li b { font-size: var(--fs-lead); }

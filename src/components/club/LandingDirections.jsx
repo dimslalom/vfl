@@ -94,8 +94,10 @@ export function PackLanding({ state }) {
     >
       <div className={lab.packHero}>
         {summary ? (
-          <div className={styles.cardRow}>
-            {summary.starters.map(card => <PlayerCard key={card.id} card={card} displayScale={0.34} tilt={false} canDrag={false} />)}
+          <div className={lab.packFive}>
+            <div className={styles.cardRow}>
+              {summary.starters.map(card => <PlayerCard key={card.id} card={card} displayScale={0.34} tilt={false} canDrag={false} />)}
+            </div>
           </div>
         ) : (
           <button type="button" className={lab.packButton} aria-label="Open your first pack and found a club">
