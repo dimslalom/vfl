@@ -127,3 +127,7 @@ Clubs is early and still changing quickly. It replaced two older modes, the Gaun
 - **Some players have no photo yet** and show a silhouette.
 - **Without an account, browser storage is the only save.** Clear your site data, or switch browsers or devices, and the club is gone. Signing in with Discord (optional) keeps it in the cloud.
 - **Leftover server code.** The Worker still contains daily-score and lobby code from the removed modes. Nothing in the app calls it.
+
+---
+
+Clubs is a fan project with no monetization. It is not affiliated with or endorsed by Riot Games. VALORANT, the VCT and related names belong to Riot Games.
