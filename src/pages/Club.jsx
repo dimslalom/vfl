@@ -1571,7 +1571,7 @@ export default function Club() {
   const alerts = saveFailed && <p className={styles.alert} role="alert">Progress isn't saving on this device</p>;
 
   if (damaged) return <Damaged onReset={fresh} />;
-  if (screen === 'start' || !state) return <Start onStart={start} onExit={() => navigate('/run')} scale={size.scale} />;
+  if (screen === 'start' || !state) return <Start onStart={start} onExit={() => navigate('/multiplayer')} scale={size.scale} />;
   if (screen === 'train') {
     return <Train state={state} size={size} onBack={() => show('home')} onTrain={trainPlayer} onTape={tapePlayer} onBuy={() => setState(buySession(state))} canBuy={canBuySession(state)} />;
   }
@@ -1612,7 +1612,7 @@ export default function Club() {
         state={state}
         size={size}
         go={(next) => { setNotice(''); show(next); }}
-        onExit={() => navigate('/run')}
+        onExit={() => navigate('/multiplayer')}
         onAbandon={fresh}
       />
       {notice && <p className={styles.toast} role="status">{notice}</p>}
