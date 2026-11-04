@@ -80,3 +80,11 @@ export function clubFatigueExtra(dev) {
 export function rewardDefaults() {
   return { gold: 0, icons: 0, pity: { gold: 0 }, tapes: 0, opens: 0, opening: null, chipOffer: null };
 }
+
+const SIGNINGS_KEPT = 8;
+
+/** The club's signing log with `ids` added at the front, newest first. `via` is 'pack' or 'window'. */
+export function withSignings(state, ids, via) {
+  const added = ids.map(id => ({ id, year: state.year, via }));
+  return [...added, ...(state.signings ?? [])].slice(0, SIGNINGS_KEPT);
+}

@@ -37,6 +37,7 @@ import ClubSettings from '../components/club/ClubSettings';
 import ClubHint from '../components/club/ClubHint';
 import ClubSyncChoice from '../components/club/ClubSyncChoice';
 import ClubRename from '../components/club/ClubRename';
+import HubFeed from '../components/club/HubFeed';
 import SeasonIntro from '../components/club/SeasonIntro';
 import { stageLabel } from '../components/club/clubSummary';
 import useClubSync from '../lib/useClubSync';
@@ -67,7 +68,7 @@ const seriesSeed = (state, match) => (state.seed ^ (state.year * 977 + state.wee
 // and `squadSlot` fits a 3 + 2 grid on phones so cards on the Squad screen can be bigger.
 function useCardScale() {
   const read = () => {
-    if (typeof window === 'undefined') return { scale: 0.4, slot: 0.27, homeSlot: 0.27, squadSlot: 0.27, phone: false };
+    if (typeof window === 'undefined') return { scale: 0.4, slot: 0.27, homeSlot: 0.27, feedWidth: 300, squadSlot: 0.27, phone: false };
     const { innerWidth: w, innerHeight: h } = window;
     const phone = w < 760;
     const scale = phone ? Math.min(0.22, (h - 240) / 2200) : h < 560 ? 0.24 : h < 760 ? 0.32 : 0.4;
@@ -77,16 +78,17 @@ function useCardScale() {
     const slotWidth = Math.min(200, room / (phone ? 5 : 6.2)) - (phone ? 2 : 4);
     const maxSlotH = phone ? (h - 330) / 960 : (h - 280) / 1100;
     const slot = Math.max(0.12, Math.min(0.5, slotWidth / 400, maxSlotH));
-    // The hub shows the starting five only (the bench lives on the Squad screen), so on
-    // desktop they get the width the bench cards used to take.
-    const homeWidth = phone ? slotWidth : Math.min(240, room / 5.2) - 4;
+    // The hub shows the starting five and the club feed beside them (the bench lives
+    // on the Squad screen), so on desktop the cards share the row with the feed.
+    const feedWidth = w < 1500 ? 240 : 300;
+    const homeWidth = phone ? slotWidth : Math.min(240, (room - feedWidth - 28) / 5) - 4;
     const homeSlot = phone ? slot : Math.max(0.12, Math.min(0.5, homeWidth / 400, maxSlotH));
     // On the Squad screen on phones, starters wrap 3 on top + 2 below so each card is ~30% larger.
     // Subtract stage padding (24), ground padding (16), and 2 column gaps (16) = 56px.
     const squadWidth = phone ? (w - 56) / 3 : slotWidth;
     const maxSquadH = phone ? (h - 340) / 1500 : maxSlotH;
     const squadSlot = phone ? Math.max(0.14, Math.min(0.3, squadWidth / 400, maxSquadH)) : slot;
-    return { scale: Math.max(0.14, scale), slot, homeSlot, squadSlot, phone };
+    return { scale: Math.max(0.14, scale), slot, homeSlot, feedWidth, squadSlot, phone };
   };
   const [size, setSize] = useState(read);
   useEffect(() => {
@@ -488,6 +490,7 @@ function Home({ state, go, onAbandon, onSettings, onPrimer, size }) {
               ))}
             </div>
           </div>
+          {!size.phone && <HubFeed state={state} cards={allCards} width={size.feedWidth} height={Math.max(380, Math.round(580 * size.homeSlot) + 64)} onGo={go} />}
         </section>
         <div className={styles.homeFoot}>
           {/* The week's business, as tiles: each shows the number that matters. */}

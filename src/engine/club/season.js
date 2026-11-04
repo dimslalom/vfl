@@ -17,7 +17,7 @@ import { maxSignableRating } from '../endless/stature.js';
 import { tickWorldYear } from '../endless/world.js';
 import { createTacticInstance, TACTIC_LIST } from '../endless/seriesCards.js';
 import {
-  BENCH_XP, TITLES_PER_ICON, TRAIN_SLOTS_MAX, clubFatigueExtra, grantPacks, packValue, rewardDefaults,
+  BENCH_XP, TITLES_PER_ICON, TRAIN_SLOTS_MAX, clubFatigueExtra, grantPacks, packValue, rewardDefaults, withSignings,
   settlePacks, squadMax,
 } from './economy.js';
 
@@ -175,6 +175,7 @@ export function newClub({ seed, name, picks, cards, crest, tone }) {
     seriesWon: 0,
     roundsWon: 0,
     yearsAtClub: {},
+    signings: [],
   };
   return startYear(base, cards);
 }
@@ -191,6 +192,11 @@ export function isValidClub(state, cards) {
 
 export function clubById(state, id) {
   return state.clubs.find(club => club.id === id);
+}
+
+/** One card by id from anywhere in the world, or undefined. */
+export function findCard(state, cards, id) {
+  return worldCards(state, cards).find(card => card.id === id);
 }
 
 export function clubRoster(state, club, cards) {
@@ -641,7 +647,8 @@ export function closeWindow(state, decisions, cards) {
   const filling = trialists(state, cards, squad).slice(0, Math.max(0, STARTERS - squad.length)).map(card => card.id);
   for (const id of filling) contracts[id] = 1;
   squad.push(...filling);
-  return startYear({ ...settlePacks(state, totals.packs), squad, contracts, moved, year: state.year + 1, tier: nextTier(state) }, cards);
+  const signings = withSignings(state, signed.map(item => item.card.id), 'window');
+  return startYear({ ...settlePacks(state, totals.packs), squad, contracts, moved, signings, year: state.year + 1, tier: nextTier(state) }, cards);
 }
 
 function nextTier(state) {

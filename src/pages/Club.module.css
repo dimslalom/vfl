@@ -878,6 +878,7 @@ span.counter { cursor: default; }
 /* Home */
 .home { display: flex; flex-direction: column; justify-content: space-between; gap: var(--sp-5); }
 .homeSquad { display: flex; align-items: flex-end; gap: var(--sp-8); flex-wrap: wrap; }
+@media (min-width: 760px) { .homeSquad { flex-wrap: nowrap; } }
 .homeGroup { display: flex; flex-direction: column; gap: var(--sp-2); }
 .groupLabel { font: 700 var(--fs-micro)/1.2 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .homeRow { display: flex; align-items: flex-end; gap: 14px; }
