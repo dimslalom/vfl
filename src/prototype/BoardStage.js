@@ -309,7 +309,7 @@ export default class BoardStage {
     const rng = mulberry32(game.seed + 1);
     const opponentTactic = game.opponentTactic;
     this.oppPlan = bestPlacement({ roster: game.them, maps: game.maps, tactic: opponentTactic, rng });
-    this.oppShown = [0, 1];
+    this.oppShown = [];
     this.textures = textures;
     this.layers = { art: new Container(), lanes: new Container(), cards: new Container() };
     this.root.addChild(this.layers.art, this.layers.lanes, this.layers.cards);
@@ -997,7 +997,7 @@ export default class BoardStage {
       delay: 0.35,
       onComplete: () => {
         this.phase = 'done';
-        this.result = { ...result, tactic: tactic?.card ?? null, slots: this.slots };
+        this.result = { ...result, tactic: tactic?.card ?? null, tactics: tactic ? [tactic] : [], slots: this.slots };
         this.emit();
         this.result = null;
       },

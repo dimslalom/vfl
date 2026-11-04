@@ -166,12 +166,29 @@ test('Second Call multiplies its lane and chains to the lane on its left', () =>
   assert.equal(chainLane(2), 1);
 });
 
-test('Lock the Map cancels the enemy chip wherever it is', () => {
-  const you = { roster: even, slots: evenSlots, tactic: { lane: 2, card: { key: 'layers' } } };
-  const them = { roster: even, slots: evenSlots, tactic: { lane: 0, card: { key: 'lockout' } } };
+test('Lock the Map cancels only the enemy chip facing it', () => {
+  const you = { roster: even, slots: evenSlots, tactics: [{ lane: 2, card: { key: 'layers' } }, { lane: 1, card: { key: 'defaults' } }] };
+  const them = { roster: even, slots: evenSlots, tactics: [{ lane: 2, card: { key: 'lockout' } }] };
   const board = resolveBoard({ maps: plainMaps, you, them });
   assert.equal(board.lanes[2].mine.steps.at(-1).key, 'cancelled');
-  assert.ok(!board.lanes[0].theirs.steps.some(step => step.key === 'tactic'));
+  assert.ok(board.lanes[1].mine.steps.some(step => step.key === 'tactic'));
+  // From another lane it reaches nothing.
+  const across = resolveBoard({ maps: plainMaps, you, them: { ...them, tactics: [{ lane: 0, card: { key: 'lockout' } }] } });
+  assert.ok(!across.lanes[2].mine.steps.some(step => step.key === 'cancelled'));
+});
+
+test('each lane holds its own chip, and a chain skips a lane with your chip', () => {
+  const called = sideScores({ roster: even, slots: evenSlots, maps: plainMaps, tactics: [{ lane: 1, card: { key: 'calling' } }] });
+  assert.ok(called[0].steps.some(step => step.key === 'chain'));
+  const both = sideScores({ roster: even, slots: evenSlots, maps: plainMaps, tactics: [{ lane: 1, card: { key: 'calling' } }, { lane: 0, card: { key: 'pocket' } }] });
+  assert.ok(!both[0].steps.some(step => step.key === 'chain'));
+  assert.ok(both[0].steps.some(step => step.key === 'tactic'));
+});
+
+test('the bot lays each of its chips on a different lane', () => {
+  const plan = bestPlacement({ roster: even, maps: plainMaps, tactics: [{ key: 'layers' }, { key: 'defaults' }] });
+  assert.equal(plan.tactics.length, 2);
+  assert.notEqual(plan.tactics[0].lane, plan.tactics[1].lane);
 });
 
 test('No Respect cuts the enemy star on its lane', () => {

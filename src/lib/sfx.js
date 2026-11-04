@@ -116,3 +116,59 @@ export function playGlassShatter(seed = 0) {
     burst(ctx, t + delay, { type: 'highpass', freq: 5200, q: 0.8, peak: 0.03, decay: 0.03, pan: (rand() - 0.5) * 1.2 });
   }
 }
+
+function bell(ctx, at, { freq, peak, decay, pan = 0 }) {
+  // A struck bell: the fundamental, a bright octave and a shimmering fifth above.
+  for (const [ratio, level, life] of [[1, 1, 1], [2, 0.5, 0.7], [3.01, 0.22, 0.45]]) {
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = freq * ratio;
+    const gain = ctx.createGain();
+    envelope(ctx, gain, at, peak * level, 0.004, decay * life);
+    const panner = ctx.createStereoPanner();
+    panner.pan.value = pan;
+    osc.connect(gain).connect(panner).connect(bus);
+    osc.start(at);
+    osc.stop(at + decay + 0.05);
+  }
+}
+
+/**
+ * A lane won: energy charging up the border, a bright shockwave whoosh, then a
+ * major-chord bell bloom that rings out. The losing lane's opposite: rising and whole.
+ * `seed` (the lane index) lifts the chord a step per lane, so wins climb.
+ */
+export function playLaneWin(seed = 0) {
+  const ctx = audio();
+  if (!ctx) return;
+  const t = ctx.currentTime + 0.01;
+  const root = 523.25 * 2 ** ((seed % 3) * 2 / 12); // C5, D5, E5
+
+  // Charge: a quick sawtooth sweep up through a closing lowpass.
+  const sweep = ctx.createOscillator();
+  sweep.type = 'sawtooth';
+  sweep.frequency.setValueAtTime(root / 4, t);
+  sweep.frequency.exponentialRampToValueAtTime(root, t + 0.16);
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.setValueAtTime(600, t);
+  lp.frequency.exponentialRampToValueAtTime(5000, t + 0.16);
+  const sweepGain = ctx.createGain();
+  envelope(ctx, sweepGain, t, 0.07, 0.12, 0.08);
+  sweep.connect(lp).connect(sweepGain).connect(bus);
+  sweep.start(t);
+  sweep.stop(t + 0.25);
+
+  // Shockwave: an airy whoosh as the border flashes.
+  const hit = t + 0.16;
+  burst(ctx, hit, { type: 'bandpass', freq: 1800, q: 0.6, peak: 0.1, attack: 0.01, decay: 0.28 });
+
+  // Bloom: root, third, fifth, octave, struck in a fast roll, spread across the field.
+  [1, 1.26, 1.5, 2].forEach((ratio, i) => {
+    bell(ctx, hit + i * 0.035, { freq: root * ratio, peak: 0.09 - i * 0.012, decay: 0.9 - i * 0.1, pan: (i - 1.5) * 0.35 });
+  });
+  // Sparkle: a few high glints trailing the chord.
+  for (let i = 0; i < 4; i += 1) {
+    ping(ctx, hit + 0.12 + i * 0.06, { freq: root * 4 * [1, 1.5, 1.26, 2][i], peak: 0.025, decay: 0.18, pan: (i % 2 ? 1 : -1) * 0.5 });
+  }
+}

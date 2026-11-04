@@ -51,7 +51,7 @@ export default function ChipLab() {
         {chipRules().map(rule => <li key={rule.title}><b>{rule.title}</b><span>{rule.text}</span></li>)}
       </ol>
 
-      <section className={styles.legendRow} aria-label={t('What the symbols mean')}>
+      <section className={styles.legendRow} aria-label={t('What the codes mean')}>
         <ChipLegend />
       </section>
 

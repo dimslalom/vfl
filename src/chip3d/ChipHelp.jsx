@@ -4,6 +4,7 @@
 // board engine, so nothing here can drift from what a chip really pays.
 
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { t } from '../lib/i18n';
 import { CODES, ROLES, SKILLS, chipInfo, chipPlan } from './chipData';
 import { chipCopy, chipRules, chipTips, planLine } from './chipCopy';
@@ -63,13 +64,12 @@ export function ChipBrief({ chipKey, roster, detail = false }) {
   );
 }
 
-/** Every symbol a chip can print, with its code and name: one legend everywhere. */
+/** Every code a chip can print, with its name: one legend everywhere. */
 export function ChipLegend() {
   return (
     <ul className={styles.legend}>
       {[...ROLES, ...SKILLS, 'igl', 'any', 'trio', 'chain', 'slash', 'lock'].map(name => (
         <li key={name}>
-          <ChipIcon name={name} size={18} />
           <b>{CODES[name]}</b>
           <span>{t(ICON_LABELS[name])}</span>
         </li>
@@ -84,8 +84,9 @@ export function ChipGuide({ onClose }) {
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
   }, [onClose]);
-  return (
-    <div className={styles.veil} onClick={onClose}>
+  // Portalled: the chip tag is transformed, which would trap a fixed veil inside it.
+  return createPortal(
+    <div className={styles.veil} onClick={event => { event.stopPropagation(); onClose(); }}>
       <section className={styles.guide} role="dialog" aria-modal="true" aria-label={t('How chips work')} onClick={event => event.stopPropagation()}>
         <header className={styles.guideHead}>
           <h2>{t('How chips work')}</h2>
@@ -96,12 +97,13 @@ export function ChipGuide({ onClose }) {
             <li key={rule.title}><b>{index + 1}</b><div><h3>{rule.title}</h3><p>{rule.text}</p></div></li>
           ))}
         </ol>
-        <h3 className={styles.kicker}>{t('What the symbols mean')}</h3>
+        <h3 className={styles.kicker}>{t('What the codes mean')}</h3>
         <ChipLegend />
         <h3 className={styles.kicker}>{t('Playing them well')}</h3>
         <ul className={styles.tips}>{chipTips().map(tip => <li key={tip}>{tip}</li>)}</ul>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -126,7 +128,7 @@ export function ChipCoach({ chipKey, roster }) {
   if (!chipKey) {
     return (
       <div className={styles.coach} role="status">
-        <span className={styles.coachText}>{t('Drop one chip on a lane: it multiplies that lane. Best on the lane you could win or lose.')}</span>
+        <span className={styles.coachText}>{t('Drop up to one chip on each lane: it multiplies that lane. Best on the lanes you could win or lose.')}</span>
         <ChipGuideButton label={t('Chips')} />
       </div>
     );

@@ -877,6 +877,13 @@ function trainStatus(state, card) {
   };
 }
 
+// The training focus chips, printed as clay chips: dark at rest, green when picked.
+const FOCUS_TONES = {
+  idle: { body: '#23293a', spot: '#121622', face: '#1a1f2e', ink: '#ece8e1', next: '#00c8a0', off: '#4a5064' },
+  on: { body: '#006e57', spot: '#0d0f17', face: '#007d63', ink: '#0d0f17', next: '#0d0f17', off: '#004a3a' },
+  done: { body: '#1a1f2e', spot: '#121622', face: '#161b29', ink: '#00c8a0', next: '#00c8a0', off: '#3a4052' },
+};
+
 function Train({ state, onTrain, onTape, onBuy, canBuy, onBack, size }) {
   const { scale } = size;
   const squad = squadCards(state, allCards);
@@ -968,14 +975,26 @@ function Train({ state, onTrain, onTape, onBuy, canBuy, onBack, size }) {
         <div className={styles.chipRow} role="group" aria-label="Focus">
           {focuses.map(item => (
             <button key={item.id} type="button" className={styles.clay} data-on={focus === item.id || undefined} data-done={item.done || undefined} aria-pressed={focus === item.id} disabled={drilling || item.done} onClick={() => { playUiSound('select'); setPicked(item.id); }}>
-              <span aria-hidden="true">
-                {item.done ? <Tick /> : <strong className={styles.clayMark}>{item.mark}</strong>}
-                {item.meter && (
-                  <span className={styles.clayMeter}>
-                    {Array.from({ length: item.meter.of }, (_, index) => <i key={index} data-on={index < item.meter.on || undefined} data-next={(!item.done && index === item.meter.on && item.id !== 'stat') || undefined} />)}
+              <Chip3D
+                className={styles.clay3d}
+                size={64}
+                phase={focuses.indexOf(item) * 1.3}
+                face={{
+                  tone: FOCUS_TONES[item.done ? 'done' : focus === item.id ? 'on' : 'idle'],
+                  headline: item.done ? '✓' : String(item.mark),
+                  meter: item.meter && { ...item.meter, next: !item.done && item.id !== 'stat' ? item.meter.on : -1 },
+                }}
+                fallback={(
+                  <span aria-hidden="true">
+                    {item.done ? <Tick /> : <strong className={styles.clayMark}>{item.mark}</strong>}
+                    {item.meter && (
+                      <span className={styles.clayMeter}>
+                        {Array.from({ length: item.meter.of }, (_, index) => <i key={index} data-on={index < item.meter.on || undefined} data-next={(!item.done && index === item.meter.on && item.id !== 'stat') || undefined} />)}
+                      </span>
+                    )}
                   </span>
                 )}
-              </span>
+              />
               {item.title}
             </button>
           ))}

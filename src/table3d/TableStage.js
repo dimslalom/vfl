@@ -20,12 +20,12 @@ import {
 } from 'three';
 import { gsap } from 'gsap';
 import {
-  LANE_CAP, bestPlacement, bestRotate, hasSkill, isLegalPlacement, isLegalRotation, resolveBoard, rotateMoves, sideScores,
+  LANE_CAP, bestPlacement, bestRotate, chainLane, hasSkill, isLegalPlacement, isLegalRotation, resolveBoard, rotateMoves, sideScores,
 } from '../engine/board/board.js';
 import { mulberry32 } from '../../shared/src/engine/perfectRun.js';
 import { assetPath } from '../../shared/src/lib/utils.js';
 import { playUiSound } from '../../shared/src/lib/gameAudio';
-import { playGlassShatter } from '../lib/sfx';
+import { playGlassShatter, playLaneWin } from '../lib/sfx';
 import { STAT_LABELS_FULL } from '../../shared/src/data/statFields.js';
 import { disposeChip, makeChip, printChip } from '../chip3d/ChipStack.js';
 import { createChipView } from '../chip3d/chipRenderer.js';
@@ -143,6 +143,7 @@ export default class TableStage {
     this.alive = true;
     this.cards = [];
     this.chips = [];
+    this.oppChips = [];
     this.raycaster = new Raycaster();
     this.pointer = new Vector2();
     this.dragPlane = new Plane(new Vector3(0, 1, 0), -0.35);
@@ -171,6 +172,8 @@ export default class TableStage {
     await document.fonts?.load('800 40px "Familjen Grotesk"').catch(() => null);
     if (!this.alive) return false;
     const { renderer } = this;
+    // No Respect cuts a card in two with clipping planes on each half.
+    renderer.localClippingEnabled = true;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.outputColorSpace = SRGBColorSpace;
     renderer.shadowMap.enabled = true;
@@ -222,7 +225,7 @@ export default class TableStage {
   async deal(game) {
     const fromRound = Boolean(this.board) && !this.reducedMotion;
     this.timeline?.kill();
-    const nextOppPlan = bestPlacement({ roster: game.them, maps: game.maps, tactic: game.opponentTactic, rng: mulberry32(game.seed + 1) });
+    const nextOppPlan = bestPlacement({ roster: game.them, maps: game.maps, tactics: game.opponentTactics ?? [game.opponentTactic], rng: mulberry32(game.seed + 1) });
     const [arts] = await Promise.all([
       Promise.all([...game.you, ...game.them].map(card => Promise.all(cardArt(card).map(loadImage)))),
       fromRound ? this.flyOutLeft() : Promise.resolve(),
@@ -239,7 +242,8 @@ export default class TableStage {
     this.result = null;
     // The same enemy plan the Pixi board makes, from the same seed.
     this.oppPlan = nextOppPlan;
-    this.oppShown = [0, 1];
+    // A blind board: the enemy's five and chips wait face down until lock in.
+    this.oppShown = [];
     this.clear();
     this.build(arts);
     if (this.dropPending) this.dropCamera();
@@ -272,7 +276,7 @@ export default class TableStage {
     for (const lane of this.lanes ?? []) disposeLaneVerdictFx(lane);
     if (this.board) {
       this.scene.remove(this.board);
-      for (const chip of [...this.chips, this.oppChip].filter(Boolean)) {
+      for (const chip of [...this.chips, ...this.oppChips]) {
         this.dropFloat(chip);
         disposeChip(chip);
       }
@@ -288,7 +292,7 @@ export default class TableStage {
     this.overlay?.replaceChildren();
     this.cards = [];
     this.chips = [];
-    this.oppChip = null;
+    this.oppChips = [];
     this.lanes = [];
     this.hold = null;
     this.selected = null;
@@ -744,8 +748,10 @@ export default class TableStage {
     if (pick.kind === 'chip') {
       if (this.drag && this.hot !== lane) return null;
       const side = { roster: this.game.you, slots: this.slots, maps: this.game.maps };
-      const plain = sideScores(side)[lane];
-      const scored = sideScores({ ...side, tactic: { lane, card: this.game.tactics[pick.index] } })[lane];
+      // The chip would take this lane's place, so it is measured with the others but none here.
+      const others = this.yourTactics().filter(chip => chip.lane !== lane && chip.card !== this.game.tactics[pick.index]);
+      const plain = sideScores({ ...side, tactics: others })[lane];
+      const scored = sideScores({ ...side, tactics: [...others, { lane, card: this.game.tactics[pick.index] }] })[lane];
       const tactic = scored.steps.find(step => step.key === 'tactic');
       if (!tactic) return null;
       return { value: tactic.total - plain.total, text: `×${tactic.value}`, total: tactic.total };
@@ -757,17 +763,17 @@ export default class TableStage {
 
   // ── scores ───────────────────────────────────────────────────────────────
 
-  yourTactic() {
-    const entry = Object.entries(this.tacticLane)[0];
-    return entry ? { lane: entry[1], card: this.game.tactics[entry[0]] } : null;
+  /** Your chips on lanes, one per lane at most: [{ lane, card }]. */
+  yourTactics() {
+    return Object.entries(this.tacticLane).map(([index, lane]) => ({ lane, card: this.game.tactics[index] }));
   }
 
   scoreBoard(slots = this.slots, oppSlots = this.oppPlan.slots) {
     const { maps, you, them } = this.game;
     return resolveBoard({
       maps,
-      you: { roster: you, slots, tactic: this.yourTactic() },
-      them: { roster: them, slots: oppSlots, tactic: this.oppPlan.tactic },
+      you: { roster: you, slots, tactics: this.yourTactics() },
+      them: { roster: them, slots: oppSlots, tactics: this.oppPlan.tactics },
     });
   }
 
@@ -776,7 +782,7 @@ export default class TableStage {
   laneView(lane) {
     if (this.shown) return this.shown[lane];
     if (this.phase === 'place') {
-      const mine = sideScores({ roster: this.game.you, slots: this.slots, maps: this.game.maps, tactic: this.yourTactic() })[lane];
+      const mine = sideScores({ roster: this.game.you, slots: this.slots, maps: this.game.maps, tactics: this.yourTactics() })[lane];
       return { mine, theirs: null };
     }
     const board = this.scoreBoard();
@@ -821,7 +827,6 @@ export default class TableStage {
 
   // Chips on bars follow their multiplier as the bar fills and reflows.
   syncBarChips() {
-    const yours = this.chips.find(chip => this.tacticLane[chip.index] != null);
     const sit = (chip, lane, side) => {
       if (!chip || chip === this.drag?.entry || chip.breaking) return;
       const to = this.barSpot(lane, side);
@@ -830,8 +835,8 @@ export default class TableStage {
       chip.barKey = key;
       gsap.to(chip.group.position, { x: to.x, z: to.z, duration: 0.3, ease: 'power3.out', onUpdate: this.mark, overwrite: 'auto' });
     };
-    if (yours) sit(yours, this.tacticLane[yours.index], 'you');
-    if (this.oppChip) sit(this.oppChip, this.oppPlan.tactic.lane, 'them');
+    for (const chip of this.chips) if (this.tacticLane[chip.index] != null) sit(chip, this.tacticLane[chip.index], 'you');
+    for (const chip of this.oppChips) sit(chip, chip.lane, 'them');
     // A chip on a lane prints what it pays there; back in hand, the most it can.
     let changed = false;
     const print = (chip, lane, side) => {
@@ -841,31 +846,41 @@ export default class TableStage {
       changed = printChip(chip, step ? `×${step.value}` : chip.info.headline) || changed;
     };
     for (const chip of this.chips) print(chip, this.tacticLane[chip.index] ?? null, 'you');
-    if (this.oppChip) print(this.oppChip, this.oppPlan.tactic.lane, 'them');
+    for (const chip of this.oppChips) print(chip, chip.lane, 'them');
     if (changed) this.mark();
   }
 
-  // The enemy chip shows once scoring starts, dropping onto its lane's bar.
-  revealOppChip() {
-    const tactic = this.oppPlan.tactic;
-    if (!tactic || this.oppChip) return;
-    const chip = makeChip(tactic.card.key, -1);
-    chip.kind = 'oppChip';
-    chip.group.traverse((node) => { if (node.isMesh) { node.userData.sharedGeometry = true; node.castShadow = true; } });
-    const to = this.barSpot(tactic.lane, 'them');
-    chip.barKey = null;
-    chip.group.position.set(to.x, this.reducedMotion ? to.y : to.y + 1.6, to.z);
-    chip.group.rotation.set(to.rx, 0, to.rz);
-    chip.group.scale.setScalar(to.s);
-    this.board.add(chip.group);
-    this.oppChip = chip;
-    if (!this.reducedMotion) gsap.to(chip.group.position, { y: to.y, duration: 0.35, ease: 'bounce.out', onUpdate: this.mark });
+  // The enemy chips turn up at lock in with their five, each dropping onto its lane's bar.
+  revealOppChips() {
+    if (this.oppChips.length) return;
+    for (const tactic of this.oppPlan.tactics ?? []) {
+      const chip = makeChip(tactic.card.key, -1);
+      chip.kind = 'oppChip';
+      chip.lane = tactic.lane;
+      chip.group.traverse((node) => { if (node.isMesh) { node.userData.sharedGeometry = true; node.castShadow = true; } });
+      const to = this.barSpot(tactic.lane, 'them');
+      chip.barKey = null;
+      chip.group.position.set(to.x, this.reducedMotion ? to.y : to.y + 1.6, to.z);
+      chip.group.rotation.set(to.rx, 0, to.rz);
+      chip.group.scale.setScalar(to.s);
+      this.board.add(chip.group);
+      this.oppChips.push(chip);
+      if (!this.reducedMotion) gsap.to(chip.group.position, { y: to.y, duration: 0.35, ease: 'bounce.out', onUpdate: this.mark });
+    }
     this.mark();
   }
 
-  // The chip a side played, for effects: yours from the hand, theirs revealed.
-  sideChip(side) {
-    return side === 'you' ? this.chips.find(chip => this.tacticLane[chip.index] != null) : this.oppChip;
+  // The chip a side played on a lane, for effects: yours from the hand, theirs revealed.
+  sideChip(side, lane) {
+    return side === 'you'
+      ? this.chips.find(chip => this.tacticLane[chip.index] === lane) ?? null
+      : this.oppChips.find(chip => chip.lane === lane) ?? null;
+  }
+
+  // The Second Call that chains into `lane` for a side.
+  chainChip(side, lane) {
+    const list = side === 'you' ? this.chips.filter(chip => this.tacticLane[chip.index] != null) : this.oppChips;
+    return list.find(chip => chip.info?.key === 'calling' && chainLane(side === 'you' ? this.tacticLane[chip.index] : chip.lane) === lane) ?? null;
   }
 
   barZ(side) {
@@ -882,8 +897,11 @@ export default class TableStage {
 
   dropOn(entry, lane) {
     if (entry.kind === 'chip') {
-      if (lane == null) delete this.tacticLane[entry.index];
-      else this.tacticLane = { [entry.index]: lane };      // one tactic per board
+      // One chip per lane: a chip dropped on a taken lane sends the one there back to the hand.
+      delete this.tacticLane[entry.index];
+      if (lane == null) return;
+      for (const [index, at] of Object.entries(this.tacticLane)) if (at === lane) delete this.tacticLane[index];
+      this.tacticLane[entry.index] = lane;
       return;
     }
     if (this.phase === 'rotate') {
@@ -906,8 +924,10 @@ export default class TableStage {
     this.selected = null;
     playUiSound('lock_in');
     this.emitChip();
-    // The hidden enemy cards turn over and fly to their lanes, one after another.
+    // The hidden enemy cards turn over and fly to their lanes, one after another,
+    // and their chips land with them.
     const hidden = this.theirs().filter(card => card.hidden);
+    gsap.delayedCall(this.reducedMotion ? 0 : 0.25 + hidden.length * 0.14, () => this.revealOppChips());
     hidden.forEach((card, k) => {
       gsap.delayedCall(this.reducedMotion ? 0 : 0.25 + k * 0.14, () => {
         card.hidden = false;
@@ -930,22 +950,22 @@ export default class TableStage {
     this.phase = 'resolve';
     playUiSound('lock_in');
     const { maps, you, them } = this.game;
-    const tactic = this.yourTactic();
-    const mine = { roster: you, slots: this.lockedSlots, tactic };
-    const theirs = { roster: them, slots: this.oppPlan.slots, tactic: this.oppPlan.tactic };
+    const tactics = this.yourTactics();
+    const mine = { roster: you, slots: this.lockedSlots, tactics };
+    const theirs = { roster: them, slots: this.oppPlan.slots, tactics: this.oppPlan.tactics };
     // Both IGLs answer the same revealed board, so neither sees the other's move.
     const oppSlots = bestRotate({ you: theirs, them: mine, maps });
     this.oppPlan = { ...this.oppPlan, slots: oppSlots };
     const result = resolveBoard({ maps, you: { ...mine, slots: this.slots }, them: { ...theirs, slots: oppSlots } });
     this.shown = maps.map(() => ({ mine: { total: 0, steps: [] }, theirs: { total: 0, steps: [] }, stamp: null }));
-    this.revealOppChip();
+    this.revealOppChips();
     this.place();
     this.emit();
     this.timeline = gsap.timeline({
       delay: 0.45,
       onComplete: () => {
         this.phase = 'done';
-        this.result = { ...result, tactic: tactic?.card ?? null, slots: this.slots };
+        this.result = { ...result, tactics, slots: this.slots };
         this.emit();
         this.result = null;
       },
@@ -972,19 +992,19 @@ export default class TableStage {
             else if (card) gsap.fromTo(card.group.scale, { x: 1.14, y: 1.14, z: 1.14 }, { x: 1, y: 1, z: 1, duration: 0.25, ease: 'power3.out', onUpdate: this.mark });
             playUiSound(side === 'you' ? 'score' : 'score_opp', index + lane * 2);
           } else if (step.key === 'tactic') {
-            const chip = this.sideChip(side);
+            const chip = this.sideChip(side, lane);
             if (chip && motion) chipFire(this.board, chip, fx);
             playUiSound('tactic_mult', step.value);
           } else if (step.key === 'chain') {
             // Second Call: lightning from the chip to the lane it chains to.
-            const chip = this.sideChip(side);
+            const chip = this.chainChip(side, lane);
             const to = this.barSpot(lane, side, 'chain');
             if (chip && motion) lightning(this.board, { from: chip.group.position, to, ...fx });
             playUiSound('tactic_mult', step.value);
           } else if (step.key === 'cancelled') {
             // Lock the Map: the other side's lock slams this side's chip and it shatters.
-            const chip = this.sideChip(side);
-            const lock = this.sideChip(other);
+            const chip = this.sideChip(side, lane);
+            const lock = this.sideChip(other, lane);
             if (chip && motion) {
               chip.breaking = true;
               lockShatter(this.board, { from: lock?.group.position ?? chip.group.position, chip, color: parseInt(CHIP_BODY[chip.info.tier].slice(1), 16), ...fx });
@@ -993,7 +1013,7 @@ export default class TableStage {
           } else if (step.key === 'disrespect') {
             // No Respect: the other side's chip cuts this side's best card.
             const card = this.cards.find(c => c.side === side && c.card.player === step.player);
-            const chip = this.sideChip(other);
+            const chip = this.sideChip(other, lane);
             if (chip && motion) chipFire(this.board, chip, { ...fx, color: 0xd8b34c });
             if (card && motion) gsap.delayedCall(0.2, () => slash(this.board, card, fx));
             playUiSound('skill_aura');
@@ -1015,8 +1035,9 @@ export default class TableStage {
       this.shown[lane].verdict = laneResult.winner;
       this.applyLaneVerdict(lane, laneResult.winner, false);
       playUiSound(laneResult.winner === 'you' ? 'lane_win' : 'lane_loss', lane);
-      // A lost lane breaks like glass, and sounds it.
+      // A lost lane breaks like glass; a won lane charges and rings out.
       if (laneResult.winner === 'them') playGlassShatter(lane);
+      else if (laneResult.winner === 'you') playLaneWin(lane);
       this.mark();
     }, null, '+=0.2');
     tl.to({}, { duration: 0.3 });
@@ -1532,9 +1553,8 @@ export default class TableStage {
    * drags and the scoring tweens to move.
    */
   floatBarChips() {
-    const yours = this.chips.find(chip => this.tacticLane[chip.index] != null);
-    for (const chip of [...this.chips, this.oppChip].filter(Boolean)) {
-      const onBar = (chip === yours || chip === this.oppChip) && chip !== this.drag?.entry;
+    for (const chip of [...this.chips, ...this.oppChips]) {
+      const onBar = (chip.kind === 'oppChip' || this.tacticLane[chip.index] != null) && chip !== this.drag?.entry;
       if (onBar && !chip.floatEl) {
         const el = document.createElement('div');
         el.className = styles.barChip;

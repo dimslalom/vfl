@@ -202,10 +202,12 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
     const won = result.winner === 'you';
     if (won) run.you += 1;
     else run.them += 1;
-    // Same economy as before: a won round hands the tactic back, a loss burns it.
-    if (result.tactic) {
-      const rest = run.hand.filter(card => card.uid !== result.tactic.uid);
-      run.hand = settleTactic(rest, result.tactic, won);
+    // Each chip lives or dies with its own lane: a won lane hands it back, a lost one burns it.
+    const played = result.tactics ?? [];
+    if (played.length) {
+      let rest = run.hand.filter(card => !played.some(chip => chip.card.uid === card.uid));
+      for (const chip of played) rest = settleTactic(rest, chip.card, result.lanes[chip.lane]?.winner === 'you');
+      run.hand = rest;
     }
     run.results.push(roundResult(result, maps[round].name, squad));
     setScore({ you: run.you, them: run.them });

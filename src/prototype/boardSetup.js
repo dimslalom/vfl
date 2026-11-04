@@ -2,7 +2,7 @@ import allCards from '../../shared/src/data/cards.json';
 import { mulberry32, pickN } from '../../shared/src/engine/perfectRun.js';
 import { hasRealPortrait } from '../../shared/src/lib/portrait.js';
 import { MAP_LANES } from '../engine/board/mapLanes.js';
-import { MAP_NAMES, mapCardsForYear, npcTactic, TACTICS } from '../engine/endless/seriesCards.js';
+import { MAP_NAMES, mapCardsForYear, npcTacticChoices, TACTICS } from '../engine/endless/seriesCards.js';
 
 const usable = allCards.filter(card => card.org && hasRealPortrait(card));
 const byOrg = new Map();
@@ -58,7 +58,9 @@ export function pickSeriesMaps(seed, bestOf) {
   return pickN(mulberry32(seed), MAP_NAMES, bestOf).map(name => cards.find(card => card.name === name));
 }
 
+// The enemy IGL holds the same two-chip floor the player does and plays both.
 export function roundBoard({ seed, round, map, you, them, tactics }) {
+  const opponentTactics = npcTacticChoices(mulberry32(seed + 100 + round), them, map);
   return {
     seed: seed + round + 1,
     mapName: map.name,
@@ -66,7 +68,8 @@ export function roundBoard({ seed, round, map, you, them, tactics }) {
     you,
     them,
     tactics,
-    opponentTactic: npcTactic(mulberry32(seed + 100 + round), them, map),
+    opponentTactics,
+    opponentTactic: opponentTactics[0],
   };
 }
 

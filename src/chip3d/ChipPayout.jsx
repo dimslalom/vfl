@@ -15,7 +15,7 @@ export default function ChipPayout({ chipKey, at, roster = null }) {
   const plan = roster?.length ? chipPlan(chipKey, roster) : null;
   const left = Math.max(8, at.x - 40);
   return (
-    <div className={styles.card} style={{ left, top: at.y, '--tail': `${at.x - left}px` }} data-tier={info.tier} aria-live="polite">
+    <div key={chipKey} className={styles.card} style={{ left, top: at.y, '--tail': `${at.x - left}px` }} data-tier={info.tier} aria-live="polite">
       <b className={styles.name}>{info.name}</b>
       <ChipLadder chipKey={chipKey} />
       <p className={styles.line}>{copy.effect}</p>

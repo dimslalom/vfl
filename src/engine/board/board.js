@@ -184,25 +184,40 @@ export function chainMult(cards) {
 
 const keyOf = tactic => TACTICS[tactic?.card?.key]?.key ?? null;
 
+/** A side's chips as a list: `tactics`, or the older single `tactic`, either way. */
+export function chipList(tactics) {
+  return (Array.isArray(tactics) ? tactics : tactics ? [tactics] : []).filter(Boolean);
+}
+
 /**
- * One side's lanes with its own chip, before anything the enemy does: the
- * chip on its lane, a Second Call's chain, the IGL for Pocket Strat. `enemy`
- * is the other side's tactic, for the effects that reach across.
+ * One side's lanes with its own chips, before anything the enemy does. Each
+ * lane holds at most one chip per side, and the enemy's chip on the same lane
+ * is the only one that can reach it: Lock the Map cancels the chip facing it,
+ * No Respect cuts the best player facing it. A Second Call chains to the next
+ * lane only when that lane carries none of your own chips. `tactic` and
+ * `enemy` each take one chip or a list.
  */
-export function sideScores({ roster, slots, maps, tactic = null, enemy = null }) {
+export function sideScores({ roster, slots, maps, tactic = null, tactics = null, enemy = null }) {
   const lanes = maps.map((_, lane) => laneCards(roster, slots, lane));
-  const mine = keyOf(tactic);
-  const theirs = keyOf(enemy);
-  const cancelled = Boolean(tactic) && theirs === 'lockout';
-  const chainTo = mine === 'calling' && !cancelled ? chainLane(tactic.lane) : null;
+  const mine = chipList(tactics ?? tactic);
+  const theirs = chipList(enemy);
+  const on = (list, lane) => list.find(chip => chip.lane === lane) ?? null;
+  const cancelled = lane => Boolean(on(mine, lane)) && keyOf(on(theirs, lane)) === 'lockout';
+  const chains = {};
+  for (const chip of mine) {
+    if (keyOf(chip) !== 'calling' || cancelled(chip.lane)) continue;
+    const to = chainLane(chip.lane);
+    if (on(mine, to)) continue;
+    chains[to] = Math.max(chains[to] ?? 1, chainMult(lanes[chip.lane]));
+  }
   return maps.map((map, lane) => {
-    const ctx = { igl: roster[0]?.id, cancelled };
-    if (lane === chainTo) ctx.chain = chainMult(lanes[tactic.lane]);
-    // The enemy's No Respect on this lane hits our best player, unless our Lock the Map cancelled it.
-    if (theirs === 'noRespect' && enemy.lane === lane && keyOf(tactic) !== 'lockout') {
+    const ctx = { igl: roster[0]?.id, cancelled: cancelled(lane) };
+    if (chains[lane]) ctx.chain = chains[lane];
+    // The enemy's No Respect hits our best player here, unless our own Lock the Map faces it.
+    if (keyOf(on(theirs, lane)) === 'noRespect' && keyOf(on(mine, lane)) !== 'lockout') {
       ctx.disrespect = CHIP_TUNING.disrespect;
     }
-    return laneScore(lanes[lane], map, tactic?.lane === lane ? tactic.card : null, ctx);
+    return laneScore(lanes[lane], map, on(mine, lane)?.card ?? null, ctx);
   });
 }
 
@@ -239,8 +254,8 @@ function underAura(score, opposing) {
 export function resolveBoard({ maps, you, them }) {
   const myLanes = maps.map((_, lane) => laneCards(you.roster, you.slots, lane));
   const theirLanes = maps.map((_, lane) => laneCards(them.roster, them.slots, lane));
-  const myScores = sideScores({ ...you, maps, enemy: them.tactic });
-  const theirScores = sideScores({ ...them, maps, enemy: you.tactic });
+  const myScores = sideScores({ ...you, maps, enemy: chipList(them.tactics ?? them.tactic) });
+  const theirScores = sideScores({ ...them, maps, enemy: chipList(you.tactics ?? you.tactic) });
   const lanes = maps.map((map, lane) => {
     const myCards = myLanes[lane];
     const theirCards = theirLanes[lane];
@@ -262,20 +277,38 @@ export function resolveBoard({ maps, you, them }) {
 }
 
 
-/** The placement and tactic lane worth the most lanes against `against`, if known. */
-export function bestPlacement({ roster, maps, tactic = null, against = null, rng = null }) {
+/** Every way to lay `count` chips on different lanes, as lane lists. */
+function chipLayouts(count) {
+  const out = [];
+  const walk = (used) => {
+    if (used.length === count) { out.push(used); return; }
+    for (let lane = 0; lane < LANES; lane += 1) if (!used.includes(lane)) walk([...used, lane]);
+  };
+  walk([]);
+  return out;
+}
+
+/**
+ * The placement and chip lanes worth the most lanes against `against`, if
+ * known. `tactics` (or one `tactic`) are chip cards; each takes its own lane,
+ * up to one per lane.
+ */
+export function bestPlacement({ roster, maps, tactic = null, tactics = null, against = null, rng = null }) {
+  const cards = (tactics ?? (tactic ? [tactic] : [])).filter(Boolean).slice(0, LANES);
+  const layouts = chipLayouts(cards.length);
   let best = null;
   for (const slots of allPlacements(roster.length)) {
-    for (let lane = 0; lane < (tactic ? LANES : 1); lane += 1) {
-      const scores = sideScores({ roster, slots, maps, tactic: tactic ? { lane, card: tactic } : null }).map(score => score.total);
+    for (const lanes of layouts) {
+      const chips = cards.map((card, index) => ({ lane: lanes[index], card }));
+      const scores = sideScores({ roster, slots, maps, tactics: chips }).map(score => score.total);
       const value = against
         ? scores.filter((score, index) => score > against[index]).length * 1000 + scores.reduce((a, b) => a + b, 0)
         : [...scores].sort((a, b) => b - a).slice(0, 2).reduce((a, b) => a + b, 0) + Math.min(...scores) * 0.2;
       const noise = rng ? rng() * 40 : 0;
-      if (!best || value + noise > best.value) best = { slots, value: value + noise, lane };
+      if (!best || value + noise > best.value) best = { slots, value: value + noise, chips };
     }
   }
-  return { slots: best.slots, tactic: tactic ? { lane: best.lane, card: tactic } : null };
+  return { slots: best.slots, tactics: best.chips, tactic: best.chips[0] ?? null };
 }
 
 /** How many non-Flex players the IGL may move. The leftmost card is the IGL. */
@@ -329,18 +362,21 @@ export function bestRotate({ you, them, maps }) {
 
 /**
  * A full board between a thinking player and the opponent the game plays. The
- * opponent places first with a little noise, shows `shown` of its five, and
- * both IGLs then answer the revealed board at the same time.
+ * opponent places with a little noise and shows `shown` of its five (none: both
+ * boards turn over together at lock in), then both IGLs answer the revealed
+ * board at the same time.
  */
-export function playBoard({ seed, you, them, maps, shown = 2, skill = true }) {
+export function playBoard({ seed, you, them, maps, shown = 0, skill = true }) {
   const rng = mulberry32(seed);
-  const opp = bestPlacement({ roster: them.roster, maps, tactic: them.tactic, rng });
+  const theirChips = them.tactics ?? (them.tactic ? [them.tactic] : []);
+  const myChips = you.tactics ?? (you.tactic ? [you.tactic] : []);
+  const opp = bestPlacement({ roster: them.roster, maps, tactics: theirChips, rng });
   const seen = opp.slots.map((slot, index) => (index < shown ? slot : null));
   const estimate = maps.map((map, lane) => laneScore(them.roster.filter((_, i) => seen[i] === lane), map).total * 1.6);
   const placed = skill
-    ? bestPlacement({ roster: you.roster, maps, tactic: you.tactic, against: estimate })
-    : { slots: allPlacements()[Math.floor(rng() * 150) % allPlacements().length], tactic: you.tactic ? { lane: 0, card: you.tactic } : null };
-  const side = (roster, plan) => ({ roster, slots: plan.slots, tactic: plan.tactic });
+    ? bestPlacement({ roster: you.roster, maps, tactics: myChips, against: shown ? estimate : null })
+    : { slots: allPlacements()[Math.floor(rng() * 150) % allPlacements().length], tactics: myChips.slice(0, LANES).map((card, lane) => ({ lane, card })) };
+  const side = (roster, plan) => ({ roster, slots: plan.slots, tactics: plan.tactics });
   const mine = side(you.roster, placed);
   const theirs = side(them.roster, opp);
   const mineRotated = skill ? bestRotate({ you: mine, them: theirs, maps }) : mine.slots;

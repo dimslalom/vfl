@@ -14,7 +14,6 @@ import { assetPath } from '../../shared/src/lib/utils';
 
 // Kept in public/audio, not public/assets: that folder belongs to the shared repo.
 const SRC = '/audio/atlasaudio-video-game.mp3';
-const ON_KEY = 'vfl-music';
 const VOLUME_KEY = 'vfl-music-volume';
 // Levels before the player's volume: the intro is the loud moment, the match a bed.
 const INTRO_LEVEL = 0.55;
@@ -28,13 +27,10 @@ let buffer = null;
 let loading = null;
 let source = null;
 let mode = 'off'; // 'off' | 'intro' | 'bed'
-let on = readOn();
+// Off on every load: the player turns it on each visit, and a refresh resets it.
+let on = false;
 let volume = readVolume();
 const listeners = new Set();
-
-function readOn() {
-  try { return globalThis.localStorage?.getItem(ON_KEY) !== 'off'; } catch { return true; }
-}
 
 function readVolume() {
   try {
@@ -145,7 +141,6 @@ function changed() {
 
 export function setMusic(next) {
   on = next;
-  try { globalThis.localStorage?.setItem(ON_KEY, next ? 'on' : 'off'); } catch { /* this visit only */ }
   glide(0.3);
   changed();
 }

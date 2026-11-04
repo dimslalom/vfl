@@ -4,7 +4,7 @@
 // so nothing lingers between rounds. All positions are board-local.
 
 import {
-  AdditiveBlending, BoxGeometry, CanvasTexture, Group, Mesh, MeshBasicMaterial, PlaneGeometry, RingGeometry, SRGBColorSpace,
+  AdditiveBlending, BoxGeometry, CanvasTexture, Group, Mesh, MeshBasicMaterial, Plane, PlaneGeometry, RingGeometry, SRGBColorSpace, Vector3,
 } from 'three';
 import { gsap } from 'gsap';
 import { ICON_PATHS } from '../chip3d/chipIcons.js';
@@ -123,28 +123,75 @@ export function lightning(parent, { from, to, onUpdate, onHit }) {
     .to(fade, { opacity: 0, duration: 0.25, ease: 'power1.in' }, 0.28);
 }
 
+// The cut runs corner to corner across the card, seen from above.
+const CUT = new Vector3(1, 0, 0.62).normalize();
+
 /**
- * No Respect: a slash cuts across the enemy's best card and it stays dimmed for
- * the rest of the round, scored out.
+ * One side of the card: its parts again, sharing their geometry, clipped by a
+ * plane through the cut. The plane is kept in the half's own space and turned
+ * into world space each frame, so the half can fly off and still keep its edge.
+ */
+function cardHalf(lift, sign) {
+  const half = new Group();
+  const local = new Plane(CUT.clone().multiplyScalar(sign), 0);
+  const world = new Plane();
+  for (const part of lift.children) {
+    if (!part.isMesh || !part.visible) continue;
+    const material = [].concat(part.material).map((source) => {
+      const copy = source.clone();
+      copy.clippingPlanes = [world];
+      copy.clipShadows = true;
+      return copy;
+    });
+    const mesh = new Mesh(part.geometry, Array.isArray(part.material) ? material : material[0]);
+    mesh.position.copy(part.position);
+    mesh.rotation.copy(part.rotation);
+    mesh.scale.copy(part.scale);
+    mesh.castShadow = part.castShadow;
+    mesh.userData.sharedGeometry = true;
+    mesh.onBeforeRender = () => { world.copy(local).applyMatrix4(half.matrixWorld); };
+    half.add(mesh);
+  }
+  half.position.copy(lift.position);
+  half.rotation.copy(lift.rotation);
+  return half;
+}
+
+/**
+ * No Respect: a slash across the enemy's best card and it falls apart in two,
+ * the halves sliding off the cut and darkening. They stay that way for the rest
+ * of the round, scored out.
  */
 export function slash(parent, entry, { onUpdate }) {
   const { group, lift } = entry;
   const s = group.scale.x || 1;
   const cut = tag(new Mesh(plane, glow(0xffffff, 1)));
   cut.position.set(group.position.x, 0.35, group.position.z);
-  cut.rotation.y = -0.75;
+  // The flash runs along the cut, square to its normal.
+  cut.rotation.y = -Math.atan2(CUT.x, -CUT.z);
   cut.scale.set(0.01, 1, 0.05);
   parent.add(cut);
-  // The dimmer rides on the card, so it moves with it and goes when the board is cleared.
-  const dim = tag(new Mesh(plane, flat(0x05060a, 0)));
-  dim.position.y = 0.06;
-  dim.scale.set(1.25, 1, 1.75);
-  lift.add(dim);
-  gsap.timeline({ onUpdate, onComplete: () => cleanup(parent, [cut], onUpdate) })
-    .to(cut.scale, { x: 1.6 * s, duration: 0.12, ease: 'power4.out' })
-    .to(lift.rotation, { z: 0.08, duration: 0.05, yoyo: true, repeat: 3 }, 0.08)
-    .to(dim.material, { opacity: 0.6, duration: 0.2 }, 0.1)
+  const tl = gsap.timeline({ onUpdate, onComplete: () => cleanup(parent, [cut], onUpdate) })
+    .to(cut.scale, { x: 2.2 * s, duration: 0.12, ease: 'power4.out' })
     .to(cut.material, { opacity: 0, duration: 0.25 }, 0.2);
+  tl.call(() => {
+    if (entry.halves) return;
+    const halves = [1, -1].map(sign => cardHalf(lift, sign));
+    entry.halves = halves;
+    lift.visible = false;
+    halves.forEach((half, i) => {
+      const sign = i ? -1 : 1;
+      group.add(half);
+      // Apart along the cut's normal, a little turn, a little drop, then darker.
+      gsap.to(half.position, { x: half.position.x + CUT.x * 0.16 * sign, z: half.position.z + CUT.z * 0.16 * sign, y: half.position.y - 0.02, duration: 0.32, ease: 'power3.out', onUpdate });
+      gsap.to(half.rotation, { y: half.rotation.y + 0.07 * sign, duration: 0.32, ease: 'power3.out' });
+      half.traverse((node) => {
+        for (const material of [].concat(node.material ?? [])) {
+          if (material.color) gsap.to(material.color, { r: material.color.r * 0.6, g: material.color.g * 0.6, b: material.color.b * 0.6, duration: 0.3, delay: 0.1 });
+        }
+      });
+    });
+  }, null, 0.06);
 }
 
 function lockTexture() {

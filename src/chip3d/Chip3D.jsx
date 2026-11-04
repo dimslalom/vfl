@@ -40,14 +40,17 @@ export function ChipFlat({ chipKey, size = 96, face }) {
 /**
  * A tactic chip as a lit 3D object: leaning back so its rim shows, swaying a
  * little, and tilting toward the pointer. Falls back to ChipFlat without WebGL.
+ * `face` instead of `chipKey` prints a chip of its own (see faceArt), with
+ * `fallback` shown when WebGL isn't there.
  */
-export default function Chip3D({ chipKey, size = 120, phase = 0, className = '' }) {
+export default function Chip3D({ chipKey, face: custom = null, fallback = null, size = 120, phase = 0, className = '' }) {
   const canvasRef = useRef(null);
   const viewRef = useRef(null);
   const reducedMotion = useReducedMotion();
   const { face } = useChipStyle();
   const [failed, setFailed] = useState(false);
 
+  const faceKey = custom ? JSON.stringify(custom) : null;
   useEffect(() => {
     if (failed || !canvasRef.current) return undefined;
     let view = null;
@@ -55,19 +58,20 @@ export default function Chip3D({ chipKey, size = 120, phase = 0, className = '' 
     import('./chipRenderer.js')
       .then(({ createChipView }) => {
         if (cancelled) return;
-        view = createChipView(canvasRef.current, chipKey, { reducedMotion, phase, onFail: () => setFailed(true) });
+        view = createChipView(canvasRef.current, faceKey ? JSON.parse(faceKey) : chipKey, { reducedMotion, phase, onFail: () => setFailed(true) });
         if (!view) setFailed(true);
         viewRef.current = view;
       })
       .catch(() => { if (!cancelled) setFailed(true); });
     return () => { cancelled = true; view?.destroy(); viewRef.current = null; };
-  }, [chipKey, face, reducedMotion, phase, failed]);
+  }, [chipKey, faceKey, face, reducedMotion, phase, failed]);
 
   function move(event) {
     const box = event.currentTarget.getBoundingClientRect();
     viewRef.current?.hover(((event.clientX - box.left) / box.width) * 2 - 1, ((event.clientY - box.top) / box.height) * 2 - 1);
   }
 
+  if (failed && custom) return fallback;
   if (failed) return <span className={`${styles.chip} ${className}`} style={{ '--size': `${size}px` }}><ChipFlat chipKey={chipKey} size={size} face={face} /></span>;
   return (
     <span className={`${styles.chip} ${className}`} style={{ '--size': `${size}px` }} onPointerMove={move} onPointerLeave={() => viewRef.current?.hover(null)} aria-hidden="true">

@@ -44,7 +44,7 @@ const COPY = {
   calling: () => ({
     effect: t('×2 on its lane, and chains ×1.5 to the lane on its left.'),
     when: t('Two close lanes side by side. A Mastermind on its lane adds ×0.5 to both.'),
-    risk: t('From the left lane it chains to the middle instead.'),
+    risk: t('The chain skips a lane that already holds one of your chips. From the left lane it chains to the middle.'),
   }),
   noRespect: () => ({
     effect: t('The enemy\'s best player on its lane scores 0.'),
@@ -52,9 +52,9 @@ const COPY = {
     risk: t('Without a Flick player your own lane gets no boost.'),
   }),
   lockout: () => ({
-    effect: t('The enemy\'s chip pays nothing, wherever they play it.'),
-    when: t('When their chip would decide a lane. Play it on any lane.'),
-    risk: t('No boost of its own, and wasted if they play no chip.'),
+    effect: t('The enemy\'s chip on its lane pays nothing.'),
+    when: t('Facing the chip that would decide a lane.'),
+    risk: t('No boost of its own, and wasted if they play no chip on its lane.'),
   }),
 };
 
@@ -65,10 +65,10 @@ export function chipCopy(key) {
 // The rules every chip shares, for the "How chips work" sheet.
 export function chipRules() {
   return [
-    { title: t('One per map'), text: t('Drop one chip on one lane before you lock in. It stays there through the rotate.') },
+    { title: t('One per lane'), text: t('Drop up to one chip on each lane before you lock in. The enemy does the same, face down until you both lock in.') },
     { title: t('It multiplies'), text: t('Your lane total, after combos, times the chip: ×1.5 to ×3. Rare chips do something extra instead.') },
     { title: t('Who is on the lane'), text: t('The chip reads only the players on its lane. Rotate them away and the bonus goes too.') },
-    { title: t('Win it back'), text: t('Win the map and the chip comes back. Lose it and the chip is gone. Your IGL tops you up to two.') },
+    { title: t('Win it back'), text: t('Win a lane and its chip comes back. Lose it and that chip is gone. Your IGL tops you up to two.') },
   ];
 }
 
@@ -77,7 +77,7 @@ export function chipTips() {
     t('Play it on the lane you could win or lose, not the one you win anyway.'),
     t('Build the lane for the chip: pair chips want both roles together.'),
     t('Skill chips need trained skills. Train Flick, Flex or Mastermind to unlock them.'),
-    t('Lock the Map answers their chip; No Respect answers their star.'),
+    t('Lock the Map answers the chip facing it; No Respect answers their star.'),
     t('A bench player with the missing role can be worth a whole chip.'),
   ];
 }
@@ -87,9 +87,9 @@ export function planLine(plan) {
   if (plan.kind === 'disrespect') {
     return plan.flick
       ? t('Their best there scores 0, and ×1.5 with {names} on its lane.', { names: plan.cards[0].player })
-      : t('Their best player on its lane scores 0.');
+      : t('No boost for your lane: none of your five has Flick.');
   }
-  if (plan.kind === 'cancel') return t('Cancels their chip from any lane.');
+  if (plan.kind === 'cancel') return t('Cancels their chip on the same lane.');
   if (plan.anyLane) return plan.special === 'chain' ? t('×{mult} on any lane, plus the chain.', { mult: plan.mult }) : t('×{mult} on any lane.', { mult: plan.mult });
   if (!plan.fits) return t('Only ×1.5 for your five right now.');
   const names = plan.cards.map(card => card.player).join(' + ');

@@ -80,8 +80,13 @@ function fitText(ctx, text, font, size, max) {
 const SANS = { weight: 700, family: '"Familjen Grotesk", system-ui, sans-serif' };
 const MONO = { weight: 700, family: 'ui-monospace, Menlo, monospace' };
 
+// A chip is a tactic key, or a face of its own ({ tone, headline, code?, meter? }),
+// as the training focus chips are.
+const infoOf = key => (typeof key === 'string' ? chipInfo(key) : key);
+const toneOf = info => info.tone ?? CHIP_TIERS[info.tier];
+
 export function faceArt(info, face = chipStyle().face) {
-  const tone = CHIP_TIERS[info.tier];
+  const tone = toneOf(info);
   const [el, ctx] = canvas(512, 512);
   ctx.translate(256, 256);
   ctx.fillStyle = tone.body;
@@ -102,6 +107,20 @@ export function faceArt(info, face = chipStyle().face) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = tone.ink;
+  if (info.meter) {
+    // A focus chip: its mark big in the middle, the meter as dots under it.
+    fitText(ctx, info.headline, MONO, 120, 250);
+    ctx.fillText(info.headline, 0, -22);
+    const { on, of, next } = info.meter;
+    const gap = 46;
+    for (let i = 0; i < of; i++) {
+      ctx.fillStyle = i < on ? tone.ink : i === next ? tone.next ?? tone.ink : tone.off ?? tone.ink;
+      ctx.beginPath();
+      ctx.arc((i - (of - 1) / 2) * gap, 84, 15, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    return texture(el);
+  }
   if (face === 'code') {
     fitText(ctx, info.code, MONO, 64, 250);
     ctx.fillText(info.code, 0, -58);
@@ -119,7 +138,7 @@ export function faceArt(info, face = chipStyle().face) {
 
 // The edge: clay with the spots running round it, lined up with the face's spots.
 function edgeArt(info) {
-  const tone = CHIP_TIERS[info.tier];
+  const tone = toneOf(info);
   const [el, ctx] = canvas(1024, 32);
   ctx.fillStyle = tone.body;
   ctx.fillRect(0, 0, 1024, 32);
@@ -162,10 +181,10 @@ function geometries() {
 }
 
 export function makeChip(key, index) {
-  const info = chipInfo(key);
+  const info = infoOf(key);
   const { edge, face, ridge } = geometries();
   const faceMat = clay(faceArt(info));
-  const ridgeMat = new MeshPhysicalMaterial({ color: CHIP_TIERS[info.tier].body, roughness: 0.45, metalness: 0, clearcoat: 0.3, envMapIntensity: 0.8 });
+  const ridgeMat = new MeshPhysicalMaterial({ color: toneOf(info).body, roughness: 0.45, metalness: 0, clearcoat: 0.3, envMapIntensity: 0.8 });
   const group = new Group();
   const side = new Mesh(edge, clay(edgeArt(info)));
   const top = new Mesh(face, faceMat);
