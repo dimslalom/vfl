@@ -29,6 +29,12 @@ import {
 import { TIER_META } from '../engine/endless/ladder';
 import { pickSeriesMaps } from '../prototype/boardSetup';
 import { CLUB_SAVE_KEY, clearClub, loadClub, saveClub } from '../lib/clubSave';
+import ClubLanding from '../components/club/ClubLanding';
+import ClubPrimer from '../components/club/ClubPrimer';
+import ClubSettings from '../components/club/ClubSettings';
+import ClubHint from '../components/club/ClubHint';
+import { hintFor, loadOnboarding, markHintSeen, primerDue, saveOnboarding } from '../lib/clubOnboarding';
+import { t } from '../lib/i18n';
 import styles from './Club.module.css';
 
 const cardById = new Map(allCards.map(card => [card.id, card]));
@@ -211,7 +217,7 @@ function Road({ state }) {
 
 // ── start ───────────────────────────────────────────────────────────────────
 
-function Start({ onStart, onExit, scale }) {
+function Start({ onStart, onExit, scale, exitLabel = 'Other modes' }) {
   const [seed] = useState(() => (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0);
   const [name, setName] = useState('');
   const [picks, setPicks] = useState([]);
@@ -236,7 +242,7 @@ function Start({ onStart, onExit, scale }) {
           </label>
         </div>
         <div className={styles.chips}>
-          <BackButton onClick={onExit} label="Other modes" />
+          <BackButton onClick={onExit} label={exitLabel} />
           <div className={styles.chip}><b>{Math.min(picks.length + 1, DRAFT_PACKS)} / {DRAFT_PACKS}</b><span>Pack</span></div>
         </div>
       </header>
@@ -272,7 +278,7 @@ function Start({ onStart, onExit, scale }) {
 
 // ── hub ─────────────────────────────────────────────────────────────────────
 
-function ClubMenu({ onExit, onAbandon }) {
+function ClubMenu({ onExit, onAbandon, onSettings, onPrimer }) {
   const [open, setOpen] = useState(false);
   const [armed, setArmed] = useState(false);
   useEscape(() => { setOpen(false); setArmed(false); });
@@ -283,6 +289,8 @@ function ClubMenu({ onExit, onAbandon }) {
       </button>
       {open && (
         <div className={styles.menu}>
+          {onPrimer && <button type="button" onClick={onPrimer}>{t('How it plays')}</button>}
+          {onSettings && <button type="button" onClick={onSettings}>{t('Settings')}</button>}
           <button type="button" onClick={onExit}>Other modes</button>
           <button type="button" data-armed={armed || undefined} onBlur={() => setArmed(false)} onClick={() => (armed ? onAbandon() : setArmed(true))}>
             {armed ? 'Tap again to delete this club' : 'Abandon club'}
@@ -366,7 +374,7 @@ function BenchOpen({ scale, onClick }) {
     : <span className={styles.benchOpen} style={style}>{body}</span>;
 }
 
-function Home({ state, go, onExit, onAbandon, size }) {
+function Home({ state, go, onExit, onAbandon, onSettings, onPrimer, size }) {
   const squad = squadCards(state, allCards);
   const match = nextMatch(state);
   const opponent = clubById(state, match.id);
@@ -379,7 +387,7 @@ function Home({ state, go, onExit, onAbandon, size }) {
     <div className={styles.stage}>
       <Hud title={state.name} tags={[[tierName(state.tier), true], [`Year ${state.year}`], ...(started ? [[`${ordinal(pos)} in table`]] : [])]} logo={null}>
         <PackCounter state={state} onOpen={() => go('vault')} />
-        <ClubMenu onExit={onExit} onAbandon={onAbandon} />
+        <ClubMenu onExit={onExit} onAbandon={onAbandon} onSettings={onSettings} onPrimer={onPrimer} />
       </Hud>
       <Ground map={firstMap?.image && assetPath(firstMap.image)} className={styles.home}>
         <Road state={state} />
@@ -1467,7 +1475,13 @@ export default function Club() {
   const size = useCardScale();
   const [boot] = useState(readSave);
   const [state, setState] = useState(boot.state);
-  const [screen, setScreen] = useState(screenFor(boot.state));
+  // Every visit opens on the landing: a new player learns what the mode is, a
+  // returning one sees their club and Continue.
+  const [screen, setScreen] = useState('landing');
+  const [prefs, setPrefs] = useState(loadOnboarding);
+  // Where the primer and settings hand back to, since both open from more than one place.
+  const [primerNext, setPrimerNext] = useState('start');
+  const [settingsBack, setSettingsBack] = useState('landing');
   const [damaged, setDamaged] = useState(boot.damaged);
   const [saveFailed, setSaveFailed] = useState(false);
   const [notice, setNotice] = useState('');
@@ -1501,6 +1515,46 @@ export default function Club() {
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
   }, []);
+
+  function updatePrefs(next) {
+    setPrefs(next);
+    saveOnboarding(next);
+  }
+
+  function openPrimer(next) {
+    setPrimerNext(next);
+    show('primer');
+  }
+
+  function openSettings(back) {
+    setSettingsBack(back);
+    show('settings');
+  }
+
+  function finishPrimer() {
+    updatePrefs({ ...prefs, primerSeen: true });
+    show(primerNext);
+  }
+
+  // Founding a club runs the primer first, unless it was seen or switched off.
+  const found = () => (primerDue(prefs) ? openPrimer('start') : show('start'));
+
+  // One first-week tip on the screen it explains, laid over that screen.
+  const withHint = (view, at) => {
+    const hint = hintFor(prefs, state, at);
+    if (!hint) return view;
+    return (
+      <>
+        {view}
+        <ClubHint
+          key={hint}
+          screen={hint}
+          onDismiss={() => updatePrefs(markHintSeen(prefs, hint))}
+          onHintsOff={() => updatePrefs({ ...prefs, hints: false })}
+        />
+      </>
+    );
+  };
 
   function start(seed, name, picks) {
     morph(() => {
@@ -1571,16 +1625,37 @@ export default function Club() {
   const alerts = saveFailed && <p className={styles.alert} role="alert">Progress isn't saving on this device</p>;
 
   if (damaged) return <Damaged onReset={fresh} />;
-  if (screen === 'start' || !state) return <Start onStart={start} onExit={() => navigate('/run')} scale={size.scale} />;
+  if (screen === 'landing') {
+    const next = state && nextMatch(state);
+    const map = next ? pickSeriesMaps(seriesSeed(state, next), next.bestOf)[0]?.image : undefined;
+    return (
+      <ClubLanding
+        state={state}
+        map={map}
+        onContinue={() => show(screenFor(state))}
+        onFound={found}
+        onPrimer={() => openPrimer('landing')}
+        onSettings={() => openSettings('landing')}
+        onExit={() => navigate('/run')}
+      />
+    );
+  }
+  if (screen === 'primer') {
+    return <ClubPrimer onDone={finishPrimer} onSkip={finishPrimer} doneLabel={primerNext === 'start' ? undefined : t('Done')} />;
+  }
+  if (screen === 'settings') {
+    return <ClubSettings prefs={prefs} onChange={updatePrefs} onBack={() => show(settingsBack)} onPrimer={() => openPrimer('settings')} />;
+  }
+  if (screen === 'start' || !state) return <Start onStart={start} onExit={() => show('landing')} exitLabel={t('Back')} scale={size.scale} />;
   if (screen === 'train') {
-    return <Train state={state} size={size} onBack={() => show('home')} onTrain={trainPlayer} onTape={tapePlayer} onBuy={() => setState(buySession(state))} canBuy={canBuySession(state)} />;
+    return withHint(<Train state={state} size={size} onBack={() => show('home')} onTrain={trainPlayer} onTape={tapePlayer} onBuy={() => setState(buySession(state))} canBuy={canBuySession(state)} />, 'train');
   }
   if (screen === 'open' && state.opening) return <OpenPack key={state.opens} state={state} size={size} onChoose={pickFromPack} />;
-  if (screen === 'vault') return <Vault state={state} onBack={() => show('home')} onOpenPack={openThePack} onWindow={state.phase === 'review' ? () => show('window') : null} />;
+  if (screen === 'vault') return withHint(<Vault state={state} onBack={() => show('home')} onOpenPack={openThePack} onWindow={state.phase === 'review' ? () => show('window') : null} />, 'vault');
   if (screen === 'chips') {
-    return <ChipPick key={state.chipOffer?.attempt ?? 'hand'} state={state} onBack={() => show('home')} onTake={takeChip} onPass={() => morph(() => { setState(current => chooseChip(current, null)); setScreen('home'); })} onReroll={() => setState(current => rerollChips(current))} />;
+    return withHint(<ChipPick key={state.chipOffer?.attempt ?? 'hand'} state={state} onBack={() => show('home')} onTake={takeChip} onPass={() => morph(() => { setState(current => chooseChip(current, null)); setScreen('home'); })} onReroll={() => setState(current => rerollChips(current))} />, 'chips');
   }
-  if (screen === 'squad') return <Squad state={state} size={size} onBack={() => show('home')} onMove={(from, to) => morph(() => setState(current => moveSquad(current, from, to)))} />;
+  if (screen === 'squad') return withHint(<Squad state={state} size={size} onBack={() => show('home')} onMove={(from, to) => morph(() => setState(current => moveSquad(current, from, to)))} />, 'squad');
   const match = nextMatch(state);
   if (screen === 'match' && match) {
     const club = clubById(state, match.id);
@@ -1602,11 +1677,11 @@ export default function Club() {
   }
   // After a win the chip pick is the one decision left, so Continue leads into it.
   if (screen === 'result') return <Result state={state} size={size} onContinue={() => show(state.chipOffer && state.last?.won ? 'chips' : screenFor(state))} />;
-  if (screen === 'league') return <League state={state} onBack={() => show('home')} />;
+  if (screen === 'league') return withHint(<League state={state} onBack={() => show('home')} />, 'league');
   if (screen === 'over' || state.phase === 'over') return <Over state={state} onAgain={fresh} />;
   if (screen === 'window') return <Window state={state} size={size} onClose={closeTheWindow} />;
   if (screen === 'review' || !match) return <Review state={state} size={size} onNext={() => show('window')} />;
-  return (
+  return withHint(
     <>
       <Home
         state={state}
@@ -1614,9 +1689,12 @@ export default function Club() {
         go={(next) => { setNotice(''); show(next); }}
         onExit={() => navigate('/run')}
         onAbandon={fresh}
+        onSettings={() => openSettings('home')}
+        onPrimer={() => openPrimer('home')}
       />
       {notice && <p className={styles.toast} role="status">{notice}</p>}
       {alerts}
-    </>
+    </>,
+    'home',
   );
 }
