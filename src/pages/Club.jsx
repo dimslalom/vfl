@@ -17,7 +17,8 @@ import {
   buySession, canBuySession, canReroll, cleanName, renameClub, setClubCrest, chooseChip, choosePick, goldDue, openBlocker, openPack, rerollChips, useTape as spendTape,
 } from '../engine/club/rewards';
 import { ROLES, chipInfo } from '../chip3d/chipData';
-import { ChipIcon } from '../chip3d/ChipPayout';
+import Chip3D from '../chip3d/Chip3D';
+import { ChipBrief, ChipGuideButton, ChipLadder } from '../chip3d/ChipHelp';
 import { TACTIC_HAND_MAX } from '../engine/endless/seriesCards';
 import { fatiguePenalty } from '../../shared/src/engine/endless/career';
 import { BOARD_SKILLS } from '../engine/board/board';
@@ -750,16 +751,12 @@ function OpenPack({ state, onChoose, size }) {
 
 // ── chip pick ───────────────────────────────────────────────────────────────
 
-function ChipDisc({ chipKey, size = 'm' }) {
-  const info = chipInfo(chipKey);
-  return (
-    <span className={styles.chipDisc} data-size={size} data-tier={info.tier} aria-hidden="true">
-      {info.icons.slice(0, size === 's' ? 2 : 4).map((name, index) => <ChipIcon key={name + index} name={name} size={size === 's' ? 14 : 20} />)}
-    </span>
-  );
+// A chip as a lit 3D object (flat print without WebGL); see src/chip3d/Chip3D.jsx.
+function ChipDisc({ chipKey, size = 'm', phase = 0 }) {
+  return <Chip3D chipKey={chipKey} size={size === 's' ? 52 : size === 'm' ? 72 : 150} phase={phase} className={styles.chipDisc} />;
 }
 
-function ChipPick({ state, onTake, onPass, onReroll, onBack }) {
+function ChipPick({ state, squad, onTake, onPass, onReroll, onBack }) {
   useEscape(onBack);
   const offer = state.chipOffer;
   const hand = state.hand ?? [];
@@ -779,10 +776,11 @@ function ChipPick({ state, onTake, onPass, onReroll, onBack }) {
               const info = chipInfo(option.key);
               return (
                 <button key={option.uid} type="button" className={styles.chipOption} style={{ '--deal': index }} data-on={picked === option.uid || undefined} aria-pressed={picked === option.uid} onClick={() => { playUiSound('chip_lift'); setPicked(option.uid); }}>
-                  <ChipDisc chipKey={option.key} size="l" />
+                  <ChipDisc chipKey={option.key} size="l" phase={index * 1.7} />
                   <span className={styles.chipTier}>{info.tier}</span>
                   <b>{info.name}</b>
-                  <span className={styles.ladder}>{info.ladder.map((step, stepIndex) => <span key={stepIndex}>×{step.mult}</span>)}</span>
+                  <ChipLadder chipKey={option.key} />
+                  <ChipBrief chipKey={option.key} roster={squad} detail={picked === option.uid} />
                 </button>
               );
             })}
@@ -792,6 +790,7 @@ function ChipPick({ state, onTake, onPass, onReroll, onBack }) {
         )}
         <section className={styles.chipHand} aria-label={`Hand, ${hand.length} of ${TACTIC_HAND_MAX}`}>
           <span className={styles.groupLabel}>Hand {hand.length} / {TACTIC_HAND_MAX}{offer && full ? ': tap one to drop' : ''}</span>
+          <ChipGuideButton />
           <div className={styles.handSlots}>
             {Array.from({ length: TACTIC_HAND_MAX }, (_, index) => {
               const chip = hand[index];
@@ -799,7 +798,7 @@ function ChipPick({ state, onTake, onPass, onReroll, onBack }) {
               const droppable = offer && full;
               return (
                 <button key={chip.uid} type="button" className={styles.handSlot} data-drop={drop === chip.uid || undefined} disabled={!droppable} aria-label={`${chipInfo(chip.key).name}${droppable ? ', drop' : ''}`} onClick={() => { playUiSound('chip_lift'); setDrop(drop === chip.uid ? null : chip.uid); }}>
-                  <ChipDisc chipKey={chip.key} size="s" />
+                  <ChipDisc chipKey={chip.key} size="s" phase={index} />
                 </button>
               );
             })}
@@ -1780,7 +1779,7 @@ export default function Club() {
   if (screen === 'open' && state.opening) return <OpenPack key={state.opens} state={state} size={size} onChoose={pickFromPack} />;
   if (screen === 'vault') return withHint(<Vault state={state} onBack={() => show('home')} onOpenPack={openThePack} onWindow={state.phase === 'review' ? () => show('window') : null} />, 'vault');
   if (screen === 'chips') {
-    return withHint(<ChipPick key={state.chipOffer?.attempt ?? 'hand'} state={state} onBack={() => show('home')} onTake={takeChip} onPass={() => morph(() => { setState(current => chooseChip(current, null)); setScreen('home'); })} onReroll={() => setState(current => rerollChips(current))} />, 'chips');
+    return withHint(<ChipPick key={state.chipOffer?.attempt ?? 'hand'} state={state} squad={squadCards(state, allCards).slice(0, STARTERS)} onBack={() => show('home')} onTake={takeChip} onPass={() => morph(() => { setState(current => chooseChip(current, null)); setScreen('home'); })} onReroll={() => setState(current => rerollChips(current))} />, 'chips');
   }
   if (screen === 'season') {
     // The ground is the first match's map, as it will be on the hub.

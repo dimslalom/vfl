@@ -8,6 +8,8 @@ import { namedSeriesMaps, pickSeriesMaps, roundBoard, roundResult } from '../pro
 import ChipPayout from '../chip3d/ChipPayout';
 import MatchIntro from './MatchIntro';
 import { settleMatchMusic, stopMatchMusic } from '../lib/music';
+import { useChipStyle } from '../chip3d/chipStyle';
+import { ChipCoach } from '../chip3d/ChipHelp';
 import { STAT_LABELS, STAT_LABELS_FULL } from '../../shared/src/data/statFields';
 import styles from './BoardSeries.module.css';
 
@@ -170,6 +172,7 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
   const [attempt, setAttempt] = useState(0);
   const [leaving, setLeaving] = useState(false);
   const [chipView, setChipView] = useState(null);
+  const chipStyleNow = useChipStyle();
   const [cardView, setCardView] = useState(null);
   const runRef = useRef({ you: 0, them: 0, hand, results: [] });
   const finishedRef = useRef(false);
@@ -356,13 +359,17 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
 
   const skills = Object.keys(BOARD_SKILLS).filter(key => squad.some(card => hasSkill(card, key)));
   const { phase, legal, placed, moves, rotated, layout } = state;
+  const chipHint = chipStyleNow.hint;
   // The finished round stays on screen until the next one is dealt.
   const shownRound = Math.min(score.you + score.them - (outcome ? 1 : 0), bestOf - 1);
   return (
     <div className={styles.series} data-fixed={fixed === true ? 'true' : fixed || undefined} data-layout={layout}>
       <div className={styles.board} key={attempt} ref={hostRef} onClick={() => phase === 'resolve' && stageRef.current?.skip()} />
       <div className={styles.chips} key={`chips${attempt}`} ref={chipHostRef} aria-hidden="true" />
-      <ChipPayout chipKey={chipView?.selected} at={chipView?.anchor} />
+      {/* Med-fi: two chip hints to compare (chipStyle.js). A is the tag on the chip, B a line across the top. */}
+      {chipHint === 'coach'
+        ? phase === 'place' && <ChipCoach chipKey={chipView?.selected} roster={squad} />
+        : <ChipPayout chipKey={chipView?.selected} at={chipView?.anchor} roster={squad} />}
       {cardView && <CardView view={cardView} stageRef={stageRef} hostRef={hostRef} onPlaceLane={lane => stageRef.current?.placePicked(lane)} onBack={() => stageRef.current?.unplace()} />}
       {phase === 'loading' && !failed && !introOn && <p className={styles.notice} role="status">Dealing the board</p>}
       {failed && (

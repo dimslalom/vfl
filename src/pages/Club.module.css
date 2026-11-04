@@ -942,22 +942,20 @@ span.counter { cursor: default; }
 .even { min-width: 180px; min-height: 64px; padding: 0 var(--sp-4); display: inline-flex; align-items: center; justify-content: center; font-size: var(--fs-lead); }
 
 /* Chip pick */
-.chipGround { justify-content: center; gap: var(--sp-8); }
-.chipOffer { display: flex; justify-content: center; gap: var(--sp-8); }
-.chipOption { width: 220px; padding: var(--sp-3); display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); border: 0; background: none; color: var(--ink); font: inherit; cursor: pointer; transition: transform .18s cubic-bezier(.2, .8, .2, 1); }
-.chipOption[data-on] { transform: translateY(-12px); }
-.chipOption[data-on] .chipDisc { box-shadow: 0 0 0 4px var(--win), var(--shadow-chip); }
+.chipGround { justify-content: center; gap: var(--sp-6); }
+.chipOffer { display: flex; justify-content: center; align-items: flex-start; gap: var(--sp-6); }
+.chipOption { width: 240px; padding: var(--sp-3) var(--sp-3) var(--sp-4); display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); border: 0; background: none; color: var(--ink); font: inherit; text-align: center; cursor: pointer; transition: transform .18s cubic-bezier(.2, .8, .2, 1), background-color .18s; }
+.chipOption:hover { background: var(--plate); }
+.chipOption[data-on] { transform: translateY(-8px); background: var(--plate-hi); box-shadow: inset 0 -4px 0 var(--win); }
 .chipOption > b { font-size: var(--fs-title); }
+.chipOption ol { justify-content: center; }
+.chipOption p, .chipOption dl { text-align: center; }
 .chipTier { color: var(--muted); font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; }
-.ladder { display: flex; gap: var(--sp-2); font-size: var(--fs-lead); font-weight: 800; }
-.chipDisc { display: grid; grid-auto-flow: column; place-content: center; gap: 2px; border-radius: 50%; border: 6px dashed var(--bg); box-sizing: border-box; background: var(--plate-hi); color: var(--ink); box-shadow: var(--shadow-chip); }
-.chipDisc[data-size='l'] { width: 132px; height: 132px; border-width: 9px; }
-.chipDisc[data-size='s'] { width: 52px; height: 52px; border-width: 4px; }
-.chipDisc[data-tier='uncommon'] { background: var(--plate-inset); }
-.chipDisc[data-tier='rare'] { background: var(--gold); color: var(--gold-ink); }
+.chipDisc { pointer-events: auto; }
 .chipHand { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); }
 .handSlots { display: flex; gap: var(--sp-2); }
 .handSlot { width: 56px; height: 56px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: none; box-shadow: inset 0 0 0 1px var(--line-bracket); color: inherit; }
+button.handSlot { box-shadow: none; }
 button.handSlot:not(:disabled) { cursor: pointer; }
 .handSlot[data-drop] { box-shadow: 0 0 0 3px var(--accent); opacity: .6; }
 
@@ -1053,12 +1051,15 @@ button.handSlot:not(:disabled) { cursor: pointer; }
     white-space: nowrap;
   }
   .chipGround { gap: var(--sp-4); }
-  .chipOffer { gap: var(--sp-2); }
-  .chipOption { width: auto; flex: 1; padding: var(--sp-1); }
-  .chipDisc[data-size='l'] { width: 76px; height: 76px; border-width: 6px; }
-  .chipOption > b { font-size: var(--fs-body); text-align: center; }
+  .chipOffer { flex-direction: column; align-items: stretch; gap: var(--sp-2); }
+  .chipOption { width: auto; padding: var(--sp-2) var(--sp-3); display: grid; grid-template-columns: 84px 1fr; column-gap: var(--sp-3); row-gap: var(--sp-1); align-items: start; justify-items: start; text-align: left; }
+  .chipOption[data-on] { transform: none; }
+  .chipOption > .chipDisc { grid-row: 1 / span 5; width: 84px !important; height: 84px !important; }
+  .chipOption > b { font-size: var(--fs-body); }
+  .chipOption ol { justify-content: flex-start; }
+  .chipOption p, .chipOption dl { text-align: left; }
   .handSlots { gap: 4px; }
-  .handSlot, .chipDisc[data-size='s'] { width: 40px; height: 40px; }
+  .handSlot, .handSlot .chipDisc { width: 42px !important; height: 42px !important; }
   .even { min-width: 0; min-height: 48px; flex: 1; font-size: var(--fs-body); }
   .squadGround { gap: var(--sp-2); justify-content: flex-start; }
   .squadPanel { gap: var(--sp-2); }

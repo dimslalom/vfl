@@ -14,9 +14,11 @@ export const ICON_PATHS = {
   igl: ['M3 19h18M4 16l-1-9 5 4 4-7 4 7 5-4-1 9z'],
   map: ['M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14'],
   lock: ['M7 11V7a5 5 0 0 1 10 0v4M5 11h14v10H5z'],
+  // Three lanes, all lit: works anywhere.
+  any: ['M4 4h4v16H4zM10 4h4v16h-4zM16 4h4v16h-4z'],
 };
 
 export const ICON_LABELS = {
   Duelist: 'Duelist', Initiator: 'Initiator', Controller: 'Controller', Sentinel: 'Sentinel',
-  flick: 'Flick', flex: 'Flex', mastermind: 'Mastermind', igl: 'IGL', map: 'Map rule', lock: 'Map rule',
+  flick: 'Flick', flex: 'Flex', mastermind: 'Mastermind', igl: 'IGL', map: 'Map rule', lock: 'Map rule', any: 'Any lane',
 };

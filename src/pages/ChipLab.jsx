@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import useReducedMotion from '../../shared/src/lib/useReducedMotion';
+import Chip3D from '../chip3d/Chip3D';
 import ChipPayout from '../chip3d/ChipPayout';
-import { CHIP_KEYS } from '../chip3d/chipData';
+import { CHIP_FLOOR, CHIP_KEYS, CODES, ROLES, SKILLS, chipInfo, chipMultFor } from '../chip3d/chipData';
+import { chipCopy, chipRules } from '../chip3d/chipCopy';
+import { ChipGuideButton, ChipLadder, ChipLegend, Token } from '../chip3d/ChipHelp';
+import { FACES, HINTS, setChipStyle, useChipStyle } from '../chip3d/chipStyle';
+import { t } from '../lib/i18n';
 import styles from './ChipLab.module.css';
 
 const HANDS = [
@@ -12,9 +17,117 @@ const HANDS = [
 const LANES = ['A', 'B', 'C'];
 
 
-// A test page for the 3D tactic chips: the stack, reading a chip, and dragging
-// one onto a lane. The lanes stand in for the board.
+const FACE_LABELS = { code: 'A: role codes', glyph: 'B: icons' };
+const HINT_LABELS = { tag: 'A: tag on the chip', coach: 'B: line on top' };
+const LANE_SIZE = 3;
+
+// The chip codex: every chip in 3D with what it does, a lane to try them on, and
+// (med-fi only) the switches between the two faces and the two board hints.
 export default function ChipLab() {
+  const style = useChipStyle();
+  const [chosen, setChosen] = useState(CHIP_KEYS[0]);
+  return (
+    <main className={styles.page}>
+      <header className={styles.codexHead}>
+        <div>
+          <h1>{t('Chip codex')}</h1>
+          <p className={styles.hint}>{t('Every tactic chip, what it needs on a lane and what it pays.')}</p>
+        </div>
+        <ChipGuideButton />
+      </header>
+
+      <section className={styles.switches} aria-label="Med-fi options">
+        <div className={styles.switch} role="group" aria-label="Chip face">
+          <span>Chip face</span>
+          {FACES.map(face => <button key={face} type="button" aria-pressed={style.face === face} data-on={style.face === face || undefined} onClick={() => setChipStyle({ face })}>{FACE_LABELS[face]}</button>)}
+        </div>
+        <div className={styles.switch} role="group" aria-label="Board hint">
+          <span>Board hint</span>
+          {HINTS.map(hint => <button key={hint} type="button" aria-pressed={style.hint === hint} data-on={style.hint === hint || undefined} onClick={() => setChipStyle({ hint })}>{HINT_LABELS[hint]}</button>)}
+        </div>
+      </section>
+
+      <ol className={styles.rulesRow}>
+        {chipRules().map(rule => <li key={rule.title}><b>{rule.title}</b><span>{rule.text}</span></li>)}
+      </ol>
+
+      <section className={styles.legendRow} aria-label={t('What the symbols mean')}>
+        <ChipLegend />
+      </section>
+
+      <LaneDemo chipKey={chosen} />
+
+      <ul className={styles.codex}>
+        {CHIP_KEYS.map((key, index) => {
+          const info = chipInfo(key);
+          const copy = chipCopy(key);
+          return (
+            <li key={key}>
+              <button type="button" className={styles.entry} data-on={chosen === key || undefined} aria-pressed={chosen === key} onClick={() => setChosen(key)}>
+                <Chip3D chipKey={key} size={128} phase={index * 0.9} />
+                <span className={styles.tier} data-tier={info.tier}>{t(info.tier)}{info.dead ? ` · ${t('no effect on the board')}` : ''}</span>
+                <b className={styles.entryName}>{info.name}</b>
+                <ChipLadder chipKey={key} size="s" />
+                <p>{copy.effect}</p>
+                <dl>
+                  <div><dt>{t('Good when')}</dt><dd>{copy.when}</dd></div>
+                  <div><dt>{t('Watch out')}</dt><dd>{copy.risk}</dd></div>
+                </dl>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+
+      <section className={styles.testSection}>
+        <h2>Stack and drag test</h2>
+        <StackTest />
+      </section>
+    </main>
+  );
+}
+
+// Build a lane by tapping players onto it and see what the picked chip pays,
+// straight from the board's numbers.
+function LaneDemo({ chipKey }) {
+  const { face } = useChipStyle();
+  const [lane, setLane] = useState(['Controller', 'Initiator']);
+  const info = chipInfo(chipKey);
+  const mult = chipMultFor(chipKey, lane);
+  const add = token => setLane(current => (current.length >= LANE_SIZE ? current : [...current, token]));
+  return (
+    <section className={styles.demo} aria-label={t('Try a lane')}>
+      <div className={styles.demoChip}>
+        <Chip3D chipKey={chipKey} size={150} />
+        <b>{info.name}</b>
+      </div>
+      <div className={styles.demoBody}>
+        <h2>{t('Try a lane')}</h2>
+        <p className={styles.hint}>{t('Pick a chip below, then tap players onto the lane. A lane holds three.')}</p>
+        <div className={styles.palette} role="group" aria-label={t('Add a player')}>
+          {[...ROLES, ...SKILLS].map(token => (
+            <button key={token} type="button" onClick={() => add(token)} disabled={lane.length >= LANE_SIZE} aria-label={`${t('Add')} ${CODES[token]}`}>
+              <Token name={token} face={face} />
+            </button>
+          ))}
+        </div>
+        <div className={styles.lane3}>
+          {Array.from({ length: LANE_SIZE }, (_, index) => (
+            lane[index]
+              ? <button key={index} type="button" className={styles.slot} onClick={() => setLane(current => current.filter((_, i) => i !== index))} aria-label={`${t('Remove')} ${CODES[lane[index]]}`}><Token name={lane[index]} face={face} /></button>
+              : <span key={index} className={styles.slot} data-empty />
+          ))}
+          <b className={styles.demoMult} data-up={mult > CHIP_FLOOR || undefined}>×{mult}</b>
+        </div>
+        <p className={styles.hint}>{mult > CHIP_FLOOR ? t('This lane triggers the chip.') : t('Only the ×1.5 every chip pays.')}</p>
+      </div>
+    </section>
+  );
+}
+
+// The original test for the 3D tactic chips: the stack, reading a chip, and
+// dragging one onto a lane. The lanes stand in for the board.
+function StackTest() {
   const hostRef = useRef(null);
   const laneRefs = useRef([]);
   const sceneRef = useRef(null);
@@ -61,7 +174,7 @@ export default function ChipLab() {
   }
 
   return (
-    <main className={styles.lab}>
+    <div className={styles.lab}>
       <section className={styles.side}>
         <h1>Tactic chips</h1>
         <p className={styles.hint}>Click the stack to open it, then click a chip to read it. Drag any chip onto a lane to play it; click it there to take it back.</p>
@@ -96,6 +209,6 @@ export default function ChipLab() {
         {state === 'loading' && <p className={styles.notice} role="status">Loading the chips</p>}
         {state === 'failed' && <p className={styles.notice} role="alert">3D isn't available here, so the game would use flat chips.</p>}
       </div>
-    </main>
+    </div>
   );
 }

@@ -1,0 +1,57 @@
+/* Flat broadcast readouts: no boxes inside boxes, mono for structure, one line per idea. */
+
+.token { display: inline-grid; place-items: center; min-width: 18px; height: 18px; }
+.token[data-code] { padding: 0 4px; font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .08em; background: var(--surface-alt); color: var(--ink); }
+
+.ladder { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-3); }
+.ladder li { display: flex; align-items: center; gap: var(--sp-1); }
+.tokens { display: flex; gap: 2px; }
+.mult { font-size: var(--fs-title); line-height: 1; font-variant-numeric: tabular-nums; }
+.ladder[data-size='s'] .mult { font-size: var(--fs-body); }
+
+.brief { display: grid; gap: var(--sp-2); max-width: 34ch; }
+.effect { margin: 0; font-size: var(--fs-body); line-height: 1.4; color: var(--ink); }
+.plan { margin: 0; font-size: 12px; line-height: 1.4; color: var(--muted); }
+.plan[data-fits] { color: var(--win); }
+.detail { margin: 0; display: grid; gap: var(--sp-2); }
+.detail div { display: grid; gap: 2px; }
+.detail dt { font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.detail dd { margin: 0; font-size: 12px; line-height: 1.4; }
+
+.legend { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--sp-2) var(--sp-4); }
+.legend li { display: grid; grid-template-columns: 18px 52px 1fr; align-items: center; gap: var(--sp-2); font-size: 12px; color: var(--muted); }
+.legend b { font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .1em; color: var(--ink); }
+
+.veil { position: fixed; inset: 0; z-index: var(--z-overlay, 50); display: grid; place-items: center; padding: var(--sp-4); background: var(--veil); }
+.guide { width: min(560px, 100%); max-height: calc(100dvh - 2 * var(--sp-4)); overflow: auto; display: grid; gap: var(--sp-4); padding: var(--sp-6); background: var(--surface); color: var(--ink); box-shadow: var(--shadow-overlay); }
+.guideHead { display: flex; align-items: center; justify-content: space-between; }
+.guideHead h2 { margin: 0; font-size: var(--fs-heading); }
+.close { width: 44px; height: 44px; border: 0; background: var(--surface-alt); color: var(--ink); font-size: 24px; cursor: pointer; }
+.close:hover { background: var(--accent); color: var(--accent-ink); }
+.rules { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--sp-3); }
+.rules li { display: grid; grid-template-columns: 28px 1fr; gap: var(--sp-3); }
+.rules li > b { display: grid; place-items: center; width: 28px; height: 28px; background: var(--ink); color: var(--bg); font: 700 var(--fs-label)/1 var(--font-mono); }
+.rules h3 { margin: 0 0 2px; font-size: var(--fs-body); }
+.rules p { margin: 0; font-size: 12px; line-height: 1.45; color: var(--muted); }
+.kicker { margin: var(--sp-2) 0 0; font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.tips { margin: 0; padding: 0 0 0 var(--sp-4); display: grid; gap: var(--sp-2); font-size: 12px; line-height: 1.45; }
+
+.guideButton { display: inline-flex; align-items: center; gap: var(--sp-2); min-height: 44px; padding: 0 var(--sp-3); border: 0; background: none; color: var(--ink); font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; cursor: pointer; pointer-events: auto; }
+.guideButton:hover .q { background: var(--accent); color: var(--accent-ink); }
+.q { display: grid; place-items: center; width: 22px; height: 22px; background: var(--surface-alt); color: var(--ink); font: 700 13px/1 var(--font-mono); }
+
+/* Hint B: a single readout line in the gap between the board's map pill and Leave. */
+.coach { position: absolute; z-index: 4; left: 50%; top: 14px; transform: translateX(-50%); width: min(600px, calc(100% - 760px)); display: flex; align-items: center; flex-wrap: wrap; gap: 2px var(--sp-3); padding: var(--sp-1) var(--sp-1) var(--sp-1) var(--sp-3); background: var(--bg-deep); color: var(--ink); pointer-events: none; }
+.coachName { font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .14em; }
+.coach[data-tier='rare'] .coachName { padding: 3px 6px; background: var(--gold); color: var(--gold-ink); }
+.coach[data-tier='uncommon'] .coachName { padding: 3px 6px; background: #3f6fd8; color: #fff; }
+.coachText { flex: 1 1 200px; font-size: 12px; line-height: 1.35; }
+.coachPlan { flex: 1 1 100%; order: 3; padding-bottom: 2px; font-size: 12px; line-height: 1.35; color: var(--muted); }
+.coachPlan[data-fits] { color: var(--win); }
+.coach .guideButton { min-height: 36px; }
+/* Narrower: under the header row, name and plan only, clear of the lane titles. */
+@media (max-width: 1099px) {
+  .coach { top: 62px; width: calc(100% - 24px); }
+  .coach[data-tier] .coachText { display: none; }
+  .coachPlan { flex: 1 1 0; order: 0; }
+}

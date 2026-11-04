@@ -5,7 +5,9 @@
   transform: translateY(calc(-100% - 10px));
   display: grid;
   gap: var(--sp-2);
-  padding: var(--sp-2) var(--sp-3);
+  width: max-content;
+  max-width: min(300px, calc(100vw - 24px));
+  padding: var(--sp-3) var(--sp-3) var(--sp-1);
   background: var(--ink);
   color: var(--bg);
   pointer-events: none;
@@ -21,8 +23,11 @@
   clip-path: polygon(0 0, 100% 0, 50% 100%);
 }
 .name { justify-self: start; font-size: var(--fs-micro); letter-spacing: 0.12em; }
-.card[data-tier='rare'] .name { padding: 2px 6px; background: var(--gold); color: #211b06; }
-.ladder { margin: 0; padding: 0; list-style: none; display: flex; gap: var(--sp-3); }
-.ladder li { display: flex; align-items: center; gap: var(--sp-1); }
-.icons { display: flex; gap: 2px; }
-.mult { font-size: var(--fs-title); line-height: 1; font-variant-numeric: tabular-nums; }
+.card[data-tier='rare'] .name { padding: 2px 6px; background: var(--gold); color: var(--gold-ink); }
+.card[data-tier='uncommon'] .name { padding: 2px 6px; background: #3f6fd8; color: #fff; }
+.line { margin: 0; font-size: 12px; line-height: 1.4; }
+.plan { margin: 0; font-size: 12px; line-height: 1.4; color: #4c5160; }
+.plan[data-fits] { color: #007a62; font-weight: 700; }
+/* The tag is light, so its parts invert: dark codes, dark guide button. */
+.card [data-code] { background: var(--bg); color: var(--ink); }
+.guide { justify-self: start; margin-left: calc(-1 * var(--sp-3)); color: var(--bg); }

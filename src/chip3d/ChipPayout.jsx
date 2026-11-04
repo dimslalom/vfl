@@ -1,33 +1,26 @@
-import { chipInfo } from './chipData';
-import { ICON_LABELS, ICON_PATHS } from './chipIcons';
+import { chipInfo, chipPlan } from './chipData';
+import { chipCopy, planLine } from './chipCopy';
+import { ChipGuideButton, ChipLadder } from './ChipHelp';
 import styles from './ChipPayout.module.css';
 
-export function ChipIcon({ name, size = 22 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="square" role="img" aria-label={ICON_LABELS[name]}>
-      {ICON_PATHS[name].map(d => <path key={d} d={d} />)}
-    </svg>
-  );
-}
+export { ChipIcon } from './ChipHelp';
 
-// A picked chip's payout, a small tag just above it with its tail on the chip:
-// what goes on the lane, and what it multiplies by. `at` is the point above the
-// chip, in the parent's pixels. Chips sit at the left, so the tag runs rightwards.
-export default function ChipPayout({ chipKey, at }) {
+// Hint A: a picked chip's tag, just above it with its tail on the chip. Its
+// name, what it pays, the effect in a line and what it does for this squad.
+// `at` is the point above the chip, in the parent's pixels.
+export default function ChipPayout({ chipKey, at, roster = null }) {
   if (!chipKey || !at) return null;
   const info = chipInfo(chipKey);
+  const copy = chipCopy(info.key);
+  const plan = roster?.length ? chipPlan(chipKey, roster) : null;
   const left = Math.max(8, at.x - 40);
   return (
     <div className={styles.card} style={{ left, top: at.y, '--tail': `${at.x - left}px` }} data-tier={info.tier} aria-live="polite">
       <b className={styles.name}>{info.name}</b>
-      <ol className={styles.ladder}>
-        {info.ladder.map(step => (
-          <li key={step.icons.join() + step.mult}>
-            <span className={styles.icons}>{step.icons.map((name, i) => <ChipIcon key={name + i} name={name} size={16} />)}</span>
-            <b className={styles.mult}>×{step.mult}</b>
-          </li>
-        ))}
-      </ol>
+      <ChipLadder chipKey={chipKey} />
+      <p className={styles.line}>{copy.effect}</p>
+      {plan && <p className={styles.plan} data-fits={plan.fits || undefined}>{planLine(plan)}</p>}
+      <ChipGuideButton className={styles.guide} />
     </div>
   );
 }

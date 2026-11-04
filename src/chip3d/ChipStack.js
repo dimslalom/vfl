@@ -14,8 +14,8 @@
 // to that spot on screen however the camera moves, and a tap sends it home.
 
 import {
-  ACESFilmicToneMapping, CanvasTexture, CircleGeometry, CylinderGeometry, DirectionalLight, DoubleSide, Group, Mesh,
-  MeshBasicMaterial, MeshPhysicalMaterial, Object3D, RingGeometry, PMREMGenerator, PerspectiveCamera, Raycaster, Scene, SRGBColorSpace, Vector2,
+  ACESFilmicToneMapping, CanvasTexture, CircleGeometry, DirectionalLight, DoubleSide, Group, LatheGeometry, Mesh,
+  MeshBasicMaterial, MeshPhysicalMaterial, Object3D, RingGeometry, PMREMGenerator, PerspectiveCamera, Raycaster, Scene, SRGBColorSpace, TorusGeometry, Vector2,
   Vector3, WebGLRenderer,
 } from 'three';
 import { gsap } from 'gsap';
@@ -23,8 +23,12 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { playUiSound } from '../../shared/src/lib/gameAudio';
 import { CHIP_TIERS, chipInfo } from './chipData';
 import { ICON_PATHS } from './chipIcons';
+import { chipStyle } from './chipStyle';
 
-const THICK = 0.2;
+// Thick enough that the rim reads from the board's top-down camera.
+export const THICK = 0.27;
+const BEVEL = 0.06;                         // rounded rim, so the edge catches light
+const FACE_R = 1 - BEVEL;
 const SPOTS = 8;
 const FOV = 30;
 const SPACING = 2.35;
@@ -65,8 +69,18 @@ function drawIcon(ctx, name, x, y, size, color) {
   ctx.restore();
 }
 
-// The printed face: clay rim with edge spots, a dark inlay, and the reward icons.
-function faceArt(info) {
+// The printed face: clay rim with edge spots, a dark inlay, what the chip needs
+// (as icons or as the role codes the cards print) and the most it pays.
+function fitText(ctx, text, font, size, max) {
+  ctx.font = `${font.weight} ${size}px ${font.family}`;
+  const width = ctx.measureText(text).width;
+  if (width > max) ctx.font = `${font.weight} ${Math.floor((size * max) / width)}px ${font.family}`;
+}
+
+const SANS = { weight: 700, family: '"Familjen Grotesk", system-ui, sans-serif' };
+const MONO = { weight: 700, family: 'ui-monospace, Menlo, monospace' };
+
+export function faceArt(info, face = chipStyle().face) {
   const tone = CHIP_TIERS[info.tier];
   const [el, ctx] = canvas(512, 512);
   ctx.translate(256, 256);
@@ -83,23 +97,25 @@ function faceArt(info) {
   }
   ctx.fillStyle = tone.face;
   ctx.beginPath();
-  ctx.arc(0, 0, 168, 0, Math.PI * 2);
+  ctx.arc(0, 0, 172, 0, Math.PI * 2);
   ctx.fill();
-  ctx.strokeStyle = tone.spot;
-  ctx.globalAlpha = 0.45;
-  ctx.lineWidth = 5;
-  ctx.beginPath();
-  ctx.arc(0, 0, 180, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.globalAlpha = 1;
-  const { icons } = info;
-  if (icons.length === 4) {
-    icons.forEach((name, i) => drawIcon(ctx, name, (i % 2 ? 1 : -1) * 54, (i < 2 ? -1 : 1) * 54, 84, tone.ink));
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = tone.ink;
+  if (face === 'code') {
+    fitText(ctx, info.code, MONO, 64, 300);
+    ctx.fillText(info.code, 0, -58);
   } else {
-    const size = icons.length === 1 ? 156 : 118;
-    const step = size * 0.92;
-    icons.forEach((name, i) => drawIcon(ctx, name, (i - (icons.length - 1) / 2) * step, 0, size, tone.ink));
+    const { icons } = info;
+    const size = icons.length > 2 ? 62 : icons.length === 2 ? 84 : 104;
+    const step = size * 1.02;
+    icons.forEach((name, i) => drawIcon(ctx, name, (i - (icons.length - 1) / 2) * step, -58, size, tone.ink));
   }
+  // The most it can pay, big: the one number a player needs before anything else.
+  ctx.globalAlpha = info.dead ? 0.55 : 1;
+  fitText(ctx, `×${info.max}`, SANS, 132, 250);
+  ctx.fillText(`×${info.max}`, 0, 62);
+  ctx.globalAlpha = 1;
   return texture(el);
 }
 
@@ -121,18 +137,37 @@ function clay(map) {
   return new MeshPhysicalMaterial({ map, roughness: 0.68, metalness: 0, clearcoat: 0.12, clearcoatRoughness: 0.6, envMapIntensity: 0.5 });
 }
 
+// The rim as a lathe: flat at the faces, a quarter round into the side and back,
+// so the edge shades from lit to dark instead of meeting the face at a hard line.
+function rimProfile() {
+  const points = [];
+  const h = THICK / 2;
+  const arc = (cy, from, to) => {
+    for (let i = 0; i <= 6; i++) {
+      const a = from + ((to - from) * i) / 6;
+      points.push(new Vector2(FACE_R + Math.cos(a) * BEVEL, cy + Math.sin(a) * BEVEL));
+    }
+  };
+  arc(-h + BEVEL, -Math.PI / 2, 0);
+  arc(h - BEVEL, 0, Math.PI / 2);
+  return points;
+}
+
 const shared = {};
 function geometries() {
-  shared.edge ??= new CylinderGeometry(1, 1, THICK, 96, 1, true);
-  shared.face ??= new CircleGeometry(1, 96);
+  shared.edge ??= new LatheGeometry(rimProfile(), 96);
+  shared.face ??= new CircleGeometry(FACE_R, 96);
   shared.ring ??= new RingGeometry(1.03, 1.17, 96);
+  // A raised ridge round the inlay on each face: it catches the light face-on.
+  shared.ridge ??= new TorusGeometry(FACE_R * 0.7, 0.02, 6, 96);
   return shared;
 }
 
 export function makeChip(key, index) {
   const info = chipInfo(key);
-  const { edge, face } = geometries();
+  const { edge, face, ridge } = geometries();
   const faceMat = clay(faceArt(info));
+  const ridgeMat = new MeshPhysicalMaterial({ color: CHIP_TIERS[info.tier].body, roughness: 0.45, metalness: 0, clearcoat: 0.3, envMapIntensity: 0.8 });
   const group = new Group();
   const side = new Mesh(edge, clay(edgeArt(info)));
   const top = new Mesh(face, faceMat);
@@ -147,9 +182,16 @@ export function makeChip(key, index) {
   ring.rotation.x = -Math.PI / 2;
   ring.position.y = THICK / 2 + 0.003;
   ring.visible = false;
-  group.add(side, top, bottom, ring);
-  for (const mesh of [side, top, bottom]) mesh.userData.chip = index;
-  return { key, info, group, ring, meshes: [side, top, bottom] };
+  const ridges = [1, -1].map((sign) => {
+    const mesh = new Mesh(ridge, ridgeMat);
+    mesh.rotation.x = Math.PI / 2;
+    mesh.scale.z = 0.6;
+    mesh.position.y = sign * (THICK / 2 + 0.004);
+    return mesh;
+  });
+  group.add(side, top, bottom, ...ridges, ring);
+  for (const mesh of [side, top, bottom, ...ridges]) mesh.userData.chip = index;
+  return { key, info, group, ring, meshes: [side, top, bottom, ...ridges] };
 }
 
 // Geometry is shared by every chip; only the printed materials are its own.

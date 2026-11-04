@@ -45,6 +45,9 @@ const DROP_PITCH = (82 * Math.PI) / 180;
 const DROP_HEIGHT = 0.45;
 const DROP_YAW = (10 * Math.PI) / 180;
 const DROP_SECONDS = 1.4;
+// Hand chips lean away from the camera: tilted toward it they sat face-on to the
+// top-down view and read as flat discs. Leaning back shows the rim and its depth.
+const CHIP_TILT = -0.6;
 const TAP = 6;
 // How far an arena slides on a map change: its own half width (26, set in
 // build_arena.py) plus the widest view past the lanes, so it fully clears the screen.
@@ -56,7 +59,7 @@ const TUCK = 1.33;                       // how far the tall layout's third card
 // Board units along a lane, z measured from its centre. card and handCard are
 // card scales; stretch caps how far the lanes may grow into spare height.
 const LAYOUTS = {
-  wide: { len: 6.4, tip: 0.25, them: -1.32, bar: 0.12, you: 1.56, card: 1.2, hand: 4.46, handCard: 1.36, chipR: 0.33, stretch: 1.6 },
+  wide: { len: 6.4, tip: 0.25, them: -1.32, bar: 0.12, you: 1.56, card: 1.2, hand: 4.46, handCard: 1.36, chipR: 0.37, stretch: 1.6 },
   tall: { len: 13.6, tip: 0.32, them: -2.71, bar: -0.2, you: 2.24, card: 1.84, hand: 8.55, handCard: 2.54, chipR: 0.58, stretch: 1.3 },
 };
 // The flat header and score bar are drawn at these px sizes, then mapped onto
@@ -576,11 +579,11 @@ export default class TableStage {
       // pile and slide them down out of the bottom bar so the outcome banner has the full row.
       if (this.phase !== 'place') {
         const x = -(LANE_X[2] + LANE_W / 2) + L.chipR + 0.1 + k * 0.04;
-        return { x, y: 0.12 + k * 0.09, z: L.chipZ + (L.tall ? 3.2 : 2.2), rx: 0.3, rz: 0, s: L.chipR * 0.85 };
+        return { x, y: 0.12 + k * 0.09, z: L.chipZ + (L.tall ? 3.2 : 2.2), rx: CHIP_TILT, rz: 0, s: L.chipR * 0.85 };
       }
       // Left of the hand; on a phone, in the bottom row beside the lock-in button.
       const x = -(LANE_X[2] + LANE_W / 2) + L.chipR + 0.1 + k * (L.chipR * (L.tall ? 1.45 : 2) + 0.15);
-      return { x, y: 0.2 + k * (L.tall ? 0.06 : 0) + (picked ? 0.2 : 0), z: L.chipZ, rx: 0.3, rz: 0, s: L.chipR * (picked ? 1.15 : 1) };
+      return { x, y: 0.2 + k * (L.tall ? 0.06 : 0) + (picked ? 0.2 : 0), z: L.chipZ, rx: picked ? CHIP_TILT * 0.5 : CHIP_TILT, rz: picked ? -0.2 : 0, s: L.chipR * (picked ? 1.15 : 1) };
     }
     if (lane != null) {
       const row = this.cards.filter(c => c.side === entry.side && this.laneOf(c) === lane);
