@@ -141,7 +141,8 @@ export function chipPlan(key, roster = []) {
       for (let c = b + 1; c < n; c++) consider([roster[a], roster[b], roster[c]]);
     }
   }
-  return { ...best, anyLane: !best.cards.length, fits: best.mult > CHIP_FLOOR, special: CHIPS[id].special ?? null };
+  // Pays the same on any lane: only worth saying when that is above the floor.
+  return { ...best, anyLane: !best.cards.length && base > CHIP_FLOOR, fits: best.mult > CHIP_FLOOR, special: CHIPS[id].special ?? null };
 }
 
 export const CHIP_KEYS = TACTIC_LIST.map(tactic => tactic.key);

@@ -103,7 +103,7 @@ export function faceArt(info, face = chipStyle().face) {
   ctx.textBaseline = 'middle';
   ctx.fillStyle = tone.ink;
   if (face === 'code') {
-    fitText(ctx, info.code, MONO, 64, 300);
+    fitText(ctx, info.code, MONO, 64, 250);
     ctx.fillText(info.code, 0, -58);
   } else {
     const { icons } = info;

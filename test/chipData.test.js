@@ -70,6 +70,7 @@ test('the plan reads the real squad and names who shares the lane', () => {
   assert.equal(layers.mult, 2.5);
   assert.deepEqual(layers.cards.map(c => c.role).sort(), ['Controller', 'Initiator']);
   assert.equal(chipPlan('hit', five).fits, false);
+  assert.equal(chipPlan('hit', five).anyLane, false);
   assert.deepEqual(chipPlan('pocket', five).cards.map(c => c.id), ['dlt']);
   assert.equal(chipPlan('calling', five).anyLane, true);
   assert.equal(chipPlan('noRespect', five).flick, false);

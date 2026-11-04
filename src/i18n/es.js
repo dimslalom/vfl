@@ -437,4 +437,5 @@ export default {
   "Chains to the next lane": "Encadena al carril siguiente",
   "Cuts their best player": "Anula a su mejor jugador",
   "Cancels their chip": "Cancela su ficha",
+  "Remove": "Quitar",
 };
