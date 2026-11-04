@@ -32,7 +32,7 @@ function keys() {
 
 test('every player-facing string has a translation in each shipped language', () => {
   const all = keys();
-  assert.ok(all.length > 300, `only found ${all.length} strings`);
+  assert.ok(all.length > 150, `only found ${all.length} strings`);
   for (const { key } of LANGS.filter(lang => lang.key !== 'en')) {
     const missing = all.filter(source => !dictionary(key)[source]);
     assert.deepEqual(missing, [], `${key} is missing ${missing.length} strings`);

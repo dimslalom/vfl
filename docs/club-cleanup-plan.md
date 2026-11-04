@@ -41,3 +41,11 @@ Club is the main game mode. `/run` (the Gauntlet, `PerfectRun.jsx`) and the orig
 1. Multiplayer, Daily/challenge Worker endpoints, bingo/fantasy leftovers, Legal: remove or keep?
 2. Club's "Other modes" button now goes to `/multiplayer` (it went to `/run`). Replace once the landing page work lands.
 3. The Legal page still says "Gauntlet".
+
+## Update: Multiplayer and unrouted pages removed (owner approved)
+
+- `/multiplayer` and `/lobby/:code` redirect to `/club`. Deleted `Multiplayer.jsx`, its CSS, `PerfectRun.module.css`, `hub.module.css`, and the lobby/squad/pack/receipt components and libs only it used (`LobbySeriesPrep`, `OverviewRow`, `PackRip`, `RunReceipt`, `SquadBar`, `SquadSheet`, `CardReveal`, `bracketFlight`, `lobbyTurn`, `multiplayerClient`, `scrollPhysics`, `shareImage`, `squadSheetPreview`, `useDeadline`, `useScrollLean`) and their tests.
+- Deleted the already unrouted `Match`, `PreMatch` and `PackOpening` pages.
+- Club's "Other modes" buttons and the rail's Multiplayer entry are removed.
+- Left: `worker/index.js` and `src/engine/multiplayer.js` (the Worker imports it; removing the lobby Durable Object needs a Wrangler migration, so it is out of scope here), plus their tests.
+- Also left (pre-existing orphans, not touched): `DeckBuilder`, `MapCanvas`.
