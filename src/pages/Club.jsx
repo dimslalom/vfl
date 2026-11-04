@@ -18,7 +18,7 @@ import {
 } from '../engine/club/rewards';
 import { ROLES, chipInfo } from '../chip3d/chipData';
 import Chip3D from '../chip3d/Chip3D';
-import { ChipBrief, ChipGuideButton, ChipLadder } from '../chip3d/ChipHelp';
+import { ChipBrief, ChipGuideButton, ChipLadder, ChipNoteButton } from '../chip3d/ChipHelp';
 import { TACTIC_HAND_MAX } from '../engine/endless/seriesCards';
 import { fatiguePenalty } from '../../shared/src/engine/endless/career';
 import { BOARD_SKILLS } from '../engine/board/board';
@@ -837,13 +837,16 @@ function ChipPick({ state, squad, onTake, onPass, onReroll, onBack }) {
             {offer.options.map((option, index) => {
               const info = chipInfo(option.key);
               return (
-                <button key={option.uid} type="button" className={styles.chipOption} style={{ '--deal': index }} data-on={picked === option.uid || undefined} aria-pressed={picked === option.uid} onClick={() => { playUiSound('chip_lift'); setPicked(option.uid); }}>
-                  <ChipDisc chipKey={option.key} size="l" phase={index * 1.7} />
-                  <span className={styles.chipTier}>{info.tier}</span>
-                  <b>{info.name}</b>
-                  <ChipLadder chipKey={option.key} />
-                  <ChipBrief chipKey={option.key} roster={squad} detail={picked === option.uid} />
-                </button>
+                <div key={option.uid} className={styles.chipSlot}>
+                  <button type="button" className={styles.chipOption} style={{ '--deal': index }} data-on={picked === option.uid || undefined} aria-pressed={picked === option.uid} onClick={() => { playUiSound('chip_lift'); setPicked(option.uid); }}>
+                    <ChipDisc chipKey={option.key} size="l" phase={index * 1.7} />
+                    <span className={styles.chipTier}>{info.tier}</span>
+                    <b>{info.name}</b>
+                    <ChipLadder chipKey={option.key} />
+                    <ChipBrief chipKey={option.key} roster={squad} effect={false} />
+                  </button>
+                  <ChipNoteButton chipKey={option.key} className={styles.chipQ} />
+                </div>
               );
             })}
           </div>

@@ -3,7 +3,7 @@
 // "How chips work" sheet. Every number comes from chipData, which reads the
 // board engine, so nothing here can drift from what a chip really pays.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { t } from '../lib/i18n';
 import { CODES, ROLES, SKILLS, chipInfo, chipPlan } from './chipData';
@@ -47,12 +47,12 @@ export function ChipLadder({ chipKey, size = 'm' }) {
  * The chip in a sentence, then what it does for this squad. `detail` adds when
  * it is good and what it risks, for the moment a chip is being chosen.
  */
-export function ChipBrief({ chipKey, roster, detail = false }) {
+export function ChipBrief({ chipKey, roster, detail = false, effect = true }) {
   const copy = chipCopy(chipInfo(chipKey).key);
   const plan = roster?.length ? chipPlan(chipKey, roster) : null;
   return (
     <div className={styles.brief}>
-      <p className={styles.effect}>{copy.effect}</p>
+      {effect && <p className={styles.effect}>{copy.effect}</p>}
       {plan && <p className={styles.plan} data-fits={plan.fits || undefined}>{planLine(plan)}</p>}
       {detail && (
         <dl className={styles.detail}>
@@ -61,6 +61,32 @@ export function ChipBrief({ chipKey, roster, detail = false }) {
         </dl>
       )}
     </div>
+  );
+}
+
+/**
+ * A "?" beside a chip that opens its full write-up (what it does, when it is good,
+ * what it risks) as a native popover, so the chip itself stays short and never resizes.
+ */
+export function ChipNoteButton({ chipKey, className = '' }) {
+  const id = useId();
+  const info = chipInfo(chipKey);
+  const copy = chipCopy(info.key);
+  return (
+    <>
+      <button type="button" className={`${styles.q} ${styles.noteButton} ${className}`} popoverTarget={id} aria-label={`${info.name}: ${t('details')}`}>?</button>
+      <div id={id} popover="auto" className={styles.note}>
+        <header className={styles.guideHead}>
+          <h2>{info.name}</h2>
+          <button type="button" className={styles.close} popoverTarget={id} popoverTargetAction="hide" aria-label={t('Close')}>×</button>
+        </header>
+        <p className={styles.effect}>{copy.effect}</p>
+        <dl className={styles.detail}>
+          <div><dt>{t('Good when')}</dt><dd>{copy.when}</dd></div>
+          <div><dt>{t('Watch out')}</dt><dd>{copy.risk}</dd></div>
+        </dl>
+      </div>
+    </>
   );
 }
 

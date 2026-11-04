@@ -74,8 +74,10 @@ test('the plan reads the real squad and names who shares the lane', () => {
   assert.deepEqual(chipPlan('pocket', five).cards.map(c => c.id), ['dlt']);
   assert.equal(chipPlan('calling', five).anyLane, true);
   assert.equal(chipPlan('noRespect', five).flick, false);
+  assert.equal(chipPlan('noRespect', five).fits, false);
   const flicker = [...five.slice(0, 4), card('f', 'Duelist', 'flick')];
   assert.deepEqual(chipPlan('noRespect', flicker).cards.map(c => c.id), ['f']);
+  assert.equal(chipPlan('noRespect', flicker).fits, true);
 });
 
 test('Pocket Strat is dealt and printed as an uncommon on the board, not in Endless', () => {

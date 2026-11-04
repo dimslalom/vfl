@@ -375,6 +375,7 @@ export default {
   // Tactic chips: codex, hints and the How chips work sheet.
   "Good when": "Boa quando",
   "Watch out": "Cuidado",
+  "details": "detalhes",
   "How chips work": "Como as fichas funcionam",
   "What the codes mean": "O que os códigos significam",
   "Playing them well": "Como jogá-las bem",

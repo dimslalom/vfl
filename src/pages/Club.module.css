@@ -957,6 +957,10 @@ span.counter { cursor: default; }
 .chipOption > b { font-size: var(--fs-title); }
 .chipOption ol { justify-content: center; }
 .chipOption p, .chipOption dl { text-align: center; }
+/* Each offered chip plus its "?": the slot holds the place, the "?" rides with the lift. */
+.chipSlot { position: relative; }
+.chipQ { position: absolute; top: var(--sp-2); right: var(--sp-2); z-index: 2; transition: transform .18s cubic-bezier(.2, .8, .2, 1); }
+.chipSlot:has(> [data-on]) .chipQ { transform: translateY(-8px); }
 .chipTier { color: var(--muted); font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; }
 .chipDisc { pointer-events: auto; }
 .chipHand { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); }

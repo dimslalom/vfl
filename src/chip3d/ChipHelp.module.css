@@ -40,6 +40,14 @@
 .guideButton:hover .q { background: var(--accent); color: var(--accent-ink); }
 .q { display: grid; place-items: center; width: 22px; height: 22px; background: var(--surface-alt); color: var(--ink); font: 700 13px/1 var(--font-mono); }
 
+/* The per-chip "?" and its popover sheet (top layer, so it never moves the page). */
+.noteButton { width: 32px; height: 32px; border: 0; cursor: pointer; }
+.noteButton:hover { background: var(--accent); color: var(--accent-ink); }
+.note { width: min(380px, calc(100% - 2 * var(--sp-4))); margin: auto; padding: var(--sp-5, 20px); border: 0; display: none; gap: var(--sp-3); background: var(--surface); color: var(--ink); box-shadow: var(--shadow-overlay); }
+.note:popover-open { display: grid; }
+.note::backdrop { background: var(--veil); }
+.note .guideHead h2 { font-size: var(--fs-title); }
+
 /* Hint B: a single readout line in the gap between the board's map pill and Leave. */
 .coach { position: absolute; z-index: 4; left: 50%; top: 14px; transform: translateX(-50%); width: min(600px, calc(100% - 760px)); display: flex; align-items: center; flex-wrap: wrap; gap: 2px var(--sp-3); padding: var(--sp-1) var(--sp-1) var(--sp-1) var(--sp-3); background: var(--bg-deep); color: var(--ink); pointer-events: none; }
 .coachName { font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .14em; }
