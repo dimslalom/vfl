@@ -170,11 +170,31 @@
   color: var(--status-ink);
   padding: 12px 22px 12px 18px;
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 3px;
+  align-items: center;
+  gap: 12px;
   clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
   flex-shrink: 0;
+}
+.outcomeText {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+/* The round number, as big as the verdict is wide: it replaces "Round 1 ·". */
+.outcomeRound {
+  font-size: 44px;
+  font-weight: 800;
+  line-height: 0.8;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 .outcomeStamp small {
   font: 800 10px/1 var(--font-mono);
@@ -256,6 +276,8 @@
     clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
   }
   .outcomeStamp small { font-size: 9px; }
+  .outcomeStamp { gap: 9px; }
+  .outcomeRound { font-size: 34px; }
   .outcome h2 { font-size: 19px; }
   .outcomeBody {
     padding: 8px 10px 8px 8px;

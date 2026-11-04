@@ -62,9 +62,10 @@ export default function ClubLanding({ state, account, map = DEFAULT_MAP, onConti
         {returning && summary.match && (
           <div className={styles.fixture}>
             <span>
-              <small>{stageLabel(summary.match)} · {t('Best of {n}', { n: summary.match.bestOf })}</small>
+              <small>{stageLabel(summary.match)}</small>
               <b>{summary.match.rival}</b>
             </span>
+            <span className={club.tag}>{t('Best of {n}', { n: summary.match.bestOf })}</span>
           </div>
         )}
       </main>

@@ -363,18 +363,26 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
       </div>
       {outcome && (() => {
         const won = (outcome.champion ?? outcome.winner) === 'you';
-        const kicker = outcome.champion
-          ? `Series ${score.you}–${score.them}`
-          : `Round ${shownRound + 1} · ${maps[shownRound].name}`;
+        // A round shows its number as a big numeral beside the map name, so the
+        // two never need a typed separator. The series verdict keeps its score.
+        const kicker = outcome.champion ? `Series ${score.you}–${score.them}` : maps[shownRound].name;
         return (
           <div className={styles.outcome} data-won={won} role="status">
             <div className={styles.outcomeStamp}>
-              <small>{kicker}</small>
-              <h2>
-                {outcome.champion
-                  ? (won ? 'Series won' : 'Series lost')
-                  : (won ? 'Round won' : 'Round lost')}
-              </h2>
+              {!outcome.champion && (
+                <>
+                  <span className={styles.outcomeRound} aria-hidden="true">{shownRound + 1}</span>
+                  <span className={styles.srOnly}>Round {shownRound + 1}</span>
+                </>
+              )}
+              <span className={styles.outcomeText}>
+                <small>{kicker}</small>
+                <h2>
+                  {outcome.champion
+                    ? (won ? 'Series won' : 'Series lost')
+                    : (won ? 'Round won' : 'Round lost')}
+                </h2>
+              </span>
             </div>
             <div className={styles.outcomeBody}>
               <div className={styles.outcomeMetric}>

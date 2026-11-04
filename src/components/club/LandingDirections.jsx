@@ -51,14 +51,14 @@ export function RoadLanding({ state }) {
         <>
           <Links />
           <div className={styles.go}>
-            <p className={styles.note}>{summary?.match ? `${summary.match.stage} · ${summary.match.rival}` : 'No login. Saved on this device.'}</p>
+            <p className={styles.note}>{summary?.match ? `${summary.match.stage} against ${summary.match.rival}` : 'Saved on this device.'}</p>
             <button type="button" className={club.primary}>{summary ? 'Continue' : 'Create your club'}</button>
           </div>
         </>
       )}
     >
       <div className={`${styles.intro} ${lab.roadIntro}`}>
-        <span className={styles.kicker}>{summary ? `Year ${summary.year} · ${summary.tier}` : 'One year in Clubs'}</span>
+        <span className={styles.kicker}>{summary ? `${summary.tier}, year ${summary.year}` : 'One year in Clubs'}</span>
         <h1 className={styles.headline}>{summary ? 'Your year' : 'Eight stops a year'}</h1>
       </div>
       <ol className={lab.road}>
@@ -85,7 +85,7 @@ export function PackLanding({ state }) {
         <>
           <Links />
           <div className={styles.go}>
-            <p className={styles.note}>{summary ? `${summary.tier} · Year ${summary.year}` : 'Five packs. Keep one player from each.'}</p>
+            <p className={styles.note}>{summary ? `${summary.tier}, year ${summary.year}` : 'Five packs. Keep one player from each.'}</p>
             {summary && <button type="button" className={club.primary}>Continue</button>}
           </div>
         </>
@@ -122,7 +122,7 @@ export function LadderLanding({ state }) {
         <>
           <Links />
           <div className={styles.go}>
-            <p className={styles.note}>No login. Saved on this device.</p>
+            <p className={styles.note}>Saved on this device.</p>
             <button type="button" className={club.primary}>{summary ? 'Continue' : 'Create your club'}</button>
           </div>
         </>
