@@ -66,6 +66,20 @@
 @keyframes settle { from { opacity: 0; transform: perspective(1200px) rotateX(4.5deg) translateY(10px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .step, .settings, .intro, .cardRow, .fixture { animation: none; } }
 
+/* ── sync choice ─────────────────────────────────────────────────────────── */
+.sync { width: min(860px, 100%); margin: auto 0; display: flex; flex-direction: column; align-items: center; gap: var(--sp-5); text-align: center; animation: settle .34s cubic-bezier(.22, 1, .36, 1) both; }
+.syncPair { width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; }
+.syncSide { padding: var(--sp-5) var(--sp-4); display: flex; flex-direction: column; align-items: center; gap: var(--sp-3); border: 0; background: var(--plate); color: var(--ink); font: inherit; cursor: pointer; }
+.syncKeep { margin-top: var(--sp-1); font: 700 var(--fs-label)/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; }
+@media (hover: hover) { .syncSide:hover { background: var(--plate-hi); } }
+.syncSide > b { font-size: var(--fs-title); overflow-wrap: anywhere; }
+.account { display: flex; align-items: center; gap: var(--sp-2); }
+.account > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.account img { width: 28px; height: 28px; flex: none; border-radius: 50%; }
+.signin { display: inline-flex; align-items: center; min-height: var(--tap-min); padding: 0 var(--sp-3); background: var(--plate); color: var(--ink); font-size: var(--fs-label); font-weight: 700; text-decoration: none; }
+@media (hover: hover) { .signin:hover { background: var(--plate-hi); } }
+@media (prefers-reduced-motion: reduce) { .sync { animation: none; } }
+
 /* ── hint ────────────────────────────────────────────────────────────────── */
 /* One tip, solid ink like the club menu, under the HUD so it never covers Play. */
 .hint {
@@ -107,4 +121,9 @@
   .weeks li { min-height: 52px; padding: var(--sp-1); }
   .settings li { min-height: 64px; padding: var(--sp-3); }
   .hint { top: calc(max(var(--sp-2), env(safe-area-inset-top)) + 56px); }
+  .syncPair { grid-template-columns: 1fr; }
+  .syncSide { padding: var(--sp-3); gap: var(--sp-2); }
 }
+
+/* An armed delete reads as danger: the one place red appears in settings. */
+.settings button[data-armed] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }

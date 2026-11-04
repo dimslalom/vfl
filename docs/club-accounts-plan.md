@@ -1,6 +1,32 @@
-# Club accounts: plan only
+# VFL accounts: Discord sign-in and the Clubs cloud save
 
-Status: not built. This PR ships no login UI and changes nothing in the Worker or its secrets. Written 2026-11-04.
+Status: built on `clubs-landing` (2026-11-04). It isn't live until the migration below is applied and the branch reaches `main`.
+
+## Before this goes live (owner)
+
+Merging to `main` deploys automatically (`.github/workflows`), so do step 1 **before** that merge, or sign-in and saving will fail until it runs.
+
+1. Create the tables in the real database, from your `vfl` folder:
+   `npx wrangler d1 migrations apply vfl-accounts --remote`
+2. The Worker secrets `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` are already set. Nothing else on Cloudflare changes.
+
+To test sign-in locally:
+1. Add `AUTH_ORIGIN=http://localhost:8787` to `.dev.vars`. `wrangler dev` rewrites the host and the `Origin` header to the custom domain, and this tells the Worker its real local address.
+2. Create the local tables: `npx wrangler d1 migrations apply vfl-accounts --local`.
+3. Run `npm run build && npx wrangler dev`, then open `http://localhost:8787/club`. The `localhost:8787` redirect is already on the Discord app.
+
+Plain `npm run dev` (Vite only) has no Worker, so the sign-in button hides itself there.
+
+## What was built
+
+- `worker/accounts.js`: Discord OAuth (`identify` scope only, a `state` cookie, an HttpOnly session cookie stored hashed), `GET /api/me`, the Clubs save (`GET`/`PUT`/`DELETE /api/club-save`, 256 KB cap), sign-out and account deletion. Writes must carry the game's `Origin`. Tests in `test/accounts.test.js` run against the real migration in SQLite.
+- `worker/migrations/accounts/0001_accounts.sql`: `users`, `sessions`, `club_saves`.
+- `src/lib/account.js` and `src/lib/useClubSync.js`: the device save stays the source of truth. Each change is uploaded 1.2 s later, and immediately on `pagehide`. On load, `decideSync` picks push, adopt or ask. It remembers the last agreed version, so a tab closed before an upload doesn't trigger the question. Tests in `test/account.test.js`.
+- UI: "Sign in with Discord" on the landing (only when the Worker answers), account rows in Club settings (sign out, delete account), the "Two clubs found" choice screen, and sign-in result notices.
+- `/legal` now describes what an account stores.
+- The CSP allows `https://cdn.discordapp.com` images for avatars.
+
+## Original plan
 
 **Decided (owner, 2026-11-04):** Clubs gets **Discord login, optional**. A guest can still create and play a club on this device. Signing in with Discord saves the club to the account and syncs it across devices. The landing's "No login. Saved on this device." line is placeholder copy until then.
 

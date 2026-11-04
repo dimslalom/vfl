@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { assetPath } from '../../../shared/src/lib/utils';
+import { signInHref } from '../../lib/account';
 import { t } from '../../lib/i18n';
 import { resetHints } from '../../lib/clubOnboarding';
 import LanguagePicker from '../LanguagePicker';
@@ -15,9 +16,45 @@ function Toggle({ on, label, onChange }) {
   );
 }
 
-// Club settings: onboarding switches, language, and a plain line on where the
-// save lives. Rows are flat plates in one list, no boxes inside boxes.
-export default function ClubSettings({ prefs, onChange, onBack, onPrimer }) {
+// The account rows, shown only when the account service answers. Deleting arms
+// on the first tap and fires on the second, like abandoning a club.
+function AccountRows({ account, onSignOut, onDeleteAccount }) {
+  const [armed, setArmed] = useState(false);
+  if (account?.status === 'signedOut') {
+    return (
+      <>
+        <li className={styles.groupHead}>{t('Account')}</li>
+        <li>
+          <span><b>{t('Discord')}</b><small>{t('Optional. Saves your club to your account so it follows you to any device.')}</small></span>
+          <a className={styles.signin} href={signInHref('/club')}>{t('Sign in')}</a>
+        </li>
+      </>
+    );
+  }
+  if (account?.status !== 'signedIn') return null;
+  return (
+    <>
+      <li className={styles.groupHead}>{t('Account')}</li>
+      <li>
+        <span className={styles.account}>
+          {account.user.avatar && <img src={account.user.avatar} alt="" />}
+          <span><b>{account.user.name}</b><small>{t('Signed in with Discord. Your club saves to your account.')}</small></span>
+        </span>
+        <button type="button" className={club.small} onClick={onSignOut}>{t('Sign out')}</button>
+      </li>
+      <li>
+        <span><b>{t('Delete account')}</b><small>{t('Deletes your account and the club saved on it. This device keeps its copy.')}</small></span>
+        <button type="button" className={club.small} data-armed={armed || undefined} onBlur={() => setArmed(false)} onClick={() => (armed ? onDeleteAccount() : setArmed(true))}>
+          {armed ? t('Tap again to delete') : t('Delete')}
+        </button>
+      </li>
+    </>
+  );
+}
+
+// Club settings: account, onboarding switches, language, and a plain line on
+// where the save lives. Rows are flat plates in one list, no boxes inside boxes.
+export default function ClubSettings({ prefs, onChange, onBack, onPrimer, account, onSignOut, onDeleteAccount }) {
   const [reset, setReset] = useState(false);
   return (
     <div className={club.stage}>
@@ -32,6 +69,7 @@ export default function ClubSettings({ prefs, onChange, onBack, onPrimer }) {
 
       <main className={club.ground} style={{ '--map': `url(${assetPath(DEFAULT_MAP)})` }}>
         <ul className={styles.settings}>
+          <AccountRows account={account} onSignOut={onSignOut} onDeleteAccount={onDeleteAccount} />
           <li className={styles.groupHead}>{t('Learning the game')}</li>
           <li>
             <span><b>{t('Primer before a new club')}</b><small>{t('Three short steps before the founding draft.')}</small></span>
@@ -55,7 +93,9 @@ export default function ClubSettings({ prefs, onChange, onBack, onPrimer }) {
             <LanguagePicker />
           </li>
           <li>
-            <span><b>{t('Your save')}</b><small>{t('Your club is saved in this browser only. Clearing site data deletes it.')}</small></span>
+            <span><b>{t('Your save')}</b><small>{account?.status === 'signedIn'
+              ? t('Your club is saved in this browser and on your account.')
+              : t('Your club is saved in this browser only. Clearing site data deletes it.')}</small></span>
           </li>
         </ul>
       </main>

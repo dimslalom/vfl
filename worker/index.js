@@ -14,6 +14,7 @@ import {
   publicSnapshot,
   setConnection,
 } from '../src/engine/multiplayer.js';
+import { handleAccounts } from './accounts.js';
 
 const APP_PREFIX = '';
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -37,6 +38,10 @@ export default {
 
 async function handleRequest(request, env) {
     const url = new URL(request.url);
+
+    // Discord sign-in and the Clubs cloud save (worker/accounts.js).
+    const accountResponse = await handleAccounts(request, env);
+    if (accountResponse) return withSecurityHeaders(accountResponse);
 
     if (url.pathname === `${APP_PREFIX}/api/lobbies` && request.method === 'POST') {
       const body = await readJson(request);
@@ -445,7 +450,7 @@ function applySecurityHeaders(headers) {
     "script-src 'self'",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: blob:",
+    "img-src 'self' data: blob: https://cdn.discordapp.com",
     "connect-src 'self' ws: wss: https://fonts.googleapis.com https://fonts.gstatic.com",
     "object-src 'none'",
     "base-uri 'self'",

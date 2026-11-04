@@ -62,7 +62,7 @@ So "login and account entry" has nothing to reuse except the device save. Buildi
 
 ## 5. What was built (med-fi)
 
-Owner decisions: accounts later (a plan only, in `docs/club-accounts-plan.md`); a skippable 3-step primer and first-week tips, with a settings screen to turn both off; the landing inside `/club`; Claude drafts the copy and the owner revises it.
+Owner decisions: optional Discord sign-in, one login for all of VFL (built later on this branch; see `docs/club-accounts-plan.md`); a skippable 3-step primer and first-week tips, with a settings screen to turn both off; the landing inside `/club`; Claude drafts the copy and the owner revises it.
 
 - **Landing** (`src/components/club/ClubLanding.jsx`, direction A): every visit to `/club` opens here. A new player sees one sentence and **Create your club**. A returning player sees their club, their starting five, the next fixture and **Continue**. The quiet links are How it plays, Settings and Other modes.
 - **Primer** (`ClubPrimer.jsx`): three steps (draft your five, play the week, climb or get sacked), each with a real piece. Skip is on every step. It runs once before the first founding draft and can be replayed from the landing, the club menu and settings.

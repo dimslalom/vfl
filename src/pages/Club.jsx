@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import allCards from '../../shared/src/data/cards.json';
 import { STAT_LABELS } from '../../shared/src/data/statFields';
 import PlayerCard from '../../shared/src/components/PlayerCard';
@@ -33,6 +33,8 @@ import ClubLanding from '../components/club/ClubLanding';
 import ClubPrimer from '../components/club/ClubPrimer';
 import ClubSettings from '../components/club/ClubSettings';
 import ClubHint from '../components/club/ClubHint';
+import ClubSyncChoice from '../components/club/ClubSyncChoice';
+import useClubSync from '../lib/useClubSync';
 import { hintFor, loadOnboarding, markHintSeen, primerDue, saveOnboarding } from '../lib/clubOnboarding';
 import { t } from '../lib/i18n';
 import styles from './Club.module.css';
@@ -1461,6 +1463,17 @@ function Damaged({ onReset }) {
   );
 }
 
+function signinNotice(result) {
+  if (result === 'cancelled') return t('Sign-in cancelled.');
+  if (result === 'failed') return t('Couldn’t sign in with Discord. Try again.');
+  return '';
+}
+
+// An account's club is used only if this build can still play it.
+function isCloudClub(state) {
+  return state?.v === 2 && isValidClub(state, allCards);
+}
+
 function readSave() {
   const { state, damaged } = loadClub();
   if (damaged) return { state: null, damaged: true };
@@ -1484,8 +1497,18 @@ export default function Club() {
   const [settingsBack, setSettingsBack] = useState('landing');
   const [damaged, setDamaged] = useState(boot.damaged);
   const [saveFailed, setSaveFailed] = useState(false);
-  const [notice, setNotice] = useState('');
+  // Coming back from Discord, say once how sign-in went.
+  const [notice, setNotice] = useState(() => signinNotice(new URLSearchParams(window.location.search).get('signin')));
   const reducedMotion = useReducedMotion();
+  // Optional Discord account: the device save stays the source of truth and the
+  // account gets a copy. A club is only valid if every player in it still exists.
+  const sync = useClubSync({ state, setState, isValid: isCloudClub });
+  // Then drop ?signin= so a reload doesn't repeat it.
+  const [params, setParams] = useSearchParams();
+  const signinResult = params.get('signin');
+  useEffect(() => {
+    if (signinResult) setParams({}, { replace: true });
+  }, [signinResult, setParams]);
   const screenRef = useRef(screen);
   // Screen changes morph: elements named the same on both screens (a player's
   // card, the title, the packs, the action) travel to their new place.
@@ -1617,6 +1640,7 @@ export default function Club() {
 
   function fresh() {
     clearClub();
+    sync.forget();
     setState(null);
     setDamaged(false);
     setScreen('start');
@@ -1625,12 +1649,15 @@ export default function Club() {
   const alerts = saveFailed && <p className={styles.alert} role="alert">Progress isn't saving on this device</p>;
 
   if (damaged) return <Damaged onReset={fresh} />;
+  if (sync.conflict) return <ClubSyncChoice local={sync.conflict.local} cloud={sync.conflict.cloud} onKeepDevice={sync.keepDevice} onKeepAccount={sync.keepAccount} />;
   if (screen === 'landing') {
     const next = state && nextMatch(state);
     const map = next ? pickSeriesMaps(seriesSeed(state, next), next.bestOf)[0]?.image : undefined;
     return (
+      <>
       <ClubLanding
         state={state}
+        account={sync.account}
         map={map}
         onContinue={() => show(screenFor(state))}
         onFound={found}
@@ -1638,13 +1665,25 @@ export default function Club() {
         onSettings={() => openSettings('landing')}
         onExit={() => navigate('/run')}
       />
+      {notice && <p className={styles.toast} role="status">{notice}</p>}
+      </>
     );
   }
   if (screen === 'primer') {
     return <ClubPrimer onDone={finishPrimer} onSkip={finishPrimer} doneLabel={primerNext === 'start' ? undefined : t('Done')} />;
   }
   if (screen === 'settings') {
-    return <ClubSettings prefs={prefs} onChange={updatePrefs} onBack={() => show(settingsBack)} onPrimer={() => openPrimer('settings')} />;
+    return (
+      <ClubSettings
+        prefs={prefs}
+        onChange={updatePrefs}
+        onBack={() => show(settingsBack)}
+        onPrimer={() => openPrimer('settings')}
+        account={sync.account}
+        onSignOut={sync.signOut}
+        onDeleteAccount={sync.deleteAccount}
+      />
+    );
   }
   if (screen === 'start' || !state) return <Start onStart={start} onExit={() => show('landing')} exitLabel={t('Back')} scale={size.scale} />;
   if (screen === 'train') {

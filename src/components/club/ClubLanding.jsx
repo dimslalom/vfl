@@ -1,15 +1,24 @@
 import PlayerCard from '../../../shared/src/components/PlayerCard';
 import { assetPath } from '../../../shared/src/lib/utils';
+import { signInHref } from '../../lib/account';
 import { t } from '../../lib/i18n';
 import LanguagePicker from '../LanguagePicker';
 import club from '../../pages/Club.module.css';
 import styles from './ClubEntry.module.css';
 import { DEFAULT_MAP, SHOWCASE, clubSummary, ordinalPos, stageLabel } from './clubSummary';
 
+// Sign-in is optional: shown only when the account service answers, and never
+// in front of Create or Continue.
+function AccountLine({ account }) {
+  if (account?.status === 'signedIn') return <p className={styles.note}>{t('Signed in as {name}', { name: account.user.name })}</p>;
+  if (account?.status === 'signedOut') return <a className={styles.signin} href={signInHref('/club')}>{t('Sign in with Discord')}</a>;
+  return <p className={styles.note}>{t('Saved on this device.')}</p>;
+}
+
 // Direction A, "Front door": the one shipped in /club. One sentence and one button.
 // A new player reads what the mode is; a returning one sees their own club and
-// Continue. Everything else is one quiet link. No login: the save is this device.
-export default function ClubLanding({ state, map = DEFAULT_MAP, onContinue, onFound, onPrimer, onSettings, onExit }) {
+// Continue. Everything else is one quiet link. Signing in with Discord is optional.
+export default function ClubLanding({ state, account, map = DEFAULT_MAP, onContinue, onFound, onPrimer, onSettings, onExit }) {
   const summary = clubSummary(state);
   const returning = Boolean(summary);
   return (
@@ -67,7 +76,7 @@ export default function ClubLanding({ state, map = DEFAULT_MAP, onContinue, onFo
           <button type="button" className={styles.link} onClick={onExit}>{t('Other modes')}</button>
         </nav>
         <div className={styles.go}>
-          <p className={styles.note}>{t('No login. Saved on this device.')}</p>
+          <AccountLine account={account} />
           {returning
             ? <button type="button" className={club.primary} autoFocus onClick={onContinue}>{t('Continue')}</button>
             : <button type="button" className={club.primary} autoFocus onClick={onFound}>{t('Create your club')}</button>}
