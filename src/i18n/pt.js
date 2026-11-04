@@ -12,7 +12,6 @@ export default {
   "1 squad place open": "1 vaga livre no elenco",
   "{n} squad places open": "{n} vagas livres no elenco",
   "No match scheduled": "Nenhuma partida marcada",
-  "Table": "Tabela",
   "All clear this week": "Tudo certo esta semana",
   "No signings yet. Open a pack or work the transfer window.": "Ainda sem contratações. Abra um pacote ou use a janela de transferências.",
   "From a pack": "De um pacote",
