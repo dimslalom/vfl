@@ -3,6 +3,7 @@ import { assetPath } from '../../../shared/src/lib/utils';
 import { signInHref } from '../../lib/account';
 import { t } from '../../lib/i18n';
 import { resetHints } from '../../lib/clubOnboarding';
+import { setMusic, useMusic } from '../../lib/music';
 import LanguagePicker from '../LanguagePicker';
 import club from '../../pages/Club.module.css';
 import styles from './ClubEntry.module.css';
@@ -56,6 +57,7 @@ function AccountRows({ account, onSignOut, onDeleteAccount }) {
 // where the save lives. Rows are flat plates in one list, no boxes inside boxes.
 export default function ClubSettings({ prefs, onChange, onBack, onPrimer, account, onSignOut, onDeleteAccount }) {
   const [reset, setReset] = useState(false);
+  const music = useMusic();
   return (
     <div className={club.stage}>
       <header className={club.hud}>
@@ -89,6 +91,10 @@ export default function ClubSettings({ prefs, onChange, onBack, onPrimer, accoun
           </li>
           <li className={styles.groupHead}>{t('This device')}</li>
           <li>
+            <span><b>{t('Music')}</b><small>{t('Background music while you play.')}</small></span>
+            <Toggle on={music} label={t('Music')} onChange={setMusic} />
+          </li>
+          <li>
             <span><b>{t('Language')}</b></span>
             <LanguagePicker />
           </li>
@@ -96,6 +102,38 @@ export default function ClubSettings({ prefs, onChange, onBack, onPrimer, accoun
             <span><b>{t('Your save')}</b><small>{account?.status === 'signedIn'
               ? t('Your club is saved in this browser and on your account.')
               : t('Your club is saved in this browser only. Clearing site data deletes it.')}</small></span>
+          </li>
+          <li className={styles.groupHead}>{t('Credits')}</li>
+          <li>
+            <span>
+              <b>{t('Music')}</b>
+              <small>
+                {t('“Video Game” by')}{' '}
+                <a href="https://pixabay.com/users/atlasaudio-54514918/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=617620" target="_blank" rel="noreferrer">AtlasAudio</a>
+                {' '}{t('from')}{' '}
+                <a href="https://pixabay.com/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=617620" target="_blank" rel="noreferrer">Pixabay</a>
+              </small>
+            </span>
+          </li>
+          <li>
+            <span>
+              <b>{t('Map art')}</b>
+              <small>
+                {t('Riot Games environment artists')}{' '}
+                <a href="https://www.artstation.com/tobiaskoepp" target="_blank" rel="noreferrer">Tobias Koepp</a>,{' '}
+                <a href="https://www.artstation.com/sirdigitalbacon" target="_blank" rel="noreferrer">Kevin Brunt</a>,{' '}
+                {t('and official VALORANT wallpapers.')}
+              </small>
+            </span>
+          </li>
+          <li>
+            <span>
+              <b>{t('Player data')}</b>
+              <small>
+                {t('Rosters from')} <a href="https://www.vlr.gg" target="_blank" rel="noreferrer">vlr.gg</a>.{' '}
+                {t('Team names, logos and player names belong to their owners.')}
+              </small>
+            </span>
           </li>
         </ul>
       </main>

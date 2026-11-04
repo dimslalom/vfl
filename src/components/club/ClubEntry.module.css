@@ -54,6 +54,7 @@
 .settings li > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .settings li b { font-size: var(--fs-body); }
 .settings li small { color: var(--muted); font-size: 12px; line-height: 1.4; }
+.settings li small a { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
 .toggle { min-width: 72px; justify-content: center; }
 .groupHead { margin: var(--sp-4) 0 var(--sp-1); font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); align-self: flex-start; }
 .settings li.groupHead { min-height: 0; padding: 0; background: none; }

@@ -15,6 +15,8 @@ import { LANE_W, cutShape, slab } from './TableBlockout.js';
 import { mulberry32 } from '../../shared/src/engine/perfectRun.js';
 
 const WIN_OUTSET = 0.14;
+// How long the cracks show on the whole lane before it breaks apart, in seconds.
+const CRACK = 0.09;
 const HIDDEN_MAT = new MeshBasicMaterial({ visible: false });
 
 export function attachLaneVerdictFx(laneMesh, verdict, { len, tip, laneIndex = 0, reducedMotion = false, instant = false, onUpdate } = {}) {
@@ -471,16 +473,18 @@ function attachLossShatterFx(laneMesh, { len, tip, laneIndex, reducedMotion, ins
     color: 0x1a1c22,
     roughness: 0.82,
   });
+  const animate = !instant && !reducedMotion;
+  // Animated, the cracks and broken edges start unseen: they flash in first.
   const crackOverlayMat = new MeshBasicMaterial({
     map: crackTexture,
     transparent: true,
-    opacity: 0.85,
+    opacity: animate ? 0 : 0.85,
     depthWrite: false,
   });
   const rimMat = new LineBasicMaterial({
     color: 0xf2d6dc,
     transparent: true,
-    opacity: 0.36,
+    opacity: animate ? 0 : 0.36,
   });
 
   const disposables = [shardSideMat, crackOverlayMat, crackTexture, rimMat];
@@ -567,24 +571,35 @@ function attachLossShatterFx(laneMesh, { len, tip, laneIndex, reducedMotion, ins
     const ux = vx / vLen;
     const uy = vy / vLen;
 
-    // Split outward along the seams + slight 3D tilt and step sink (never rising into the cards above)
-    const splitMag = 0.044 + 0.038 * Math.exp(-dist * 0.5) + rng() * 0.020;
-    const targetX = baseX + ux * splitMag + (rng() - 0.5) * 0.012;
-    const targetZ = baseZ - uy * splitMag + (rng() - 0.5) * 0.012;
-    const targetY = -0.008 - rng() * 0.014;
-    const targetRx = (rng() - 0.5) * 0.040;
-    const targetRz = (rng() - 0.5) * 0.040;
-    const targetRy = (rng() - 0.5) * 0.026;
+    // Split outward along the seams + 3D tilt and step sink (never rising into the cards above)
+    const splitMag = (0.044 + 0.038 * Math.exp(-dist * 0.5) + rng() * 0.020) * 1.6;
+    const targetX = baseX + ux * splitMag + (rng() - 0.5) * 0.018;
+    const targetZ = baseZ - uy * splitMag + (rng() - 0.5) * 0.018;
+    const targetY = -0.012 - rng() * 0.02;
+    const targetRx = (rng() - 0.5) * 0.064;
+    const targetRz = (rng() - 0.5) * 0.064;
+    const targetRy = (rng() - 0.5) * 0.04;
     const targetScale = 0.965 - rng() * 0.015;
 
-    if (instant || reducedMotion) {
+    let area = 0;
+    for (let k = 0; k < poly.length; k += 1) {
+      const [ax, ay] = poly[k];
+      const [bx, by] = poly[(k + 1) % poly.length];
+      area += ax * by - bx * ay;
+    }
+    area = Math.abs(area) / 2;
+    if (!animate) {
       shardGroup.position.set(targetX, targetY, targetZ);
       shardGroup.rotation.set(targetRx, targetRy, targetRz);
       shardGroup.scale.set(targetScale, 1, targetScale);
+      shardTargets.push({ shardGroup, dist, area, ux, uy });
     } else {
       shardTargets.push({
         shardGroup,
         dist,
+        area,
+        ux,
+        uy,
         targetX,
         targetY,
         targetZ,
@@ -596,24 +611,53 @@ function attachLossShatterFx(laneMesh, { len, tip, laneIndex, reducedMotion, ins
     }
   }
 
-  const tl = (!instant && !reducedMotion) ? gsap.timeline({ onUpdate }) : null;
+  // Debris: the three smallest pieces near the impact chip off and fall away
+  // through the gaps. Restored or reduced-motion boards simply don't have them.
+  const debris = new Set(
+    [...shardTargets]
+      .filter(item => item.dist < len * 0.45)
+      .sort((a, b) => a.area - b.area)
+      .slice(0, 3),
+  );
+  if (!animate) for (const item of debris) item.shardGroup.visible = false;
+
+  const tl = animate ? gsap.timeline({ onUpdate }) : null;
   if (tl) {
-    // Physical impact jolt on the lane
-    const laneBaseX = laneMesh.position.x;
+    // Crack: the fracture lines flash across the whole lane before it gives.
+    tl.to(crackOverlayMat, { opacity: 1, duration: 0.06, ease: 'power2.out' }, 0)
+      .to(crackOverlayMat, { opacity: 0.85, duration: 0.2, ease: 'power2.out' }, 0.06)
+      .to(rimMat, { opacity: 0.7, duration: 0.06, ease: 'power2.out' }, 0.03)
+      .to(rimMat, { opacity: 0.36, duration: 0.3, ease: 'power2.out' }, 0.09);
+
+    // One heavy sink as it breaks, then back: a single impulse, no stepped shake.
     const laneBaseY = laneMesh.position.y;
-    tl.to(laneMesh.position, {
-      keyframes: [
-        { x: laneBaseX - 0.06, y: laneBaseY - 0.02, duration: 0.035 },
-        { x: laneBaseX + 0.05, y: laneBaseY, duration: 0.04 },
-        { x: laneBaseX - 0.025, duration: 0.04 },
-        { x: laneBaseX, y: laneBaseY, duration: 0.05 },
-      ],
-      ease: 'none',
-    }, 0);
+    tl.to(laneMesh.position, { y: laneBaseY - 0.035, duration: 0.07, ease: 'power2.out' }, CRACK)
+      .to(laneMesh.position, { y: laneBaseY, duration: 0.26, ease: 'power2.inOut' }, CRACK + 0.07);
+
+    for (const item of debris) {
+      const group = item.shardGroup;
+      const spin = (item.area * 1000) % 1 > 0.5 ? 1 : -1;
+      tl.to(group.position, {
+        x: group.position.x + item.ux * 0.42,
+        z: group.position.z - item.uy * 0.42,
+        duration: 0.62,
+        ease: 'power1.out',
+      }, CRACK)
+        .to(group.position, {
+          keyframes: [
+            { y: 0.05, duration: 0.14, ease: 'power2.out' },
+            { y: -1.1, duration: 0.48, ease: 'power2.in' },
+          ],
+        }, CRACK)
+        .to(group.rotation, { x: spin * 1.9, z: spin * -1.3, duration: 0.62, ease: 'power1.in' }, CRACK)
+        .to(group.scale, { x: 0.55, y: 0.55, z: 0.55, duration: 0.62, ease: 'power1.in' }, CRACK)
+        .set(group, { visible: false }, CRACK + 0.62);
+    }
 
     // Propagate the shatter split outward from the impact centers
     for (const item of shardTargets) {
-      const delay = Math.min(0.11, item.dist * 0.028);
+      if (debris.has(item)) continue;
+      const delay = CRACK + Math.min(0.11, item.dist * 0.028);
       tl.to(item.shardGroup.position, {
         x: item.targetX,
         y: item.targetY,

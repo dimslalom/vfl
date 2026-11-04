@@ -341,4 +341,16 @@ export default {
   "Playoffs": "Playoffs",
   "Window": "Janela",
   "Transfers": "Transferências",
+
+  // Music and credits.
+  "Music": "Música",
+  "Background music while you play.": "Música de fundo enquanto você joga.",
+  "Credits": "Créditos",
+  "“Video Game” by": "“Video Game” de",
+  "from": "no",
+  "Map art": "Arte dos mapas",
+  "Riot Games environment artists": "Artistas de cenários da Riot Games",
+  "Player data": "Dados dos jogadores",
+  "Rosters from": "Elencos do",
+  "Team names, logos and player names belong to their owners.": "Nomes de equipes, logos e nomes de jogadores pertencem aos seus donos.",
 };

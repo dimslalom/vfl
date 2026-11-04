@@ -25,6 +25,7 @@ import {
 import { mulberry32 } from '../../shared/src/engine/perfectRun.js';
 import { assetPath } from '../../shared/src/lib/utils.js';
 import { playUiSound } from '../../shared/src/lib/gameAudio';
+import { playGlassShatter } from '../lib/sfx';
 import { STAT_LABELS_FULL } from '../../shared/src/data/statFields.js';
 import { disposeChip, makeChip } from '../chip3d/ChipStack.js';
 import { attachLaneVerdictFx, disposeLaneVerdictFx } from './LaneVerdictFx.js';
@@ -875,6 +876,8 @@ export default class TableStage {
       this.shown[lane].verdict = laneResult.winner;
       this.applyLaneVerdict(lane, laneResult.winner, false);
       playUiSound(laneResult.winner === 'you' ? 'lane_win' : 'lane_loss', lane);
+      // A lost lane breaks like glass, and sounds it.
+      if (laneResult.winner === 'them') playGlassShatter(lane);
       this.mark();
     }, null, '+=0.2');
     tl.to({}, { duration: 0.3 });
