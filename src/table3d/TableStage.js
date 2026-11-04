@@ -20,14 +20,16 @@ import {
 } from 'three';
 import { gsap } from 'gsap';
 import {
-  LANE_CAP, bestPlacement, bestRotate, hasSkill, isLegalPlacement, isLegalRotation, laneScore, resolveBoard, rotateMoves,
+  LANE_CAP, bestPlacement, bestRotate, hasSkill, isLegalPlacement, isLegalRotation, resolveBoard, rotateMoves, sideScores,
 } from '../engine/board/board.js';
 import { mulberry32 } from '../../shared/src/engine/perfectRun.js';
 import { assetPath } from '../../shared/src/lib/utils.js';
 import { playUiSound } from '../../shared/src/lib/gameAudio';
 import { playGlassShatter } from '../lib/sfx';
 import { STAT_LABELS_FULL } from '../../shared/src/data/statFields.js';
-import { disposeChip, makeChip } from '../chip3d/ChipStack.js';
+import { disposeChip, makeChip, printChip } from '../chip3d/ChipStack.js';
+import { createChipView } from '../chip3d/chipRenderer.js';
+import { attack, chipFire, lightning, lockShatter, slash } from './chipFx.js';
 import { attachLaneVerdictFx, disposeLaneVerdictFx } from './LaneVerdictFx.js';
 import { attachSkillFx, readyPose } from './SkillFx.js';
 import { ARENAS, createSoftFocus, loadArena, preloadArena } from './arena.js';
@@ -36,6 +38,9 @@ import {
   LANE_X, PX, PY, backTexture, cardArt, cutShape, drawCard, loadImage, slab,
 } from './TableBlockout.js';
 import styles from './TableStage.module.css';
+import { CHIP_TIERS } from '../chip3d/chipData.js';
+
+const CHIP_BODY = Object.fromEntries(Object.entries(CHIP_TIERS).map(([tier, tone]) => [tier, tone.body]));
 
 const PITCH = (74 * Math.PI) / 180;      // top-down, as the user asked
 // The match intro's camera drop: from a little higher (1.45 times as far), a
@@ -93,6 +98,29 @@ function quadTransform(w, h, [p0, p1, p2, p3]) {
   const t = mm(basis(p0, p1, p2, p3), adj(basis([0, 0], [w, 0], [w, h], [0, h])));
   const n = t.map(value => value / t[8]);
   return `matrix3d(${n[0]},${n[3]},0,${n[6]},${n[1]},${n[4]},0,${n[7]},0,0,1,0,${n[2]},${n[5]},0,1)`;
+}
+
+// A side's bar row as segments: each player's number (less any No Respect cut),
+// the bonuses in one block, then one outlined block per multiplier, sized by
+// what it added. `kind` says which multiplier, so a chip can sit on its own.
+function segmentItems(steps) {
+  const cut = steps.find(step => step.key === 'disrespect');
+  let cutDone = false;
+  const players = steps.filter(step => step.key === 'player').map((step) => {
+    if (cut && !cutDone && step.label === cut.player) {
+      cutDone = true;
+      return { value: step.value - cut.value, text: String(step.value - cut.value), cut: true };
+    }
+    return { value: step.value, text: String(step.value) };
+  });
+  const bonus = steps.filter(step => step.op === '+' && step.key !== 'player').reduce((sum, step) => sum + step.value, 0);
+  let before = players.reduce((sum, item) => sum + item.value, 0) + bonus;
+  const mults = steps.filter(step => step.key === 'tactic' || step.key === 'chain').map((step) => {
+    const extra = Math.max(0, step.total - before);
+    before = step.total;
+    return { value: extra, text: `×${step.value}`, outline: true, kind: step.key };
+  }).filter(item => item.value);
+  return [...players, ...(bonus ? [{ value: bonus, text: `+${bonus}`, solid: true }] : []), ...mults];
 }
 
 export default class TableStage {
@@ -244,7 +272,10 @@ export default class TableStage {
     for (const lane of this.lanes ?? []) disposeLaneVerdictFx(lane);
     if (this.board) {
       this.scene.remove(this.board);
-      for (const chip of this.chips) disposeChip(chip);
+      for (const chip of [...this.chips, this.oppChip].filter(Boolean)) {
+        this.dropFloat(chip);
+        disposeChip(chip);
+      }
       this.board.traverse((node) => {
         gsap.killTweensOf(node.position);
         gsap.killTweensOf(node.rotation);
@@ -257,6 +288,7 @@ export default class TableStage {
     this.overlay?.replaceChildren();
     this.cards = [];
     this.chips = [];
+    this.oppChip = null;
     this.lanes = [];
     this.hold = null;
     this.selected = null;
@@ -567,11 +599,8 @@ export default class TableStage {
     const L = this.L;
     const lane = this.laneOf(entry);
     if (entry.kind === 'chip') {
-      if (lane != null) {
-        // On a lane the chip lies at the right end of the bar's own row.
-        const r = L.tall ? 0.3 : 0.2;
-        return { x: LANE_X[lane] + PIN_HW - r, y: 0.06, z: L.bar - L.barH / 2 + L.barH * L.youRow, rx: 0, rz: 0, s: r };
-      }
+      // On a lane the chip sits on the bar, on the multiplier it adds.
+      if (lane != null) return this.barSpot(lane, 'you');
       const hand = this.chips.filter(c => this.tacticLane[c.index] == null);
       const k = hand.indexOf(entry);
       const picked = entry === this.selected;
@@ -652,7 +681,7 @@ export default class TableStage {
   place(instant = false) {
     for (const entry of [...this.cards, ...this.chips]) {
       if (entry.kind === 'card') this.paint(entry);
-      if (entry === this.drag?.entry) continue;
+      if (entry === this.drag?.entry || entry.breaking) continue;
       const to = this.spot(entry);
       if (entry.outline) entry.outline.visible = entry === this.selected;
       if (entry.ring) entry.ring.visible = entry === this.selected;
@@ -714,11 +743,12 @@ export default class TableStage {
     if (!pick || this.laneOf(pick) === lane) return null;
     if (pick.kind === 'chip') {
       if (this.drag && this.hot !== lane) return null;
-      const map = this.game.maps[lane];
-      const cards = this.game.you.filter((_, i) => this.slots[i] === lane);
-      const tactic = laneScore(cards, map, this.game.tactics[pick.index]).steps.find(step => step.key === 'tactic');
+      const side = { roster: this.game.you, slots: this.slots, maps: this.game.maps };
+      const plain = sideScores(side)[lane];
+      const scored = sideScores({ ...side, tactic: { lane, card: this.game.tactics[pick.index] } })[lane];
+      const tactic = scored.steps.find(step => step.key === 'tactic');
       if (!tactic) return null;
-      return { value: tactic.total - laneScore(cards, map).total, text: `×${tactic.value}`, total: tactic.total };
+      return { value: tactic.total - plain.total, text: `×${tactic.value}`, total: tactic.total };
     }
     if (pick.kind !== 'card' || (this.drag ? this.hot !== lane : !this.room(lane))) return null;
     const value = pick.card.stats[this.game.maps[lane].stat];
@@ -746,12 +776,101 @@ export default class TableStage {
   laneView(lane) {
     if (this.shown) return this.shown[lane];
     if (this.phase === 'place') {
-      const cards = this.game.you.filter((_, i) => this.slots[i] === lane);
-      const tactic = this.yourTactic();
-      return { mine: laneScore(cards, this.game.maps[lane], tactic?.lane === lane ? tactic.card : null), theirs: null };
+      const mine = sideScores({ roster: this.game.you, slots: this.slots, maps: this.game.maps, tactic: this.yourTactic() })[lane];
+      return { mine, theirs: null };
     }
     const board = this.scoreBoard();
     return { mine: board.lanes[lane].mine, theirs: board.lanes[lane].theirs };
+  }
+
+  // How a lane's bar splits right now: the totals, your share and any preview.
+  barLayout(lane) {
+    const view = this.laneView(lane);
+    const preview = this.preview(lane);
+    const you = view.mine.total;
+    const them = view.theirs?.total ?? null;
+    const share = them == null ? (you ? 0.8 : 0.5) : you + them ? you / (you + them) : 0.5;
+    return { ...view, you, them, share, preview };
+  }
+
+  /**
+   * Where a chip rests on a lane: over the middle of the score bar, straight
+   * above the multiplier block of `kind` it added in its side's row, which
+   * keeps its number in view below. Until that lands, above the end of the row
+   * as it fills.
+   */
+  barSpot(lane, side, kind = 'tactic') {
+    const L = this.L;
+    const { mine, theirs, you, them, share, preview } = this.barLayout(lane);
+    const steps = side === 'you' ? mine.steps : theirs?.steps ?? [];
+    const width = side === 'you' ? (you ? share : preview != null ? 0.45 : 0) : (them ? 1 - share : 0);
+    const from = side === 'you' ? 0 : (them ? share : 1);
+    const items = segmentItems(steps);
+    const sum = items.reduce((total, item) => total + item.value, 0);
+    let at = 1;
+    let before = 0;
+    for (const item of items) {
+      if (item.kind === kind) { at = sum ? (before + item.value / 2) / sum : 1; break; }
+      before += item.value;
+    }
+    const r = L.tall ? 0.36 : 0.27;
+    const x0 = this.lanes?.[lane]?.position.x ?? LANE_X[lane];
+    const x = Math.min(x0 + PIN_HW - r, Math.max(x0 - PIN_HW + r, x0 - PIN_HW + (from + width * at) * PIN_HW * 2));
+    return { x, y: 0.14, z: L.bar, rx: CHIP_TILT * 0.4, rz: 0, s: r };
+  }
+
+  // Chips on bars follow their multiplier as the bar fills and reflows.
+  syncBarChips() {
+    const yours = this.chips.find(chip => this.tacticLane[chip.index] != null);
+    const sit = (chip, lane, side) => {
+      if (!chip || chip === this.drag?.entry || chip.breaking) return;
+      const to = this.barSpot(lane, side);
+      const key = `${to.x.toFixed(3)}:${to.z.toFixed(3)}`;
+      if (chip.barKey === key) return;
+      chip.barKey = key;
+      gsap.to(chip.group.position, { x: to.x, z: to.z, duration: 0.3, ease: 'power3.out', onUpdate: this.mark, overwrite: 'auto' });
+    };
+    if (yours) sit(yours, this.tacticLane[yours.index], 'you');
+    if (this.oppChip) sit(this.oppChip, this.oppPlan.tactic.lane, 'them');
+    // A chip on a lane prints what it pays there; back in hand, the most it can.
+    let changed = false;
+    const print = (chip, lane, side) => {
+      const view = lane == null ? null : this.laneView(lane);
+      const steps = side === 'you' ? view?.mine.steps : view?.theirs?.steps;
+      const step = steps?.find(item => item.key === 'tactic');
+      changed = printChip(chip, step ? `×${step.value}` : chip.info.headline) || changed;
+    };
+    for (const chip of this.chips) print(chip, this.tacticLane[chip.index] ?? null, 'you');
+    if (this.oppChip) print(this.oppChip, this.oppPlan.tactic.lane, 'them');
+    if (changed) this.mark();
+  }
+
+  // The enemy chip shows once scoring starts, dropping onto its lane's bar.
+  revealOppChip() {
+    const tactic = this.oppPlan.tactic;
+    if (!tactic || this.oppChip) return;
+    const chip = makeChip(tactic.card.key, -1);
+    chip.kind = 'oppChip';
+    chip.group.traverse((node) => { if (node.isMesh) { node.userData.sharedGeometry = true; node.castShadow = true; } });
+    const to = this.barSpot(tactic.lane, 'them');
+    chip.barKey = null;
+    chip.group.position.set(to.x, this.reducedMotion ? to.y : to.y + 1.6, to.z);
+    chip.group.rotation.set(to.rx, 0, to.rz);
+    chip.group.scale.setScalar(to.s);
+    this.board.add(chip.group);
+    this.oppChip = chip;
+    if (!this.reducedMotion) gsap.to(chip.group.position, { y: to.y, duration: 0.35, ease: 'bounce.out', onUpdate: this.mark });
+    this.mark();
+  }
+
+  // The chip a side played, for effects: yours from the hand, theirs revealed.
+  sideChip(side) {
+    return side === 'you' ? this.chips.find(chip => this.tacticLane[chip.index] != null) : this.oppChip;
+  }
+
+  barZ(side) {
+    const L = this.L;
+    return L.bar - L.barH / 2 + L.barH * (side === 'you' ? L.youRow : 1 - L.youRow);
   }
 
   // ── rules ────────────────────────────────────────────────────────────────
@@ -819,6 +938,7 @@ export default class TableStage {
     this.oppPlan = { ...this.oppPlan, slots: oppSlots };
     const result = resolveBoard({ maps, you: { ...mine, slots: this.slots }, them: { ...theirs, slots: oppSlots } });
     this.shown = maps.map(() => ({ mine: { total: 0, steps: [] }, theirs: { total: 0, steps: [] }, stamp: null }));
+    this.revealOppChip();
     this.place();
     this.emit();
     this.timeline = gsap.timeline({
@@ -842,25 +962,41 @@ export default class TableStage {
       steps.forEach((step, index) => {
         tl.call(() => {
           this.shown[lane][side === 'you' ? 'mine' : 'theirs'] = { total: step.total, steps: steps.slice(0, index + 1) };
+          const other = side === 'you' ? 'them' : 'you';
+          const fx = { onUpdate: this.mark };
+          const motion = !this.reducedMotion;
           if (step.key === 'player') {
+            // The card attacks the bar as its number lands.
             const card = this.cards.find(c => c.side === side && c.card.player === step.label);
-            if (card) gsap.fromTo(card.group.scale, { x: 1.14, y: 1.14, z: 1.14 }, { x: 1, y: 1, z: 1, duration: 0.25, ease: 'power3.out', onUpdate: this.mark });
+            if (card && motion) attack(this.board, card, { barZ: this.barZ(side), color: side === 'you' ? 0x00c8a0 : 0xff4655, ...fx });
+            else if (card) gsap.fromTo(card.group.scale, { x: 1.14, y: 1.14, z: 1.14 }, { x: 1, y: 1, z: 1, duration: 0.25, ease: 'power3.out', onUpdate: this.mark });
             playUiSound(side === 'you' ? 'score' : 'score_opp', index + lane * 2);
           } else if (step.key === 'tactic') {
-            if (side === 'you') {
-              const chip = this.chips.find(c => this.tacticLane[c.index] === lane);
-              if (chip && !this.reducedMotion) {
-                const baseY = chip.group.position.y;
-                const baseS = chip.group.scale.x;
-                gsap.timeline({ onUpdate: this.mark })
-                  .to(chip.group.position, { y: baseY + 0.42, duration: 0.14, ease: 'power2.out' }, 0)
-                  .to(chip.group.rotation, { y: chip.group.rotation.y + Math.PI * 2, duration: 0.32, ease: 'power2.out' }, 0)
-                  .to(chip.group.scale, { x: baseS * 1.22, y: baseS * 1.22, z: baseS * 1.22, duration: 0.14, ease: 'power2.out' }, 0)
-                  .to(chip.group.position, { y: baseY, duration: 0.18, ease: 'power2.in' }, 0.14)
-                  .to(chip.group.scale, { x: baseS, y: baseS, z: baseS, duration: 0.18, ease: 'back.out(2)' }, 0.14);
-              }
-            }
+            const chip = this.sideChip(side);
+            if (chip && motion) chipFire(this.board, chip, fx);
             playUiSound('tactic_mult', step.value);
+          } else if (step.key === 'chain') {
+            // Second Call: lightning from the chip to the lane it chains to.
+            const chip = this.sideChip(side);
+            const to = this.barSpot(lane, side, 'chain');
+            if (chip && motion) lightning(this.board, { from: chip.group.position, to, ...fx });
+            playUiSound('tactic_mult', step.value);
+          } else if (step.key === 'cancelled') {
+            // Lock the Map: the other side's lock slams this side's chip and it shatters.
+            const chip = this.sideChip(side);
+            const lock = this.sideChip(other);
+            if (chip && motion) {
+              chip.breaking = true;
+              lockShatter(this.board, { from: lock?.group.position ?? chip.group.position, chip, color: parseInt(CHIP_BODY[chip.info.tier].slice(1), 16), ...fx });
+            }
+            playUiSound('skill_aura');
+          } else if (step.key === 'disrespect') {
+            // No Respect: the other side's chip cuts this side's best card.
+            const card = this.cards.find(c => c.side === side && c.card.player === step.player);
+            const chip = this.sideChip(other);
+            if (chip && motion) chipFire(this.board, chip, { ...fx, color: 0xd8b34c });
+            if (card && motion) gsap.delayedCall(0.2, () => slash(this.board, card, fx));
+            playUiSound('skill_aura');
           } else if (step.key === 'trick') {
             playUiSound('skill_one_trick');
           } else if (step.key === 'aura') {
@@ -1368,10 +1504,7 @@ export default class TableStage {
       const preview = this.preview(lane);
       // On a phone each card's number shows only while it matters: held, aimed at, or scoring.
       bar.toggleAttribute('data-open', Boolean(this.shown || this.hold === lane || this.hot === lane || preview != null));
-      const { mine, theirs, stamp } = this.laneView(lane);
-      const you = mine.total;
-      const them = theirs?.total ?? null;
-      const share = them == null ? (you ? 0.8 : 0.5) : you + them ? you / (you + them) : 0.5;
+      const { mine, theirs, stamp, you, them, share } = this.barLayout(lane);
       const [themRow, tug, youRow, stampEl] = bar.children;
       const [youFill, themFill, youN, themN, split] = tug.children;
       youFill.style.width = you ? `${share * 100}%` : '0';
@@ -1388,23 +1521,58 @@ export default class TableStage {
       this.segments(youRow, mine.steps, you ? share : preview != null ? 0.45 : 0, 0, preview);
       this.segments(themRow, theirs?.steps ?? [], them ? 1 - share : 0, them ? share : 1);
     });
+    this.syncBarChips();
+    this.floatBarChips();
+  }
+
+  /**
+   * The score bars are page elements over the canvas, so a chip on a lane is
+   * drawn on a layer above them: a small lit chip (the shared chip renderer)
+   * that follows the board chip, which stays in the scene, hidden, for taps,
+   * drags and the scoring tweens to move.
+   */
+  floatBarChips() {
+    const yours = this.chips.find(chip => this.tacticLane[chip.index] != null);
+    for (const chip of [...this.chips, this.oppChip].filter(Boolean)) {
+      const onBar = (chip === yours || chip === this.oppChip) && chip !== this.drag?.entry;
+      if (onBar && !chip.floatEl) {
+        const el = document.createElement('div');
+        el.className = styles.barChip;
+        const canvas = document.createElement('canvas');
+        el.appendChild(canvas);
+        this.overlay.appendChild(el);
+        chip.floatEl = el;
+        chip.floatView = createChipView(canvas, chip.key, { reducedMotion: this.reducedMotion, phase: chip.index ?? 2, lean: 0.35 });
+      }
+      if (!chip.floatEl) continue;
+      // Without a second WebGL context, the board chip simply stays visible.
+      const floating = onBar && Boolean(chip.floatView);
+      chip.group.visible = !floating;
+      chip.floatEl.hidden = !floating;
+      if (!floating) continue;
+      const { x, y, z } = chip.group.position;
+      const [sx, sy] = this.toScreen(x, y, z);
+      const [ex] = this.toScreen(x + chip.group.scale.x, y, z);
+      const size = Math.max(1, Math.abs(ex - sx) * 2 * 1.32);
+      chip.floatEl.style.width = `${size}px`;
+      chip.floatEl.style.height = `${size}px`;
+      chip.floatEl.style.transform = `translate(${sx - size / 2}px, ${sy - size / 2}px)`;
+      chip.floatView.print(chip.printed);
+    }
+  }
+
+  dropFloat(chip) {
+    chip.floatView?.destroy();
+    chip.floatEl?.remove();
+    chip.floatView = null;
+    chip.floatEl = null;
   }
 
   segments(row, steps, width, from, preview = null) {
     row.style.width = `${width * 100}%`;
     row.style.marginLeft = `${from * 100}%`;
-    const players = steps.filter(step => step.key === 'player');
-    const bonus = steps.filter(step => step.op === '+' && step.key !== 'player').reduce((sum, step) => sum + step.value, 0);
-    const base = players.reduce((sum, step) => sum + step.value, 0) + bonus;
-    const tactic = steps.find(step => step.key === 'tactic');
-    const extra = tactic ? Math.max(0, tactic.total - base) : 0;
-    const items = [
-      ...players.map(step => ({ value: step.value, text: String(step.value) })),
-      ...(bonus ? [{ value: bonus, text: `+${bonus}`, solid: true }] : []),
-      ...(extra ? [{ value: extra, text: `×${tactic.value}`, outline: true }] : []),
-      ...(preview ? [{ ...preview, ghost: true }] : []),
-    ];
-    const key = items.map(item => item.text).join();
+    const items = [...segmentItems(steps), ...(preview ? [{ ...preview, ghost: true }] : [])];
+    const key = items.map(item => `${item.text}${item.cut ? '/' : ''}`).join();
     if (row.dataset.key === key) return;
     row.dataset.key = key;
     row.replaceChildren(...items.map((item) => {
@@ -1415,6 +1583,7 @@ export default class TableStage {
       if (item.solid) seg.dataset.solid = '';
       if (item.outline) seg.dataset.outline = '';
       if (item.ghost) seg.dataset.ghost = '';
+      if (item.cut) seg.dataset.cut = '';
       return seg;
     }));
   }

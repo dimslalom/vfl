@@ -2,7 +2,7 @@
 // here: each step is a lane of example players run through the board's own
 // tacticMult, so a chip can never promise a number the board won't pay.
 
-import { tacticMult } from '../engine/board/board.js';
+import { chainMult, hasSkill, tacticMult } from '../engine/board/board.js';
 import { TACTICS, TACTIC_LIST } from '../engine/endless/seriesCards.js';
 
 export const ROLES = ['Duelist', 'Initiator', 'Controller', 'Sentinel'];
@@ -21,25 +21,31 @@ export const CHIP_TIERS = {
 // The same codes the player cards print, so a chip and a card read alike.
 export const CODES = {
   Duelist: 'DLT', Initiator: 'INI', Controller: 'CTL', Sentinel: 'SEN',
-  flick: 'FLICK', flex: 'FLEX', mastermind: 'MIND', any: 'ANY', map: 'MAP', lock: 'MAP',
+  flick: 'FLICK', flex: 'FLEX', mastermind: 'MIND', any: 'ANY', igl: 'IGL', map: 'MAP', lock: 'LOCK',
+  trio: '3 ROLES', chain: 'CHAIN', slash: 'CUT',
 };
 
-// The lanes that climb each chip's ladder, as the players on them: a role, or a
-// skill on a player whose role the chip ignores. A chip with no steps only ever
-// pays the floor. `icons` is what the face prints.
+// The lanes that climb each chip's ladder, as the players on them: a role, a
+// skill on a player whose role the chip ignores, 'igl' for the IGL, or 'any'
+// for any player at all. `icons` is what the face prints, `code` its rule in
+// the cards' codes. Rares do something on top (`special`), read by resolveBoard.
 const CHIPS = {
-  pocket: { icons: ['any'], steps: [] },
+  pocket: { icons: ['igl'], steps: [['igl']], code: 'IGL' },
   hit: { icons: ['Duelist', 'Duelist'], steps: [['Duelist', 'Duelist'], ['Duelist', 'Duelist', 'Duelist']] },
   layers: { icons: ['Controller', 'Initiator'], steps: [['Controller', 'Initiator']] },
   retake: { icons: ['Sentinel', 'Controller'], steps: [['Sentinel', 'Controller']] },
   contact: { icons: ['Initiator', 'flick'], steps: [['Initiator', 'flick'], ['Initiator', 'flick', 'flick']] },
   flood: { icons: ['flex'], steps: [['flex'], ['flex', 'flex'], ['flex', 'flex', 'flex']] },
-  // Needs four roles on one lane; a lane holds three, so it can't fire on the board.
-  defaults: { icons: ROLES, steps: [], dead: true, code: '4 ROLES' },
-  calling: { icons: ['mastermind'], steps: [['mastermind'], ['mastermind', 'mastermind']] },
-  noRespect: { icons: ['flick'], steps: [['flick'], ['flick', 'flick']] },
-  // Multiplies the map bonus, which the board always passes as 0.
-  lockout: { icons: ['lock', 'map'], steps: [], dead: true, code: 'MAP RULE' },
+  defaults: { icons: ['trio'], steps: [['Duelist', 'Controller', 'Sentinel']], code: '3 ROLES' },
+  // Rare: ×2 on its lane and a ×1.5 chain to the next lane; Masterminds add to both.
+  calling: { icons: ['chain'], steps: [['any'], ['mastermind'], ['mastermind', 'mastermind']], code: 'CHAIN', special: 'chain' },
+  // Rare: the enemy's best player on its lane scores 0; a Flick beside it adds ×1.5 to its lane.
+  noRespect: {
+    icons: ['slash'], code: 'THEIR BEST', special: 'disrespect', headline: '0',
+    ladder: [{ icons: ['slash'], label: '0' }, { icons: ['flick'], label: '+×1.5' }],
+  },
+  // Rare: the enemy's chip pays nothing, wherever it is. A pure counter.
+  lockout: { icons: ['lock'], code: 'THEIR CHIP', special: 'cancel', headline: 'OFF', ladder: [{ icons: ['lock'], label: 'OFF' }] },
 };
 
 // Kept for the tests and older callers: what each chip prints.
@@ -48,9 +54,9 @@ export const CHIP_ICONS = Object.fromEntries(Object.entries(CHIPS).map(([key, ch
 function exampleCard(token, index) {
   const skill = SKILLS.includes(token);
   return {
-    id: `example-${index}`,
+    id: token === 'igl' ? 'example-igl' : `example-${index}`,
     player: `example-${index}`,
-    role: skill ? 'none' : token,
+    role: skill || token === 'igl' || token === 'any' ? 'none' : token,
     specialties: skill ? [token] : ['none'],
     stats: {},
   };
@@ -58,15 +64,22 @@ function exampleCard(token, index) {
 
 /** The multiplier a chip pays on a lane holding exactly these players. */
 export function chipMultFor(key, tokens) {
-  return tacticMult({ key }, tokens.map(exampleCard));
+  return tacticMult({ key }, tokens.map(exampleCard), { igl: 'example-igl' });
+}
+
+/** A Second Call's chain multiplier, for a chip lane holding these players. */
+export function chainMultFor(tokens) {
+  return chainMult(tokens.map(exampleCard));
 }
 
 /**
- * The payout ladder above the floor: each step is the players a lane needs and
- * what it then pays. An empty ladder means the chip only ever pays the floor.
+ * The payout ladder: each step is the players a lane needs and what it then
+ * pays (or `label`, for a chip that doesn't multiply). Steps the board would
+ * pay only at the floor are left out.
  */
 export function chipLadder(key) {
   const id = TACTICS[key].key;
+  if (CHIPS[id].ladder) return CHIPS[id].ladder.map(step => ({ ...step, mult: null }));
   return CHIPS[id].steps.map(icons => ({ icons, mult: chipMultFor(id, icons) }));
 }
 
@@ -75,7 +88,6 @@ export function chipCode(key) {
   const id = TACTICS[key].key;
   if (CHIPS[id].code) return CHIPS[id].code;
   const first = CHIPS[id].steps[0] ?? CHIPS[id].icons;
-  if (!CHIPS[id].steps.length) return CODES.any;
   const counts = new Map();
   for (const token of first) counts.set(token, (counts.get(token) ?? 0) + 1);
   return [...counts].map(([token, n]) => (n > 1 ? `${n} ${CODES[token]}` : CODES[token])).join('+');
@@ -86,6 +98,7 @@ export function chipInfo(key) {
   const tactic = TACTICS[key];
   const id = tactic.key;
   const ladder = chipLadder(id);
+  const max = ladder.length && ladder.at(-1).mult ? ladder.at(-1).mult : CHIP_FLOOR;
   return {
     key: id,
     name: tactic.name,
@@ -93,8 +106,10 @@ export function chipInfo(key) {
     icons: CHIPS[id].icons,
     ladder,
     code: chipCode(id),
-    dead: Boolean(CHIPS[id].dead),
-    max: ladder.length ? ladder[ladder.length - 1].mult : CHIP_FLOOR,
+    special: CHIPS[id].special ?? null,
+    max,
+    // The big print on the face: the most it pays, or what it does instead.
+    headline: CHIPS[id].headline ?? `×${max}`,
   };
 }
 
@@ -102,11 +117,20 @@ export function chipInfo(key) {
  * The most this chip can pay for a real squad, and who has to share the lane:
  * every lane of 1 to 3 of the five, through the board's own numbers. Ties go to
  * the smaller group, since that leaves more players for the other two lanes.
+ * A chip that pays the same on any lane comes back with `anyLane`.
  */
 export function chipPlan(key, roster = []) {
-  let best = { mult: CHIP_FLOOR, cards: [] };
+  const id = TACTICS[key].key;
+  const ctx = { igl: roster[0]?.id };
+  if (id === 'noRespect') {
+    const flick = roster.filter(card => hasSkill(card, 'flick'));
+    return { kind: 'disrespect', mult: 1, cards: flick.slice(0, 1), fits: true, flick: flick.length > 0 };
+  }
+  if (id === 'lockout') return { kind: 'cancel', mult: 1, cards: [], fits: true };
+  const base = tacticMult({ key: id }, [exampleCard('any', 0)], ctx);
+  let best = { mult: base, cards: [] };
   const consider = (cards) => {
-    const mult = tacticMult({ key: TACTICS[key].key }, cards);
+    const mult = tacticMult({ key: id }, cards, ctx);
     if (mult > best.mult || (mult === best.mult && best.cards.length && cards.length < best.cards.length)) best = { mult, cards };
   };
   const n = roster.length;
@@ -117,7 +141,7 @@ export function chipPlan(key, roster = []) {
       for (let c = b + 1; c < n; c++) consider([roster[a], roster[b], roster[c]]);
     }
   }
-  return { ...best, fits: best.mult > CHIP_FLOOR };
+  return { ...best, anyLane: !best.cards.length, fits: best.mult > CHIP_FLOOR, special: CHIPS[id].special ?? null };
 }
 
 export const CHIP_KEYS = TACTIC_LIST.map(tactic => tactic.key);

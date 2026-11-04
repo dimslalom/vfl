@@ -42,6 +42,8 @@
 .overlay [data-row='you'] span[data-solid] { background: var(--you); color: var(--win-ink); }
 .overlay [data-row='them'] span[data-solid] { background: var(--foe); color: var(--accent-ink); }
 .overlay [data-row] span[data-outline] { background: transparent; box-shadow: inset 0 0 0 2px currentColor; }
+/* A player No Respect cut: their reduced number, struck through. */
+.overlay [data-row] span[data-cut] { text-decoration: line-through; text-decoration-thickness: 3px; opacity: 0.7; }
 /* What a held or picked card would add, before it lands. */
 .overlay [data-row='you'] span[data-ghost] { padding: 0 8px; white-space: nowrap; background: transparent; border: 2px dashed var(--ink); color: var(--ink); }
 /* The lane's verdict, on the bar's corner once it has scored. */
@@ -77,3 +79,7 @@
 .overlay[data-layout='tall'] [data-row='you'] span[data-ghost] { border-width: 4px; }
 .overlay[data-layout='tall'] [data-role='bar']:not([data-open]) [data-row] { visibility: hidden; }
 .overlay[data-layout='tall'] [data-stamp] { top: -66px; padding: 4px 14px; font-size: 40px; }
+
+/* A chip on a lane floats over the middle of the score bar, above its multiplier. */
+.barChip { position: absolute; left: 0; top: 0; z-index: 2; pointer-events: none; }
+.barChip canvas { display: block; width: 100%; height: 100%; }

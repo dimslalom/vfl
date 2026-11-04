@@ -1,6 +1,6 @@
 # Chip strategy notes
 
-Status: analysis for the `clubs-chips` med-fi pass. Written 2026-11-04. Nothing in the engine numbers was changed; every proposal below needs the owner's yes first.
+Status: analysis for the `clubs-chips` med-fi pass. Written 2026-11-04. Sections 1 to 4 describe the chips as they were; section 6 is what the owner approved and what the board now plays.
 
 Sources read: `src/engine/endless/seriesCards.js` (`TACTICS`, `tacticActivation`), `src/engine/board/board.js` (`laneScore`, `tacticMult`, `resolveBoard`), `src/components/BoardSeries.jsx`, `src/table3d/TableStage.js`, `src/engine/club/season.js` (`rollChipOffer`, training), `src/chip3d/chipData.js`.
 
@@ -86,3 +86,45 @@ Numbers are starting points for a playtest, not tuned.
 - Dead chips say so plainly ("Always ×1.5").
 - A compact "How chips work" sheet, reachable from the chip pick, the board and the chip codex.
 - Two alternatives each for the chip face / legend and the in-game hint, so the owner can pick.
+
+## 6. Board rules now (owner-approved, 2026-11-04)
+
+All in `src/engine/board/board.js` (`tacticMult`, `sideScores`, numbers in `CHIP_TUNING`). Endless is untouched: it still reads `TACTICS` through `tacticActivation`.
+
+| Chip | Tier | Board rule |
+| --- | --- | --- |
+| Pocket Strat | common | ×2 on the IGL's lane when that lane's role rule (+20 Roles) fires, else ×1.5 |
+| Deep Default | uncommon | ×2.5 with three different roles on its lane, else ×1.5 |
+| Second Call | rare | ×2 on its lane and a ×1.5 chain to the lane on its left (from the left lane: the middle). Each Mastermind on its lane adds ×0.5 to both |
+| No Respect | rare | No multiplier. The enemy's best player on its lane scores 0. A Flick player on its lane also gives it ×1.5 (skill gate as balance) |
+| Lock the Map | rare | Cancels the enemy chip wherever it is (it pays ×1). No multiplier of its own |
+
+The other chips are unchanged. Every chip can now do more than the ×1.5 floor.
+
+Win rate over the same 360 boards (fresh squads, no trained skills; the NPC plays its own chip):
+
+| Chip | Before | Now |
+| --- | --- | --- |
+| no chip | 35% | 34% |
+| Pocket Strat | 43% | 72% |
+| Deep Default | 43% | 70% |
+| Second Call | 43% | 71% |
+| No Respect | 43% | 49% (higher once a Flick player is on its lane) |
+| Lock the Map | 43% | 69% |
+| Utility Layers | 67% | 68% |
+
+Tested and rejected:
+- No Respect with ×1.5 plus half the star: 75%, too strong, as the owner suspected.
+- Lock the Map with ×1.5 plus the cancel: 79%, it dominated everything.
+- Pocket Strat only when the IGL plays a lane alone: 43%, back to useless.
+
+Still open: Pocket Strat (a common) is now among the strongest chips. The lever is `CHIP_TUNING.pocket` or a stricter condition.
+
+Scoring effects (`src/table3d/chipFx.js`):
+- **Every player card:** attacks the bar as its number lands (pull back, lunge, impact ring).
+- **A multiplier chip:** hops, spins and rings.
+- **Second Call:** lightning arcs from the chip to the lane it chains to.
+- **No Respect:** its chip fires, then a slash cuts the enemy's best card, which stays dimmed and has its number struck through.
+- **Lock the Map:** a lock flies from the lock chip, slams the cancelled chip and shatters it.
+
+The enemy's chip now shows on its lane when scoring starts. A chip on a lane floats over the middle of the score bar, above the multiplier block it adds, and prints what it actually pays.

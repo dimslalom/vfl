@@ -2,7 +2,7 @@
 // Everything is pure so the bots, the tests and the screen share one result.
 import { getCardSpecialties } from '../../../shared/src/data/specialties.js';
 import { mulberry32 } from '../../../shared/src/engine/perfectRun.js';
-import { tacticActivation } from '../endless/seriesCards.js';
+import { TACTICS, tacticActivation } from '../endless/seriesCards.js';
 
 export const LANES = 3;
 export const SQUAD_SIZE = 5;
@@ -68,8 +68,14 @@ function ruleFires(cards, lane) {
  * One side's total on one lane, as the steps the screen plays back. Each step
  * carries the running total, so the last one is the number that decides it.
  * Every player scores the stat printed on their card that this lane asks for.
+ *
+ * `ctx` carries what the rest of the board does to this lane (resolveBoard and
+ * sideScores fill it in): `igl` the side's IGL id, `chain` a second multiplier
+ * from a Second Call on another lane, `cancelled` when the enemy's Lock the Map
+ * voids this side's chip, `disrespect` ('half' | 'zero') when the enemy's No
+ * Respect sits on this lane.
  */
-export function laneScore(cards, lane, tactic = null) {
+export function laneScore(cards, lane, tactic = null, ctx = {}) {
   const steps = [];
   let total = 0;
   const add = (key, value, label) => {
@@ -79,6 +85,13 @@ export function laneScore(cards, lane, tactic = null) {
   for (const card of cards) {
     const alone = cards.length === 1 && hasSkill(card, 'flick');
     add('player', alone ? Math.max(...Object.values(card.stats)) : card.stats[lane.stat], card.player);
+  }
+  // No Respect: the enemy's best player here counts for half, or nothing.
+  if (cards.length && ctx.disrespect) {
+    const best = steps.filter(step => step.key === 'player').reduce((top, step) => (step.value > top.value ? step : top));
+    const value = ctx.disrespect === 'zero' ? best.value : Math.ceil(best.value / 2);
+    total -= value;
+    steps.push({ key: 'disrespect', op: '-', value, label: 'No Respect', player: best.label, total });
   }
   if (cards.length && ruleFires(cards, lane)) add('rule', ROLE_PAIR, 'Roles');
   for (const card of cards) {
@@ -90,18 +103,97 @@ export function laneScore(cards, lane, tactic = null) {
     if (a.org && a.org === b.org) add('teammates', TEAMMATE_PAIR, 'Team');
     else if (a.nationality && a.nationality === b.nationality) add('country', COUNTRY_PAIR, 'Nation');
   }
-  if (cards.length && tactic) {
-    const value = tacticMult(tactic, cards);
-    total = Math.round(total * value);
-    steps.push({ key: 'tactic', op: '×', value, label: 'Tactic', total });
+  const tacticCtx = { ...ctx, rule: cards.length > 0 && ruleFires(cards, lane) };
+  if (cards.length && tactic && ctx.cancelled) {
+    steps.push({ key: 'cancelled', op: '×', value: 1, label: 'Cancelled', total });
+  } else if (cards.length && tactic) {
+    const value = tacticMult(tactic, cards, tacticCtx);
+    if (value > 1) {
+      total = Math.round(total * value);
+      steps.push({ key: 'tactic', op: '×', value, label: 'Tactic', total });
+    }
+  }
+  if (cards.length && ctx.chain && !ctx.cancelled) {
+    total = Math.round(total * ctx.chain);
+    steps.push({ key: 'chain', op: '×', value: ctx.chain, label: 'Chain', total });
   }
   return { total, steps };
 }
 
-// Tactics pay for who is on the lane, in half steps you can multiply in your head.
-export function tacticMult(tactic, cards) {
-  const raw = tacticActivation(tactic, cards, { bonus: 0 }).mult;
-  return Math.min(3, Math.max(1.5, Math.round(raw * 2) / 2));
+// The numbers behind the chips with board rules, in one place to tune.
+export const CHIP_TUNING = {
+  pocket: 2,            // the IGL's lane, when the lane's role rule also fires
+  pocketAlone: false,   // true: only when the IGL plays the lane alone instead
+  defaults: 2.5,        // three different roles on the lane
+  calling: 2,           // its own lane; +0.5 per Mastermind
+  chain: 1.5,           // the lane it chains to; +0.5 per Mastermind
+  lockout: 1,           // its own lane (1 = none: it is a pure counter to the enemy chip)
+  disrespect: 'zero',   // the enemy's best player on No Respect's lane: 'zero' or 'half'
+  noRespect: 1,         // No Respect's own multiplier (1 = none)...
+  noRespectFlick: 1.5,  // ...unless a Flick player shares its lane
+};
+
+const half = raw => Math.min(3, Math.max(1.5, Math.round(raw * 2) / 2));
+const count = (cards, skill) => cards.filter(card => hasSkill(card, skill)).length;
+
+/**
+ * Tactics pay for who is on the lane, in half steps you can multiply in your
+ * head. Most chips read the Endless numbers through the clamp; the ones whose
+ * Endless rule can't work on a three-player lane have board rules of their own.
+ */
+export function tacticMult(tactic, cards, ctx = {}) {
+  const key = TACTICS[tactic?.key]?.key;
+  switch (key) {
+    // The IGL's prepared play: ×2 on the lane the IGL plays.
+    case 'pocket': {
+      const igl = cards.some(card => card.id === ctx.igl);
+      const fits = CHIP_TUNING.pocketAlone ? igl && cards.length === 1 : igl && (ctx.rule ?? true);
+      return fits ? CHIP_TUNING.pocket : 1.5;
+    }
+    // A full mixed lane: three different roles.
+    case 'defaults': return new Set(cards.map(card => card.role)).size >= 3 ? CHIP_TUNING.defaults : 1.5;
+    // ×2 here, and a ×1.5 chain to the next lane (chainMult); Masterminds add.
+    case 'calling': return Math.min(3, CHIP_TUNING.calling + 0.5 * count(cards, 'mastermind'));
+    // Works on the enemy's best player instead (sideScores); a Flick beside it adds ×1.5.
+    case 'noRespect': return count(cards, 'flick') ? CHIP_TUNING.noRespectFlick : CHIP_TUNING.noRespect;
+    // Cancels the enemy's chip (sideScores); nothing of its own by default.
+    case 'lockout': return CHIP_TUNING.lockout;
+    default: return half(tacticActivation(tactic, cards, { bonus: 0 }).mult);
+  }
+}
+
+/** The lane a Second Call chains to: the one on its left, or from the left lane, the middle. */
+export function chainLane(lane) {
+  return lane === 0 ? 1 : lane - 1;
+}
+
+/** What a Second Call pays on the lane it chains to: ×1.5, +0.5 per Mastermind on the chip's lane. */
+export function chainMult(cards) {
+  return Math.min(3, CHIP_TUNING.chain + 0.5 * count(cards, 'mastermind'));
+}
+
+const keyOf = tactic => TACTICS[tactic?.card?.key]?.key ?? null;
+
+/**
+ * One side's lanes with its own chip, before anything the enemy does: the
+ * chip on its lane, a Second Call's chain, the IGL for Pocket Strat. `enemy`
+ * is the other side's tactic, for the effects that reach across.
+ */
+export function sideScores({ roster, slots, maps, tactic = null, enemy = null }) {
+  const lanes = maps.map((_, lane) => laneCards(roster, slots, lane));
+  const mine = keyOf(tactic);
+  const theirs = keyOf(enemy);
+  const cancelled = Boolean(tactic) && theirs === 'lockout';
+  const chainTo = mine === 'calling' && !cancelled ? chainLane(tactic.lane) : null;
+  return maps.map((map, lane) => {
+    const ctx = { igl: roster[0]?.id, cancelled };
+    if (lane === chainTo) ctx.chain = chainMult(lanes[tactic.lane]);
+    // The enemy's No Respect on this lane hits our best player, unless our Lock the Map cancelled it.
+    if (theirs === 'noRespect' && enemy.lane === lane && keyOf(tactic) !== 'lockout') {
+      ctx.disrespect = CHIP_TUNING.disrespect;
+    }
+    return laneScore(lanes[lane], map, tactic?.lane === lane ? tactic.card : null, ctx);
+  });
 }
 
 /** The sum as players read it: the stat total, then each bonus in order. */
@@ -109,12 +201,13 @@ export function laneFormula(steps) {
   const sum = steps.filter(step => step.key === 'player').reduce((total, step) => total + step.value, 0);
   const bonuses = new Map();
   for (const step of steps) {
-    if (['player', 'tactic', 'aura'].includes(step.key)) continue;
+    if (['player', 'tactic', 'aura', 'chain', 'cancelled', 'disrespect'].includes(step.key)) continue;
     bonuses.set(step.label, (bonuses.get(step.label) ?? 0) + step.value);
   }
   const rest = [...bonuses].map(([label, value]) => `+${value} ${label}`);
-  const tactic = steps.find(step => step.key === 'tactic');
-  if (tactic) rest.push(`×${tactic.value} ${tactic.label}`);
+  const cut = steps.find(step => step.key === 'disrespect');
+  if (cut) rest.unshift(`-${cut.value} ${cut.label}`);
+  for (const step of steps.filter(item => item.key === 'tactic' || item.key === 'chain')) rest.push(`×${step.value} ${step.label}`);
   const aura = steps.find(step => step.key === 'aura');
   if (aura) rest.push(`-${aura.value} ${aura.label}`);
   return steps.length ? [String(sum), ...rest].join('  ') : '';
@@ -134,11 +227,15 @@ function underAura(score, opposing) {
 
 /** The whole board. Ties on a map go to the higher raw rating there. */
 export function resolveBoard({ maps, you, them }) {
+  const myLanes = maps.map((_, lane) => laneCards(you.roster, you.slots, lane));
+  const theirLanes = maps.map((_, lane) => laneCards(them.roster, them.slots, lane));
+  const myScores = sideScores({ ...you, maps, enemy: them.tactic });
+  const theirScores = sideScores({ ...them, maps, enemy: you.tactic });
   const lanes = maps.map((map, lane) => {
-    const myCards = laneCards(you.roster, you.slots, lane);
-    const theirCards = laneCards(them.roster, them.slots, lane);
-    const mine = underAura(laneScore(myCards, map, you.tactic?.lane === lane ? you.tactic.card : null), theirCards);
-    const theirs = underAura(laneScore(theirCards, map, them.tactic?.lane === lane ? them.tactic.card : null), myCards);
+    const myCards = myLanes[lane];
+    const theirCards = theirLanes[lane];
+    const mine = underAura(myScores[lane], theirCards);
+    const theirs = underAura(theirScores[lane], myCards);
     const rawMine = myCards.reduce((sum, card) => sum + card.rating, 0);
     const rawTheirs = theirCards.reduce((sum, card) => sum + card.rating, 0);
     const winner = mine.total !== theirs.total
@@ -154,16 +251,13 @@ export function resolveBoard({ maps, you, them }) {
   return { lanes, youWon, themWon, youTotal, themTotal, winner };
 }
 
-function laneValue(roster, slots, map, lane, tactic) {
-  return laneScore(laneCards(roster, slots, lane), map, tactic).total;
-}
 
 /** The placement and tactic lane worth the most lanes against `against`, if known. */
 export function bestPlacement({ roster, maps, tactic = null, against = null, rng = null }) {
   let best = null;
   for (const slots of allPlacements(roster.length)) {
     for (let lane = 0; lane < (tactic ? LANES : 1); lane += 1) {
-      const scores = maps.map((map, index) => laneValue(roster, slots, map, index, tactic && index === lane ? tactic : null));
+      const scores = sideScores({ roster, slots, maps, tactic: tactic ? { lane, card: tactic } : null }).map(score => score.total);
       const value = against
         ? scores.filter((score, index) => score > against[index]).length * 1000 + scores.reduce((a, b) => a + b, 0)
         : [...scores].sort((a, b) => b - a).slice(0, 2).reduce((a, b) => a + b, 0) + Math.min(...scores) * 0.2;

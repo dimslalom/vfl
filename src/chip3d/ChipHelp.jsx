@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from 'react';
 import { t } from '../lib/i18n';
-import { CHIP_FLOOR, CODES, ROLES, SKILLS, chipInfo, chipPlan } from './chipData';
+import { CODES, ROLES, SKILLS, chipInfo, chipPlan } from './chipData';
 import { chipCopy, chipRules, chipTips, planLine } from './chipCopy';
 import { ICON_LABELS, ICON_PATHS } from './chipIcons';
 import { useChipStyle } from './chipStyle';
@@ -26,17 +26,16 @@ export function Token({ name, face }) {
     : <span className={styles.token} data-code>{CODES[name]}</span>;
 }
 
-/** What goes on the lane, then what it pays; "Any lane ×1.5" for a floor-only chip. */
+/** What goes on the lane, then what it pays. */
 export function ChipLadder({ chipKey, size = 'm' }) {
   const { face } = useChipStyle();
   const info = chipInfo(chipKey);
-  const rows = info.ladder.length ? info.ladder : [{ icons: ['any'], mult: CHIP_FLOOR }];
   return (
     <ol className={styles.ladder} data-size={size}>
-      {rows.map(step => (
-        <li key={step.icons.join() + step.mult}>
+      {info.ladder.map(step => (
+        <li key={step.icons.join() + (step.mult ?? step.label)}>
           <span className={styles.tokens}>{step.icons.map((name, i) => <Token key={name + i} name={name} face={face} />)}</span>
-          <b className={styles.mult}>×{step.mult}</b>
+          <b className={styles.mult}>{step.label ?? `×${step.mult}`}</b>
         </li>
       ))}
     </ol>
@@ -68,7 +67,7 @@ export function ChipBrief({ chipKey, roster, detail = false }) {
 export function ChipLegend() {
   return (
     <ul className={styles.legend}>
-      {[...ROLES, ...SKILLS, 'any'].map(name => (
+      {[...ROLES, ...SKILLS, 'igl', 'any', 'trio', 'chain', 'slash', 'lock'].map(name => (
         <li key={name}>
           <ChipIcon name={name} size={18} />
           <b>{CODES[name]}</b>

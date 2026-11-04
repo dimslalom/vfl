@@ -24,5 +24,5 @@ export const DYNAMIC = () => [
   t('Cut'), t('Mirror'), t('Shield'), t('Hex'), t('Block'), t('Stack'), t('Roundel'), t('Sigil'), t('Slash'), t('Laurel'),
   t('Valor'), t('Cyan'), t('Teal'), t('Violet'), t('Bone'), t('Sunset'), t('Frost'),
   // Chip symbols and tiers (src/chip3d/chipIcons.js ICON_LABELS, chipData tiers).
-  t('Flick'), t('Flex'), t('Mastermind'), t('IGL'), t('Map rule'), t('Any lane'), t('common'), t('uncommon'), t('rare'),
+  t('Flick'), t('Flex'), t('Mastermind'), t('IGL'), t('Map rule'), t('Any lane'), t('3 different roles'), t('Chains to the next lane'), t('Cuts their best player'), t('Cancels their chip'), t('common'), t('uncommon'), t('rare'),
 ];

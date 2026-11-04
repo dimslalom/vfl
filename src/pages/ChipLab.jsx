@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import useReducedMotion from '../../shared/src/lib/useReducedMotion';
 import Chip3D from '../chip3d/Chip3D';
 import ChipPayout from '../chip3d/ChipPayout';
-import { CHIP_FLOOR, CHIP_KEYS, CODES, ROLES, SKILLS, chipInfo, chipMultFor } from '../chip3d/chipData';
+import { CHIP_FLOOR, CHIP_KEYS, CODES, ROLES, SKILLS, chainMultFor, chipInfo, chipMultFor } from '../chip3d/chipData';
 import { chipCopy, chipRules } from '../chip3d/chipCopy';
 import { ChipGuideButton, ChipLadder, ChipLegend, Token } from '../chip3d/ChipHelp';
 import { FACES, HINTS, setChipStyle, useChipStyle } from '../chip3d/chipStyle';
@@ -65,7 +65,7 @@ export default function ChipLab() {
             <li key={key}>
               <button type="button" className={styles.entry} data-on={chosen === key || undefined} aria-pressed={chosen === key} onClick={() => setChosen(key)}>
                 <Chip3D chipKey={key} size={128} phase={index * 0.9} />
-                <span className={styles.tier} data-tier={info.tier}>{t(info.tier)}{info.dead ? ` · ${t('no effect on the board')}` : ''}</span>
+                <span className={styles.tier} data-tier={info.tier}>{t(info.tier)}</span>
                 <b className={styles.entryName}>{info.name}</b>
                 <ChipLadder chipKey={key} size="s" />
                 <p>{copy.effect}</p>
@@ -94,6 +94,7 @@ function LaneDemo({ chipKey }) {
   const [lane, setLane] = useState(['Controller', 'Initiator']);
   const info = chipInfo(chipKey);
   const mult = chipMultFor(chipKey, lane);
+  const cut = info.special === 'disrespect' ? (lane.includes('flick') ? '0 ×1.5' : '0') : info.special === 'cancel' ? 'OFF' : null;
   const add = token => setLane(current => (current.length >= LANE_SIZE ? current : [...current, token]));
   return (
     <section className={styles.demo} aria-label={t('Try a lane')}>
@@ -105,7 +106,7 @@ function LaneDemo({ chipKey }) {
         <h2>{t('Try a lane')}</h2>
         <p className={styles.hint}>{t('Pick a chip below, then tap players onto the lane. A lane holds three.')}</p>
         <div className={styles.palette} role="group" aria-label={t('Add a player')}>
-          {[...ROLES, ...SKILLS].map(token => (
+          {['igl', ...ROLES, ...SKILLS].map(token => (
             <button key={token} type="button" onClick={() => add(token)} disabled={lane.length >= LANE_SIZE} aria-label={`${t('Add')} ${CODES[token]}`}>
               <Token name={token} face={face} />
             </button>
@@ -117,9 +118,10 @@ function LaneDemo({ chipKey }) {
               ? <button key={index} type="button" className={styles.slot} onClick={() => setLane(current => current.filter((_, i) => i !== index))} aria-label={`${t('Remove')} ${CODES[lane[index]]}`}><Token name={lane[index]} face={face} /></button>
               : <span key={index} className={styles.slot} data-empty />
           ))}
-          <b className={styles.demoMult} data-up={mult > CHIP_FLOOR || undefined}>×{mult}</b>
+          <b className={styles.demoMult} data-up={mult > CHIP_FLOOR || cut === '0' || undefined}>{cut ?? `×${mult}`}</b>
         </div>
-        <p className={styles.hint}>{mult > CHIP_FLOOR ? t('This lane triggers the chip.') : t('Only the ×1.5 every chip pays.')}</p>
+        <p className={styles.hint}>{info.special === 'disrespect' ? t('Their best player on this lane scores 0.') : info.special === 'cancel' ? t('And the enemy chip pays nothing, wherever it is.') : mult > CHIP_FLOOR ? t('This lane triggers the chip.') : t('Only the ×1.5 every chip pays.')}</p>
+        {info.special === 'chain' && <p className={styles.hint}>{t('Plus ×{mult} on the lane to its left.', { mult: chainMultFor(lane) })}</p>}
       </div>
     </section>
   );

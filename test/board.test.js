@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-   BOARD_SKILLS, allPlacements, bestPlacement, bestRotate, hasSkill, isLegalPlacement, isLegalRotate, isLegalRotation, laneFormula,
+   BOARD_SKILLS, allPlacements, chainLane, sideScores, bestPlacement, bestRotate, hasSkill, isLegalPlacement, isLegalRotate, isLegalRotation, laneFormula,
   laneScore, resolveBoard, rotate, rotateMoves, playBoard,
 } from '../src/engine/board/board.js';
 import allCards from '../shared/src/data/cards.json' with { type: 'json' };
@@ -147,4 +147,42 @@ test('every board skill has a specialty badge with its board rule and includes l
     assert.equal(spec.board, rule.text);
     assert.ok(spec.color);
   }
+});
+
+// ── chips with board rules of their own ─────────────────────────────────────
+
+const even = ['a', 'b', 'c', 'd', 'e'].map(id => card(id, 80, ['Duelist', 'Initiator', 'Controller', 'Sentinel', 'Duelist'][id.charCodeAt(0) - 97]));
+const evenSlots = [0, 0, 1, 1, 2];
+const plainMaps = maps.map(item => ({ ...item, roles: ['Nobody', 'Nobody'] }));
+
+test('Second Call multiplies its lane and chains to the lane on its left', () => {
+  const plain = sideScores({ roster: even, slots: evenSlots, maps: plainMaps });
+  const called = sideScores({ roster: even, slots: evenSlots, maps: plainMaps, tactic: { lane: 1, card: { key: 'calling' } } });
+  assert.equal(called[1].total, plain[1].total * 2);
+  assert.equal(called[0].total, Math.round(plain[0].total * 1.5));
+  assert.equal(called[0].steps.at(-1).key, 'chain');
+  assert.equal(called[2].total, plain[2].total);
+  assert.equal(chainLane(0), 1);
+  assert.equal(chainLane(2), 1);
+});
+
+test('Lock the Map cancels the enemy chip wherever it is', () => {
+  const you = { roster: even, slots: evenSlots, tactic: { lane: 2, card: { key: 'layers' } } };
+  const them = { roster: even, slots: evenSlots, tactic: { lane: 0, card: { key: 'lockout' } } };
+  const board = resolveBoard({ maps: plainMaps, you, them });
+  assert.equal(board.lanes[2].mine.steps.at(-1).key, 'cancelled');
+  assert.ok(!board.lanes[0].theirs.steps.some(step => step.key === 'tactic'));
+});
+
+test('No Respect cuts the enemy star on its lane', () => {
+  const lane = [card('x', 90, 'Duelist'), card('y', 60, 'Sentinel')];
+  const half = laneScore(lane, plainMaps[0], null, { disrespect: 'half' });
+  assert.equal(half.total, 60 + 45);
+  assert.equal(half.steps.find(step => step.key === 'disrespect').player, 'x');
+  assert.equal(laneScore(lane, plainMaps[0], null, { disrespect: 'zero' }).total, 60);
+  // On its own lane it adds no multiplier, unless a Flick player is there.
+  assert.equal(laneScore(lane, plainMaps[0], { key: 'noRespect' }).total, 150);
+  const you = { roster: even, slots: evenSlots, tactic: { lane: 0, card: { key: 'noRespect' } } };
+  const board = resolveBoard({ maps: plainMaps, you, them: { roster: even, slots: evenSlots, tactic: null } });
+  assert.equal(board.lanes[0].theirs.steps.find(step => step.key === 'disrespect').value, 80);
 });

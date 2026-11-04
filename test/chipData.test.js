@@ -21,15 +21,16 @@ test('every tactic has a chip with a tier, printable icons and copy', () => {
   }
 });
 
-test('a chip ladder only lists steps the board pays above the floor, and climbs', () => {
+test('a chip ladder climbs and stays inside the board payout', () => {
   for (const key of CHIP_KEYS) {
     const ladder = chipLadder(key);
-    assert.ok(ladder.length <= 3, key);
+    assert.ok(ladder.length >= 1 && ladder.length <= 3, key);
     ladder.forEach((step, i) => {
-      assert.ok(step.mult > CHIP_FLOOR && step.mult <= 3, `${key} step ${i}`);
-      assert.equal(step.mult * 2, Math.round(step.mult * 2), `${key} pays in half steps`);
       assert.ok(step.icons.length <= 3, `${key} step ${i} fits on one lane`);
       for (const name of step.icons) assert.ok(ICON_PATHS[name], `${key} ladder icon ${name}`);
+      if (step.label) return;
+      assert.ok(step.mult >= CHIP_FLOOR && step.mult <= 3, `${key} step ${i}`);
+      assert.equal(step.mult * 2, Math.round(step.mult * 2), `${key} pays in half steps`);
       if (i) assert.ok(step.mult > ladder[i - 1].mult, `${key} climbs`);
     });
   }
@@ -37,26 +38,30 @@ test('a chip ladder only lists steps the board pays above the floor, and climbs'
 
 test('the ladder matches the board numbers', () => {
   assert.deepEqual(chipLadder('hit').map(step => step.mult), [2, 2.5]);
-  assert.deepEqual(chipLadder('noRespect').map(step => step.mult), [2, 3]);
   assert.deepEqual(chipLadder('retake'), [{ icons: ['Sentinel', 'Controller'], mult: 2.5 }]);
   assert.deepEqual(chipLadder('flood').map(step => step.mult), [2, 2.5, 3]);
+  assert.deepEqual(chipLadder('pocket').map(step => step.mult), [2]);
+  assert.deepEqual(chipLadder('defaults').map(step => step.mult), [2.5]);
+  assert.deepEqual(chipLadder('calling').map(step => step.mult), [2, 2.5, 3]);
+  assert.deepEqual(chipLadder('noRespect').map(step => step.label), ['0', '+×1.5']);
 });
 
-test('chips that cannot fire on the board say so and promise only the floor', () => {
-  for (const key of ['defaults', 'lockout']) {
+test('every chip can do more than the floor on a board lane', () => {
+  for (const key of CHIP_KEYS) {
     const info = chipInfo(key);
-    assert.ok(info.dead, key);
-    assert.equal(info.max, CHIP_FLOOR);
-    assert.deepEqual(chipLadder(key), []);
+    assert.ok(info.special || info.max > CHIP_FLOOR, `${key} only ever pays the floor`);
   }
-  // Deep Default on the fullest mixed lane the board allows.
-  assert.equal(tacticMult({ key: 'defaults' }, [card('a', 'Sentinel'), card('b', 'Duelist'), card('c', 'Controller')]), CHIP_FLOOR);
+  // Deep Default fits a full mixed lane; Pocket Strat follows the IGL.
+  assert.equal(tacticMult({ key: 'defaults' }, [card('a', 'Sentinel'), card('b', 'Duelist'), card('c', 'Controller')]), 2.5);
+  assert.equal(tacticMult({ key: 'defaults' }, [card('a', 'Sentinel'), card('b', 'Sentinel'), card('c', 'Controller')]), CHIP_FLOOR);
+  assert.equal(tacticMult({ key: 'pocket' }, [card('igl', 'Duelist')], { igl: 'igl' }), 2);
+  assert.equal(tacticMult({ key: 'pocket' }, [card('x', 'Duelist')], { igl: 'igl' }), CHIP_FLOOR);
 });
 
 test('a hand saved with the old no-respect spelling still gets its chip', () => {
   const info = chipInfo('no-respect');
   assert.equal(info.key, 'noRespect');
-  assert.deepEqual(info.icons, ['flick']);
+  assert.equal(info.special, 'disrespect');
 });
 
 test('the plan reads the real squad and names who shares the lane', () => {
@@ -65,7 +70,9 @@ test('the plan reads the real squad and names who shares the lane', () => {
   assert.equal(layers.mult, 2.5);
   assert.deepEqual(layers.cards.map(c => c.role).sort(), ['Controller', 'Initiator']);
   assert.equal(chipPlan('hit', five).fits, false);
-  assert.equal(chipPlan('noRespect', five).mult, CHIP_FLOOR);
+  assert.deepEqual(chipPlan('pocket', five).cards.map(c => c.id), ['dlt']);
+  assert.equal(chipPlan('calling', five).anyLane, true);
+  assert.equal(chipPlan('noRespect', five).flick, false);
   const flicker = [...five.slice(0, 4), card('f', 'Duelist', 'flick')];
   assert.deepEqual(chipPlan('noRespect', flicker).cards.map(c => c.id), ['f']);
 });

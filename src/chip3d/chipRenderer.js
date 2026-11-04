@@ -8,7 +8,7 @@ import {
   ACESFilmicToneMapping, DirectionalLight, Group, HemisphereLight, PMREMGenerator, PerspectiveCamera, SRGBColorSpace, Scene, WebGLRenderer,
 } from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { disposeChip, makeChip } from './ChipStack.js';
+import { disposeChip, makeChip, printChip } from './ChipStack.js';
 
 const FOV = 30;
 const DISTANCE = 4.9;
@@ -77,7 +77,7 @@ function wake() {
  * hover(x, y) with -1..1 offsets from the centre, or hover(null) to let go;
  * destroy() when the element leaves.
  */
-export function createChipView(canvas, key, { reducedMotion = false, onFail, phase = 0 } = {}) {
+export function createChipView(canvas, key, { reducedMotion = false, onFail, phase = 0, lean = LEAN } = {}) {
   const s = boot();
   if (s.failed) return null;
   const ctx = canvas.getContext('2d');
@@ -91,6 +91,10 @@ export function createChipView(canvas, key, { reducedMotion = false, onFail, pha
 
   const view = {
     onFail,
+    // Reprints the face's big number, e.g. the multiplier it pays on its lane.
+    print(headline) {
+      if (printChip(chip, headline)) { state.drawn = false; wake(); }
+    },
     hover(x, y) {
       if (x == null) Object.assign(state, { aimYaw: 0, aimTilt: 0, aimLift: 1 });
       else Object.assign(state, { aimYaw: x * 0.55, aimTilt: -y * 0.35, aimLift: 1.06 });
@@ -107,7 +111,7 @@ export function createChipView(canvas, key, { reducedMotion = false, onFail, pha
       const still = Math.abs(before - (state.yaw + state.tilt + state.lift)) < 1e-4;
       if (reducedMotion && still && state.drawn) return;
       const idle = reducedMotion ? 0.35 : Math.sin(now * 0.7 + phase) * SWAY + 0.15;
-      pivot.rotation.set(-LEAN + state.tilt + (reducedMotion ? 0 : Math.sin(now * 0.9 + phase) * 0.04), idle + state.yaw, 0);
+      pivot.rotation.set(-lean + state.tilt + (reducedMotion ? 0 : Math.sin(now * 0.9 + phase) * 0.04), idle + state.yaw, 0);
       pivot.scale.setScalar(state.lift);
 
       const w = Math.max(1, Math.round(canvas.clientWidth * Math.min(window.devicePixelRatio || 1, MAX_DPR)));

@@ -112,10 +112,8 @@ export function faceArt(info, face = chipStyle().face) {
     icons.forEach((name, i) => drawIcon(ctx, name, (i - (icons.length - 1) / 2) * step, -58, size, tone.ink));
   }
   // The most it can pay, big: the one number a player needs before anything else.
-  ctx.globalAlpha = info.dead ? 0.55 : 1;
-  fitText(ctx, `×${info.max}`, SANS, 132, 250);
-  ctx.fillText(`×${info.max}`, 0, 62);
-  ctx.globalAlpha = 1;
+  fitText(ctx, info.headline, SANS, 132, 250);
+  ctx.fillText(info.headline, 0, 62);
   return texture(el);
 }
 
@@ -191,7 +189,17 @@ export function makeChip(key, index) {
   });
   group.add(side, top, bottom, ...ridges, ring);
   for (const mesh of [side, top, bottom, ...ridges]) mesh.userData.chip = index;
-  return { key, info, group, ring, meshes: [side, top, bottom, ...ridges] };
+  return { key, info, group, ring, faceMat, printed: info.headline, meshes: [side, top, bottom, ...ridges] };
+}
+
+/** Reprints a chip's face with a different big number: a placed chip shows what it pays there. */
+export function printChip(chip, headline) {
+  if (chip.printed === headline) return false;
+  chip.printed = headline;
+  chip.faceMat.map?.dispose();
+  chip.faceMat.map = faceArt({ ...chip.info, headline });
+  chip.faceMat.needsUpdate = true;
+  return true;
 }
 
 // Geometry is shared by every chip; only the printed materials are its own.

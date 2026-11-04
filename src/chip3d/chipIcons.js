@@ -14,11 +14,17 @@ export const ICON_PATHS = {
   igl: ['M3 19h18M4 16l-1-9 5 4 4-7 4 7 5-4-1 9z'],
   map: ['M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14'],
   lock: ['M7 11V7a5 5 0 0 1 10 0v4M5 11h14v10H5z'],
+  // Three different shapes: three different roles.
+  trio: [circle(12, 6, 3), 'M3 20l3.5-6 3.5 6z', 'M14.5 14.5h6v6h-6z'],
+  // A bolt that jumps on to the next lane.
+  chain: ['M13 2L5 13h6l-2 9 9-12h-6z'],
+  // A cut through their best player.
+  slash: ['M4 20L20 4', 'M9 4h-5v5M15 20h5v-5'],
   // Three lanes, all lit: works anywhere.
   any: ['M4 4h4v16H4zM10 4h4v16h-4zM16 4h4v16h-4z'],
 };
 
 export const ICON_LABELS = {
   Duelist: 'Duelist', Initiator: 'Initiator', Controller: 'Controller', Sentinel: 'Sentinel',
-  flick: 'Flick', flex: 'Flex', mastermind: 'Mastermind', igl: 'IGL', map: 'Map rule', lock: 'Map rule', any: 'Any lane',
+  flick: 'Flick', flex: 'Flex', mastermind: 'Mastermind', igl: 'IGL', map: 'Map rule', lock: 'Cancels their chip', any: 'Any lane', trio: '3 different roles', chain: 'Chains to the next lane', slash: 'Cuts their best player',
 };

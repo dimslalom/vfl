@@ -32,7 +32,7 @@ export function ChipFlat({ chipKey, size = 96, face }) {
             ))}
           </g>
         )}
-      <text x="50" y="65" textAnchor="middle" fontWeight="700" fontSize="22" fill={tone.ink} opacity={info.dead ? 0.55 : 1}>×{info.max}</text>
+      <text x="50" y="65" textAnchor="middle" fontWeight="700" fontSize="22" fill={tone.ink}>{info.headline}</text>
     </svg>
   );
 }

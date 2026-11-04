@@ -7,9 +7,9 @@ import { t } from '../lib/i18n.js';
 
 const COPY = {
   pocket: () => ({
-    effect: t('×1.5 on any lane. No condition.'),
-    when: t('A safe pick when nothing else fits a lane.'),
-    risk: t('Never pays more than ×1.5.'),
+    effect: t('×2 on the lane your IGL plays, ×1.5 anywhere else.'),
+    when: t('Send your IGL to the lane you most need.'),
+    risk: t('Rotate the IGL away and it drops to ×1.5.'),
   }),
   hit: () => ({
     effect: t('Pays more for each Duelist on its lane.'),
@@ -37,24 +37,24 @@ const COPY = {
     risk: t('Without a Flex player it only pays ×1.5.'),
   }),
   defaults: () => ({
-    effect: t('Wants all four roles on one lane, but a lane holds three.'),
-    when: t('Keep it as a ×1.5 spare.'),
-    risk: t('Always ×1.5 on the board.'),
+    effect: t('×2.5 when three different roles share its lane.'),
+    when: t('A full lane of three, one of each role.'),
+    risk: t('Two of the same role and it drops to ×1.5.'),
   }),
   calling: () => ({
-    effect: t('×2.5 for a Mastermind on its lane, ×3 for two.'),
-    when: t('Train Mastermind first; then it is the strongest chip.'),
-    risk: t('Without a Mastermind it only pays ×1.5.'),
+    effect: t('×2 on its lane, and chains ×1.5 to the lane on its left.'),
+    when: t('Two close lanes side by side. A Mastermind on its lane adds ×0.5 to both.'),
+    risk: t('From the left lane it chains to the middle instead.'),
   }),
   noRespect: () => ({
-    effect: t('×2 for a Flick player on its lane, ×3 for two.'),
-    when: t('A Flick player alone scores their best stat, then ×2.'),
-    risk: t('Without a Flick player it only pays ×1.5.'),
+    effect: t('The enemy\'s best player on its lane scores 0.'),
+    when: t('Against a lane carried by one star. A Flick player on its lane also adds ×1.5.'),
+    risk: t('Without a Flick player your own lane gets no boost.'),
   }),
   lockout: () => ({
-    effect: t('Multiplies the map bonus, which the board does not use.'),
-    when: t('Keep it as a ×1.5 spare.'),
-    risk: t('Always ×1.5 on the board.'),
+    effect: t('The enemy\'s chip pays nothing, wherever they play it.'),
+    when: t('When their chip would decide a lane. Play it on any lane.'),
+    risk: t('No boost of its own, and wasted if they play no chip.'),
   }),
 };
 
@@ -66,7 +66,7 @@ export function chipCopy(key) {
 export function chipRules() {
   return [
     { title: t('One per map'), text: t('Drop one chip on one lane before you lock in. It stays there through the rotate.') },
-    { title: t('It multiplies'), text: t('Your lane total, after combos, times the chip. Every chip pays at least ×1.5, up to ×3.') },
+    { title: t('It multiplies'), text: t('Your lane total, after combos, times the chip: ×1.5 to ×3. Rare chips do something extra instead.') },
     { title: t('Who is on the lane'), text: t('The chip reads only the players on its lane. Rotate them away and the bonus goes too.') },
     { title: t('Win it back'), text: t('Win the map and the chip comes back. Lose it and the chip is gone. Your IGL tops you up to two.') },
   ];
@@ -77,12 +77,20 @@ export function chipTips() {
     t('Play it on the lane you could win or lose, not the one you win anyway.'),
     t('Build the lane for the chip: pair chips want both roles together.'),
     t('Skill chips need trained skills. Train Flick, Flex or Mastermind to unlock them.'),
+    t('Lock the Map answers their chip; No Respect answers their star.'),
     t('A bench player with the missing role can be worth a whole chip.'),
   ];
 }
 
 /** The plan line for a real squad: what the chip pays and who has to share its lane. */
 export function planLine(plan) {
+  if (plan.kind === 'disrespect') {
+    return plan.flick
+      ? t('Their best there scores 0, and ×1.5 with {names} on its lane.', { names: plan.cards[0].player })
+      : t('Their best player on its lane scores 0.');
+  }
+  if (plan.kind === 'cancel') return t('Cancels their chip from any lane.');
+  if (plan.anyLane) return plan.special === 'chain' ? t('×{mult} on any lane, plus the chain.', { mult: plan.mult }) : t('×{mult} on any lane.', { mult: plan.mult });
   if (!plan.fits) return t('Only ×1.5 for your five right now.');
   const names = plan.cards.map(card => card.player).join(' + ');
   return plan.cards.length === 1
