@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { playUiSound } from '../../shared/src/lib/gameAudio';
 import { assetPath } from '../../shared/src/lib/utils';
 import { cueMusic } from '../lib/music';
+import ClubLogo from './ClubLogo';
 import styles from './MatchIntro.module.css';
 
 // How long each beat holds, in ms. The panels close for ENTER, hold at least
@@ -31,9 +32,13 @@ function Side({ side, club, cards }) {
   return (
     <div className={styles.side} data-side={side}>
       <div className={styles.who}>
-        <span className={styles.crest}>
-          {club.logo ? <img src={assetPath(club.logo)} alt="" /> : initials(club.name)}
-        </span>
+        {club.mark
+          ? <ClubLogo className={styles.mark} name={club.name} style={club.mark.style} tone={club.mark.tone} />
+          : (
+            <span className={styles.crest}>
+              {club.logo ? <img src={assetPath(club.logo)} alt="" /> : initials(club.name)}
+            </span>
+          )}
         <b className={styles.name}>{club.name}</b>
       </div>
       <div className={styles.five}>

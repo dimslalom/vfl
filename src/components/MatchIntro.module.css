@@ -55,6 +55,9 @@
 }
 .side[data-side='them'] .crest { background: var(--bg); }
 .crest img { width: 78%; height: 78%; object-fit: contain; }
+/* Your own club's mark, drawn from its name: it brings its own shape. */
+.mark { width: clamp(64px, 7.5vw, 104px) !important; height: clamp(64px, 7.5vw, 104px) !important; }
+.mark svg { display: block; width: 100%; height: 100%; }
 .name {
   font-size: clamp(40px, 8vw, 128px);
   font-weight: 900;

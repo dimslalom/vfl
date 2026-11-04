@@ -1818,7 +1818,7 @@ export default function Club() {
         squad={yours}
         opponent={theirs}
         intro={{
-          you: { club: { name: state.name, logo: null }, cards: yours },
+          you: { club: { name: state.name, mark: { style: state.crest, tone: state.tone } }, cards: yours },
           them: { club: { name: club.name, logo: club.logo }, cards: theirs.slice(0, STARTERS) },
           stage: stageLabel(match),
         }}
