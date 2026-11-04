@@ -93,13 +93,23 @@ test('passing on a pack gives a skill tape, up to the cap', () => {
   assert.equal(state.tapes, 3);
 });
 
-test('a full squad cannot open a pack and cannot sign from one', () => {
+test('a full squad can open a pack, and signing from it swaps a player out in place', () => {
   const state = fresh();
   assert.equal(squadMax(state), 7);
-  const opened = openPack(state, 'silver', allCards);
-  const full = { ...opened, squad: [...opened.squad, 'x1', 'x2'] };
-  assert.equal(choosePick(full, opened.opening.ids[0]), full);
-  assert.equal(openBlocker({ ...state, squad: [...state.squad, 'x1', 'x2'] }, 'silver'), 'full');
+  const placed = new Set([...state.squad, ...state.clubs.flatMap(club => club.roster)]);
+  const [x1, x2] = allCards.filter(card => !placed.has(card.id) && card.league !== 'icon').map(card => card.id);
+  const fullState = { ...state, squad: [...state.squad, x1, x2], contracts: { ...state.contracts, [x1]: 2 } };
+  assert.equal(openBlocker(fullState, 'silver'), null);
+  const opened = openPack(fullState, 'silver', allCards);
+  const pick = opened.opening.ids[0];
+  assert.equal(choosePick(opened, pick), opened);
+  assert.equal(choosePick(opened, pick, 'nobody'), opened);
+  const swapped = choosePick(opened, pick, x1);
+  assert.equal(swapped.squad.length, 7);
+  assert.equal(swapped.squad[5], pick);
+  assert.ok(!swapped.squad.includes(x1));
+  assert.equal(swapped.contracts[x1], undefined);
+  assert.equal(swapped.contracts[pick], 3);
 });
 
 test('gold pity: the sixth dry silver pack carries a gold card', () => {

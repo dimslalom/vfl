@@ -658,7 +658,7 @@ function Vault({ state, onOpenPack, onBack, onWindow }) {
   const dry = state.pity?.gold ?? 0;
   const titles = state.titles ?? 0;
   const toIcon = TITLES_PER_ICON - (titles % TITLES_PER_ICON);
-  const blockLabel = { empty: 'None left', full: 'Squad full', open: 'Pack open', over: 'Closed' };
+  const blockLabel = { empty: 'None left', open: 'Pack open', over: 'Closed' };
   const column = (kind) => {
     const count = stock(state, kind);
     const blocker = openBlocker(state, kind);
@@ -727,6 +727,14 @@ function OpenPack({ state, onChoose, size }) {
   const reducedMotion = useReducedMotion();
   const cards = opening.ids.map(id => clubCard(state, cardById.get(id)));
   const full = state.squad.length >= squadMax(state);
+  // A full squad signs by swapping, as at the transfer window: the weakest goes unless you pick another.
+  const squad = full ? squadCards(state, allCards) : [];
+  const [swapOutId, setSwapOutId] = useState(() => squad.reduce((low, card) => (!low || card.rating < low.rating ? card : low), null)?.id ?? null);
+  const swapOut = squad.find(card => card.id === swapOutId);
+  const pickedCard = cards.find(card => card.id === picked);
+  const ovrDelta = pickedCard && swapOut ? pickedCard.rating - swapOut.rating : 0;
+  const offerScale = size.scale * (full ? 0.8 : 1.15);
+  const squadScale = size.scale * 0.55;
   useEffect(() => {
     if (!torn) return undefined;
     if (cards.some(card => card.rating > 80 || card.league === 'icon')) playUiSound('jackpot');
@@ -756,29 +764,46 @@ function OpenPack({ state, onChoose, size }) {
               <div key={card.id} className={`${styles.dealt} ${styles.pickCard}`} data-on={picked === card.id || undefined} style={{ '--deal': index }}>
                 <span className={styles.guarantee}>{opening.guaranteed && card.rating > 80 ? 'Guaranteed gold' : ''}</span>
                 <div className={styles.slotCard}>
-                  <PlayerCard card={card} displayScale={size.scale * 1.15} tilt={false} canDrag={false} onClick={() => !passing && setPicked(card.id)} />
+                  <PlayerCard card={card} displayScale={offerScale} tilt={false} canDrag={false} onClick={() => !passing && setPicked(card.id)} />
                   {picked === card.id && <span className={styles.brackets} aria-hidden="true"><i /><i /><i /><i /></span>}
                 </div>
               </div>
             ))}
           </div>
         )}
+        {torn && full && (
+          <section className={`${styles.eafcStageRow} ${styles.packSwap}`}>
+            <div className={styles.eafcCardsRow}>
+              {squad.map(card => {
+                const isSwap = card.id === swapOutId;
+                return (
+                  <div key={card.id} className={styles.windowSlot} data-swap={isSwap || undefined}>
+                    <div className={styles.slotCard}>
+                      <PlayerCard card={card} displayScale={squadScale} tilt={false} canDrag={false} pressScale={0.97} onClick={() => { if (passing) return; playUiSound('select'); setSwapOutId(card.id); }} />
+                      {isSwap && <span className={styles.brackets} data-swap="true" aria-hidden="true"><i /><i /><i /><i /></span>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
       </Ground>
       {torn && (
-        <footer className={styles.act}>
-          <span className={styles.passFor}>
-            {passing ? (
-              <FlyHome delay={0} onLand={() => { playUiSound('vault_bump'); setTapeLanded(true); setTimeout(() => onChoose(null), 220); }}>
-                <TapeCard scale={0.09} />
-              </FlyHome>
-            ) : (
-              <TapeCard scale={0.09} />
-            )}
-            <span className={styles.plain}>{full ? 'Squad full: pass for a skill tape' : 'Pass on all three for a skill tape'}</span>
-          </span>
+        <footer className={`${styles.act} ${styles.actEnd}`}>
           <div className={styles.actPair}>
-            <button type="button" className={`${styles.ghost} ${styles.even}`} disabled={passing} onClick={passPack}>Pass</button>
-            <button type="button" className={`${styles.primary} ${styles.even}`} disabled={!picked || full || passing} onClick={() => { playUiSound('sign'); onChoose(picked); }}>Sign</button>
+            <button type="button" className={`${styles.ghost} ${styles.even} ${styles.passFor}`} data-passing={passing || undefined} disabled={passing} onClick={passPack} aria-label="Pass for a skill tape">
+              <span>Pass</span>
+              <b>+1</b>
+              {passing ? (
+                <FlyHome delay={0} onLand={() => { playUiSound('vault_bump'); setTapeLanded(true); setTimeout(() => onChoose(null), 220); }}>
+                  <TapeCard scale={0.06} />
+                </FlyHome>
+              ) : (
+                <TapeCard scale={0.06} />
+              )}
+            </button>
+            <button type="button" className={`${styles.primary} ${styles.even}`} disabled={!picked || (full && !swapOut) || passing} onClick={() => { playUiSound('sign'); onChoose(picked, full ? swapOut.id : null); }}>{full && swapOut ? <>Swap for {swapOut.player}{pickedCard && <small className={styles.swapGain}>{ovrDelta > 0 ? '+' : ''}{ovrDelta}</small>}</> : 'Sign'}</button>
           </div>
         </footer>
       )}
@@ -1751,9 +1776,9 @@ export default function Club() {
     });
   }
 
-  function pickFromPack(id) {
+  function pickFromPack(id, releaseId) {
     morph(() => {
-      setState(current => choosePick(current, id));
+      setState(current => choosePick(current, id, releaseId));
       setScreen('vault');
     });
   }

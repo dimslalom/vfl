@@ -936,9 +936,14 @@ span.counter { cursor: default; }
 
 /* Pack open */
 .openGround { justify-content: center; }
+/* Signing from a pack into a full squad: the transfer window's squad row, centred under the offers. */
+.packSwap { align-items: center; }
+.packSwap .eafcCardsRow { justify-content: safe center; max-width: 100%; }
 .pickCard { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); transition: transform .18s cubic-bezier(.2, .8, .2, 1); }
 .pickCard[data-on] { transform: translateY(-14px); }
 .guarantee { min-height: 1.4em; color: var(--win); font: 800 var(--fs-micro)/1.4 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
+/* The rating change a swap makes, set small beside the Swap button's label. */
+.swapGain { margin-left: var(--sp-2); font: 700 var(--fs-label)/1 var(--font-mono); opacity: .8; }
 
 /* Three buttons of one size: only colour marks the main one. */
 .even { min-width: 180px; min-height: 64px; padding: 0 var(--sp-4); display: inline-flex; align-items: center; justify-content: center; font-size: var(--fs-lead); }
@@ -1107,7 +1112,10 @@ button.handSlot:not(:disabled) { cursor: pointer; }
 .counterPart .tapeCard { filter: none; }
 .vaultStack .tapeCard { position: absolute; left: 22px; top: 6px; }
 .vaultUse { min-height: 52px; display: grid; place-items: center; color: var(--muted); font-size: var(--fs-label); }
-.passFor { display: inline-flex; align-items: center; gap: var(--sp-3); }
+.passFor { gap: var(--sp-2); }
+.passFor > b { color: var(--win); font-family: var(--font-mono); }
+/* The tape is mid-flight: keep it at full strength while the button is disabled. */
+.passFor[data-passing] { opacity: 1; }
 @media (hover: hover) { .vaultKind:hover .tapeCard { transform: perspective(700px) rotateY(-12deg) rotateX(4deg); } }
 
 /* League bracket: two semifinals feeding a final, joined by a line. */

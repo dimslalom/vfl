@@ -40,7 +40,6 @@ export function openBlocker(state, kind) {
   if (state.opening) return 'open';
   if (stock(state, kind) < 1) return 'empty';
   if (state.phase === 'over') return 'over';
-  if (state.squad.length >= squadMax(state)) return 'full';
   return null;
 }
 
@@ -90,21 +89,25 @@ export function openPack(state, kind, cards) {
   };
 }
 
-/** Sign one of the three, or pass on all of them: a pass is worth a skill tape. */
-export function choosePick(state, id) {
+/**
+ * Sign one of the three, or pass on all of them: a pass is worth a skill tape.
+ * A full squad must name `releaseId`: they leave and the signing takes their slot.
+ */
+export function choosePick(state, id, releaseId = null) {
   const { opening } = state;
   if (!opening) return state;
   const base = { ...state, opening: null };
   if (id == null) return { ...base, tapes: Math.min(TAPE_MAX, (state.tapes ?? 0) + 1) };
-  if (!opening.ids.includes(id) || state.squad.length >= squadMax(state)) return state;
+  if (!opening.ids.includes(id)) return state;
+  const full = state.squad.length >= squadMax(state);
+  if (full && !state.squad.includes(releaseId)) return state;
   const moved = { ...state.moved };
   delete moved[id];
-  return {
-    ...base,
-    squad: [...state.squad, id],
-    contracts: { ...state.contracts, [id]: CONTRACT_MAX },
-    moved,
-  };
+  const contracts = { ...state.contracts, [id]: CONTRACT_MAX };
+  if (!full) return { ...base, squad: [...state.squad, id], contracts, moved };
+  delete contracts[releaseId];
+  delete moved[releaseId];
+  return { ...base, squad: state.squad.map(card => (card === releaseId ? id : card)), contracts, moved };
 }
 
 // ── chips ───────────────────────────────────────────────────────────────────
