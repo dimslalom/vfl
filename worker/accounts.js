@@ -32,7 +32,13 @@ export async function handleAccounts(request, env, { fetcher = fetch, now = Date
   const route = `${request.method} ${url.pathname}`;
   const routes = {
     'GET /api/auth/discord': () => startSignIn(url, env),
-    'GET /api/auth/discord/callback': () => finishSignIn(request, url, env, fetcher, now()),
+    'GET /api/auth/discord/callback': () => finishSignIn(request, url, env, fetcher, now()).catch((error) => {
+      // A player mid-sign-in lands back on the game with a notice, never on raw JSON.
+      console.error(JSON.stringify({ message: 'sign-in failed', error: error instanceof Error ? error.message : String(error) }));
+      const target = new URL(DEFAULT_NEXT, url.origin);
+      target.searchParams.set('signin', 'failed');
+      return new Response(null, { status: 302, headers: { Location: target.toString(), 'Cache-Control': 'no-store' } });
+    }),
     'POST /api/auth/logout': () => logout(request, url, env, origins),
     'GET /api/me': () => me(request, env, now()),
     'GET /api/club-save': () => readClubSave(request, env, now()),

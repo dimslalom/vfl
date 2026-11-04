@@ -194,3 +194,10 @@ test('local dev can name its own origin for the redirect and the write check', a
   const put = await handleAccounts(request('/api/club-save', { method: 'PUT', cookie, origin: 'http://localhost:8787', body: { save: { v: 2 } } }), local);
   assert.equal(put.status, 200);
 });
+
+test('a server error during sign-in sends the player back with a notice', async () => {
+  const broken = { ...env(), ACCOUNTS: { prepare() { throw new Error('D1_ERROR: no such table: users'); } } };
+  const { done } = await signIn(broken);
+  assert.equal(done.status, 302);
+  assert.equal(new URL(done.headers.get('Location')).searchParams.get('signin'), 'failed');
+});
