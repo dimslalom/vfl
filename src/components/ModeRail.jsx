@@ -23,6 +23,11 @@ const ICON = {
       <rect x="2.5" y="11.5" width="6" height="6" /><rect x="11.5" y="11.5" width="6" height="6" />
     </svg>
   ),
+  club: (
+    <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="square">
+      <path d="M10 2.5 16.5 5v5c0 3.6-2.6 6.2-6.5 7.5C6.1 16.2 3.5 13.6 3.5 10V5L10 2.5Z" /><path d="M7 9.5 9.2 12 13 7.8" />
+    </svg>
+  ),
   run: (
     <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="square">
       <path d="M6 3h8v3.5a4 4 0 0 1-8 0V3Z" /><path d="M10 10.5V14" /><path d="M6.5 17h7" />
@@ -38,6 +43,7 @@ const ICON = {
 };
 
 const RAIL = [
+  { to: '/club', key: 'club', label: 'Club' },
   { to: '/cards', key: 'library', label: 'Player Library' },
   { to: '/run', key: 'run', label: 'Gauntlet' },
   { to: '/multiplayer', key: 'multiplayer', label: 'Multiplayer' },

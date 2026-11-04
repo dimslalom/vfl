@@ -43,18 +43,18 @@ export default function App() {
             <RouteErrorBoundary>
               <Suspense fallback={<div className="route-loading" role="status">{t('Loading game…')}</div>}>
                 <Routes>
-                  <Route path="/" element={<Navigate to="/run" replace />} />
+                  <Route path="/" element={<Navigate to="/club" replace />} />
                   {/* Renamed from /collection - kept as a redirect so old links still work. */}
                   <Route path="/collection" element={<Navigate to="/cards" replace />} />
                   <Route path="/cards" element={<Collection />} />
                   <Route path="/prematch" element={<Navigate to="/run" replace />} />
                   <Route path="/match" element={<Navigate to="/run" replace />} />
                   <Route path="/pack" element={<Navigate to="/run" replace />} />
+                  <Route path="/club" element={<Club />} />
                   <Route path="/run" element={<PerfectRun />} />
                   <Route path="/legal" element={<Legal />} />
                   <Route path="/board" element={<BoardPrototype />} />
-                  <Route path="/club" element={<Club />} />
-                  <Route path="/lab/pack" element={<PackLab />} />
+                                    <Route path="/lab/pack" element={<PackLab />} />
                   <Route path="/lab/chips" element={<ChipLab />} />
                   <Route path="/lab/table" element={<TableLab />} />
                   <Route path="/lab/fx" element={<FxLab />} />

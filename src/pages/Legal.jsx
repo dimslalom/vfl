@@ -25,7 +25,7 @@ export default function Legal() {
           {t('and official VALORANT wallpapers.')}
         </p>
         <p>{t('There are no accounts and no cookies. Runs stay on this device. A leaderboard entry stores your squad name, score and a random ID.')}</p>
-        <Link className={styles.back} to="/run">{t('Back to the game')}</Link>
+        <Link className={styles.back} to="/club">{t('Back to the game')}</Link>
       </article>
     </main>
   );
