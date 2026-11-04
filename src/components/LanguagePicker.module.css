@@ -1,0 +1,15 @@
+.picker { display: inline-flex; gap: var(--sp-1); }
+.option {
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+  padding: 0 var(--sp-2);
+  border: 0;
+  background: var(--surface);
+  color: var(--muted);
+  font: 700 11px/1 var(--font-mono);
+  letter-spacing: 0.14em;
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+  transition: color var(--dur-micro), background var(--dur-micro);
+}
+.option:hover { color: var(--ink); background: var(--surface-hi); }
+.option[aria-pressed='true'] { color: var(--ink); background: var(--surface-alt); }

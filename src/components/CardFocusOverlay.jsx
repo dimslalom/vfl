@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { m, AnimatePresence } from 'motion/react';
 import PlayerCard from '../../shared/src/components/PlayerCard';
+import { t } from '../lib/i18n';
 import { getCardSpecialties } from '../../shared/src/data/specialties';
 import SpecialtyIcon from '../../shared/src/components/SpecialtyIcon';
 import Split from '../../shared/src/components/Split';
@@ -112,9 +113,9 @@ export default function CardFocusOverlay({ card, onClose, action = null, onActio
           onClick={requestClose}
           role="dialog"
           aria-modal="true"
-          aria-label={`${card.player ?? 'Player'} card details`}
+          aria-label={t('{player} card details', { player: card.player ?? t('Player') })}
         >
-          <button ref={closeRef} className={styles.close} onClick={requestClose} aria-label="Close">✕</button>
+          <button ref={closeRef} className={styles.close} onClick={requestClose} aria-label={t('Close')}>✕</button>
 
           <div
             className={styles.focusStage}
@@ -137,20 +138,20 @@ export default function CardFocusOverlay({ card, onClose, action = null, onActio
               />
 
               {signals ? (
-                <Callout side="left" at={AT_RATING} title="Career">
+                <Callout side="left" at={AT_RATING} title={t('Career')}>
                   <div className={styles.careerTop}>
                     <span className={styles.careerStage} data-stage={signals.stage}>
                       {signals.trend !== 0 && (
                         <i className={styles.careerTrend} data-dir={signals.trend > 0 ? 'up' : 'down'} aria-hidden="true" />
                       )}
-                      {STAGE_LABEL[signals.stage]}
+                      {t(STAGE_LABEL[signals.stage])}
                     </span>
-                    <span className={styles.careerAge}>Age <b>{signals.age}</b></span>
+                    <span className={styles.careerAge}>{t('Age')} <b>{signals.age}</b></span>
                   </div>
                   <div
                     className={styles.careerBar}
                     role="img"
-                    aria-label={`Rated ${signals.rating}, ceiling ${signals.ceiling}`}
+                    aria-label={t('Rated {rating}, ceiling {ceiling}', { rating: signals.rating, ceiling: signals.ceiling })}
                   >
                     <span className={styles.careerNow} style={{ width: `${pct(signals.rating)}%` }} />
                     {signals.ceiling > signals.rating && (
@@ -165,37 +166,37 @@ export default function CardFocusOverlay({ card, onClose, action = null, onActio
                     {signals.ceiling > signals.rating && <span>{signals.ceiling}</span>}
                     {signals.drift !== 0 && (
                       <span className={styles.careerDrift} data-dir={signals.trend > 0 ? 'up' : 'down'}>
-                        {signals.drift > 0 ? '+' : ''}{signals.drift} this run
+                        {t('{n} this run', { n: `${signals.drift > 0 ? '+' : ''}${signals.drift}` })}
                       </span>
                     )}
                   </div>
                 </Callout>
               ) : (
-                <Callout side="left" at={AT_RATING} title="Rated">
+                <Callout side="left" at={AT_RATING} title={t('Rated')}>
                   <span className={styles.calloutLead}>{card.rating}</span>
-                  <span className={styles.calloutNote}>{capitalize(card.tier)} tier</span>
+                  <span className={styles.calloutNote}>{t('{tier} tier', { tier: t(capitalize(card.tier)) })}</span>
                 </Callout>
               )}
 
-              <Callout side="right" at={AT_CLUB} title="Club">
+              <Callout side="right" at={AT_CLUB} title={t('Club')}>
                 <span className={styles.calloutLead}>{card.org_name ?? card.org}</span>
-                <span className={styles.calloutNote}>{LEAGUE_LABEL[card.league] ?? card.league}</span>
+                <span className={styles.calloutNote}>{t(LEAGUE_LABEL[card.league] ?? card.league)}</span>
               </Callout>
 
-              <Callout side="left" at={AT_ORIGIN} title="Origin">
+              <Callout side="left" at={AT_ORIGIN} title={t('Origin')}>
                 <span className={styles.calloutLead}>{countryName(card.nationality)}</span>
                 <span className={styles.calloutNote}>{regionFullName(card.region)}</span>
               </Callout>
 
-              <Callout side="right" at={AT_SPECIALTIES} title="Specialties">
+              <Callout side="right" at={AT_SPECIALTIES} title={t('Specialties')}>
                 {specialties.length === 0 ? (
-                  <span className={styles.calloutNote}>None active</span>
+                  <span className={styles.calloutNote}>{t('None active')}</span>
                 ) : specialties.map(spec => (
                   <div key={spec.key} className={styles.specLine}>
                     <span className={styles.specBadgeIcon}><SpecialtyIcon spec={spec.key} size="64%" /></span>
                     <div className={styles.specText}>
                       <b className={styles.specName}>{spec.name}</b>
-                      <p className={styles.specDesc}>{spec.desc}</p>
+                      <p className={styles.specDesc}>{t(spec.desc)}</p>
                     </div>
                   </div>
                 ))}
@@ -213,7 +214,7 @@ export default function CardFocusOverlay({ card, onClose, action = null, onActio
                 {action.label}
               </button>
             )}
-            <p className={styles.hint}><Split parts={['click card to flip for the full sheet', 'esc to close']} /></p>
+            <p className={styles.hint}><Split parts={[t('click card to flip for the full sheet'), t('esc to close')]} /></p>
           </div>
         </m.div>
       )}

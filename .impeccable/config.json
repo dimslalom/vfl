@@ -184,6 +184,16 @@
         "value": "#e2385a",
         "createdAt": "2026-10-04T04:03:03.976Z",
         "reason": "Third-party VCT event brand colour sampled from its logo file (apps/call/src/lib/events.js), used only for the glow behind that event logo"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgb(0 0 0 / .55)",
+        "createdAt": "2026-11-04T01:26:09.571Z"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgb(0 0 0 / .45)",
+        "createdAt": "2026-11-04T01:26:09.645Z"
       }
     ]
   }

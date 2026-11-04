@@ -1,0 +1,64 @@
+.sheet {
+  width: min(640px, calc(100vw - var(--sp-8)));
+  max-height: min(84dvh, 820px);
+  margin: auto;
+  padding: 0;
+  border: 0;
+  overflow: auto;
+  background: var(--surface-flyout);
+  color: var(--ink);
+  box-shadow: var(--shadow-overlay);
+}
+.sheet::backdrop { background: rgba(9, 13, 22, 0.78); }
+.sheet[data-side='left'] {
+  width: min(380px, 100vw);
+  height: 100dvh;
+  max-height: none;
+  margin: 0 auto 0 0;
+}
+
+.head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: 56px;
+  padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-5);
+  background: var(--surface-flyout);
+  border-bottom: 1px solid var(--line);
+}
+.title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font: 700 22px/1.2 var(--font-display);
+}
+.close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  padding: 0;
+  border: 0;
+  color: var(--muted);
+  background: var(--surface);
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  transition: color var(--dur-micro), background var(--dur-micro);
+}
+.close:hover { color: var(--ink); background: var(--surface-hi); }
+
+.body { padding: var(--sp-5); }
+
+@media (max-width: 680px) {
+  .sheet { width: calc(100vw - var(--sp-4)); max-height: 88dvh; }
+  .body { padding: var(--sp-4); }
+}
+
+/* Animate the native dialog surface; focus and Escape remain native. */
+.sheet[open] { animation: sheetOpen var(--dur-enter) var(--ease-deal) both; }
+.sheet[open]::backdrop { animation: sheetDim var(--dur-transform) ease both; }
+@keyframes sheetOpen { from { opacity:0; translate:0 8px; } to { opacity:1; translate:0 0; } }
+@keyframes sheetDim { from { opacity:0; } to { opacity:1; } }

@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { prefersReducedMotion } from '../../shared/src/lib/useReducedMotion';
-
-const SPRING = 220;
-const DAMPING = 18;
-const MAX_LEAN = 14; // degrees
-const SENSITIVITY = 0.6; // deg of lean per px of scroll delta
+import useReducedMotion from '../../shared/src/lib/useReducedMotion';
+import { scrollLeanTarget, stepScrollLean } from './scrollPhysics';
 
 // Cards on a scrolled shelf lean into their own inertia - scroll left and
 // they swing left, as if the row were a physical surface sliding out from
@@ -18,7 +14,9 @@ const SENSITIVITY = 0.6; // deg of lean per px of scroll delta
 // descendant can read `rotate(var(--lean, 0deg))` - nothing here assumes
 // what's inside the shelf.
 export default function useScrollLean(scrollRef) {
+  const reducedMotion = useReducedMotion();
   const frameRef = useRef(0);
+  const lastScrollTimeRef = useRef(0);
   const previousTimeRef = useRef(0);
   const stateRef = useRef({ angle: 0, velocity: 0 });
   const targetRef = useRef(0);
@@ -30,7 +28,7 @@ export default function useScrollLean(scrollRef) {
 
   const animate = useCallback(() => {
     if (frameRef.current) return;
-    if (prefersReducedMotion()) {
+    if (reducedMotion) {
       stateRef.current = { angle: 0, velocity: 0 };
       targetRef.current = 0;
       write();
@@ -38,14 +36,13 @@ export default function useScrollLean(scrollRef) {
     }
     previousTimeRef.current = performance.now();
     const tick = (now) => {
-      const dt = Math.min((now - previousTimeRef.current) / 1000, 0.032);
+      const dt = (now - previousTimeRef.current) / 1000;
       previousTimeRef.current = now;
+      const next = stepScrollLean(stateRef.current, targetRef.current, dt);
       const state = stateRef.current;
-      const target = targetRef.current;
-      const acceleration = SPRING * (target - state.angle) - DAMPING * state.velocity;
-      state.velocity += acceleration * dt;
-      state.angle += state.velocity * dt;
-      targetRef.current *= 0.9;
+      state.angle = next.angle;
+      state.velocity = next.velocity;
+      targetRef.current = next.target;
       write();
       const settled = Math.abs(targetRef.current - state.angle) < 0.01 && Math.abs(state.velocity) < 0.02;
       if (settled) {
@@ -59,22 +56,29 @@ export default function useScrollLean(scrollRef) {
       frameRef.current = requestAnimationFrame(tick);
     };
     frameRef.current = requestAnimationFrame(tick);
-  }, [write]);
+  }, [write, reducedMotion]);
 
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return undefined;
     lastScrollLeftRef.current = el.scrollLeft;
+    lastScrollTimeRef.current = performance.now();
     const onScroll = () => {
       const delta = el.scrollLeft - lastScrollLeftRef.current;
       lastScrollLeftRef.current = el.scrollLeft;
-      targetRef.current = Math.max(-MAX_LEAN, Math.min(MAX_LEAN, delta * SENSITIVITY));
+      const now = performance.now();
+      targetRef.current = scrollLeanTarget(delta, now - lastScrollTimeRef.current);
+      lastScrollTimeRef.current = now;
       animate();
     };
     el.addEventListener('scroll', onScroll, { passive: true });
     return () => {
       el.removeEventListener('scroll', onScroll);
       cancelAnimationFrame(frameRef.current);
+      frameRef.current = 0;
+      stateRef.current = { angle: 0, velocity: 0 };
+      targetRef.current = 0;
+      write();
     };
-  }, [scrollRef, animate]);
+  }, [scrollRef, animate, write]);
 }

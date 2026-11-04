@@ -226,7 +226,7 @@ function run(state, type, actorId, payload, gameCards, now) {
 function lobbyWithPlayers(count, overrides = {}) {
   const state = createLobbyState({
     code: 'ABC234', hostId: 'p1', squadName: 'Squad 1', seed: 123,
-    settings: { gameLength: 'year', unboxing: 'normal', ...overrides }, now: 0,
+    settings: { gameLength: 'year', unboxing: 'normal', seriesCards: false, ...overrides }, now: 0,
   });
   for (let i = 2; i <= count; i++) addCompetitor(state, { id: `p${i}`, squadName: `Squad ${i}`, now: i });
   return state;

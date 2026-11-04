@@ -255,3 +255,13 @@ export function applyPrestige(prestige, score) {
     bankedScore: (prestige?.bankedScore ?? 0) + Math.round(score * multiplier),
   };
 }
+
+/**
+ * What retiring a run pays right now. Prestige ends the run, so it pays at the
+ * step the button promises rather than the multiplier the run started on.
+ */
+export function prestigePayout(prestige, score) {
+  const multiplier = (prestige?.multiplier ?? 1) + PRESTIGE_STEP;
+  const { bankedScore: total } = applyPrestige({ ...prestige, multiplier }, score);
+  return { multiplier, total, bonus: total - score };
+}

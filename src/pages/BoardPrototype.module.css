@@ -1,0 +1,30 @@
+.page {
+  position: fixed;
+  inset: 0;
+  padding-left: calc(var(--rail-size) + var(--safe-l));
+  background: var(--bg);
+  color: var(--ink);
+}
+.stage { position: relative; width: 100%; height: 100%; }
+.next {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+}
+.next button {
+  min-height: var(--tap-min);
+  padding: 12px 24px;
+  border: 0;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 9px 100%, 0 calc(100% - 9px));
+}
+@media (max-width: 680px) {
+  .page { padding-left: 0; padding-top: calc(var(--rail-size) + var(--safe-t)); }
+}

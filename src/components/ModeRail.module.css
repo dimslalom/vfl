@@ -82,6 +82,35 @@
 .item:hover .tip,
 .item:focus-visible .tip { opacity: 1; }
 
+/* Sits at the far end of the rail, away from the mode tiles, because it opens
+   a sheet rather than changing mode. */
+.help {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  margin-top: auto;
+  padding: 0;
+  border: 0;
+  color: var(--muted);
+  background: var(--surface);
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  transition: color var(--dur-micro), background var(--dur-micro);
+}
+.help:hover { color: var(--ink); background: var(--surface-hi); }
+.help:hover .tip, .help:focus-visible .tip { opacity: 1; }
+.helpFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-top: var(--sp-6);
+  font-size: 12px;
+}
+.helpFoot a { color: var(--muted); }
+
 /* Mobile: rail becomes a top bar with visible labels. */
 @media (max-width: 680px) {
   .rail {
@@ -97,7 +126,9 @@
     border-bottom: 1px solid var(--line);
     align-items: center;
   }
-  .items { flex-direction: row; gap: var(--sp-1); flex: 1; }
+  .items { flex-direction: row; gap: var(--sp-1); flex: 1; min-width: 0; }
+  .help { margin: 0 0 0 auto; }
+  .help .tip { display: none; }
 
   .item {
     width: auto;
@@ -120,10 +151,10 @@
   }
 }
 
-/* Below ~420px three labelled tiles stop fitting; keep the icons at full tap
-   size and let the accessible name carry the label. */
+/* Below ~420px three labelled tiles stop fitting, so only the current mode
+   keeps its label; the others stay at full tap size on their accessible names. */
 @media (max-width: 420px) {
-  .tip {
+  .item:not(.active) .tip {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -131,5 +162,5 @@
     clip-path: inset(50%);
     white-space: nowrap;
   }
-  .item { padding: 0; width: var(--tap-min); }
+  .item:not(.active) { padding: 0; width: var(--tap-min); }
 }

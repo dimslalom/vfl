@@ -6,7 +6,9 @@
 // from what a card actually does.
 
 import { getCardSpecialties } from '../../../shared/src/data/specialties.js';
-import { hashSeed, mulberry32, pickN } from '../../../shared/src/engine/perfectRun.js';
+import {
+  currentRound, hashSeed, mulberry32, pickMaps, pickN, seedOf, simMap, teamSimulationPower,
+} from '../../../shared/src/engine/perfectRun.js';
 
 export const TACTIC_HAND_MAX = 7;
 export const TACTIC_HAND_FLOOR = 2;
@@ -25,6 +27,11 @@ const MAP_ART = {
   Split:    { mark: 'S', hue: '#bd8295', image: '/assets/maps/split.webp', agents: ['Raze', 'Cypher', 'Viper'] },
   Sunset:   { mark: 'U', hue: '#ce8068', image: '/assets/maps/sunset.webp', agents: ['Cypher', 'Breach', 'Omen'] },
   Icebox:   { mark: 'I', hue: '#75a8ca', image: '/assets/maps/icebox.webp', agents: ['Jett', 'Sage', 'Viper'] },
+  Abyss:    { mark: 'Y', hue: '#6f86c4', image: '/assets/maps/abyss.webp', agents: ['Jett', 'Omen', 'Sova'] },
+  Breeze:   { mark: 'Z', hue: '#6fb5b0', image: '/assets/maps/breeze.webp', agents: ['Jett', 'Viper', 'Cypher'] },
+  Corrode:  { mark: 'C', hue: '#a184b8', image: '/assets/maps/corrode.webp', agents: ['Neon', 'Viper', 'Fade'] },
+  Fracture: { mark: 'F', hue: '#c4a46a', image: '/assets/maps/fracture.webp', agents: ['Breach', 'Brimstone', 'Raze'] },
+  Pearl:    { mark: 'P', hue: '#5fa6b8', image: '/assets/maps/pearl.webp', agents: ['Astra', 'Fade', 'Killjoy'] },
 };
 
 // Three learnable identities per place. A year changes exactly three active
@@ -65,6 +72,31 @@ const MAP_RULES = {
     { key: 'long-sightlines', label: 'LONG SIGHTLINES', roles: ['Duelist', 'Sentinel'], mode: 'pair' },
     { key: 'utility-wall', label: 'UTILITY WALL', roles: ['Controller', 'Sentinel'], mode: 'pair' },
     { key: 'first-contact', label: 'FIRST CONTACT', roles: ['Duelist', 'Initiator'], mode: 'pair' },
+  ],
+  Abyss: [
+    { key: 'no-walls', label: 'NO WALLS', roles: ['Duelist', 'Sentinel'], mode: 'pair' },
+    { key: 'edge-control', label: 'EDGE CONTROL', roles: ['Controller', 'Initiator'], mode: 'pair' },
+    { key: 'full-drop', label: 'FULL DROP', roles: ROLE_ORDER, mode: 'coverage' },
+  ],
+  Breeze: [
+    { key: 'long-range', label: 'LONG RANGE', roles: ['Duelist', 'Initiator'], mode: 'pair' },
+    { key: 'wide-sites', label: 'WIDE SITES', roles: ROLE_ORDER, mode: 'coverage' },
+    { key: 'door-wars', label: 'DOOR WARS', roles: ['Sentinel', 'Controller'], mode: 'pair' },
+  ],
+  Corrode: [
+    { key: 'tower-climb', label: 'TOWER CLIMB', roles: ['Duelist', 'Controller'], mode: 'pair' },
+    { key: 'lockdown', label: 'LOCKDOWN', roles: ['Sentinel', 'Initiator'], mode: 'pair' },
+    { key: 'every-gate', label: 'EVERY GATE', roles: ROLE_ORDER, mode: 'coverage' },
+  ],
+  Fracture: [
+    { key: 'pincer', label: 'PINCER', roles: ['Duelist', 'Initiator'], mode: 'pair' },
+    { key: 'rope-control', label: 'ROPE CONTROL', roles: ['Controller', 'Sentinel'], mode: 'pair' },
+    { key: 'both-sides', label: 'BOTH SIDES', roles: ROLE_ORDER, mode: 'coverage' },
+  ],
+  Pearl: [
+    { key: 'mid-fight', label: 'MID FIGHT', roles: ['Initiator', 'Controller'], mode: 'pair' },
+    { key: 'long-b', label: 'LONG B', roles: ['Duelist', 'Sentinel'], mode: 'pair' },
+    { key: 'deep-hold', label: 'DEEP HOLD', roles: ['Sentinel', 'Controller'], mode: 'pair' },
   ],
 };
 
@@ -141,50 +173,56 @@ export function recentMapSelections(seed, orgId, year = 1, count = 3) {
   return pickN(rng, MAP_NAMES, count);
 }
 
+// A tactic never adds power. It multiplies what the map gave you, so the same
+// card can be weak in one squad and huge in another. `base` is the multiplier
+// it brings alone and every other field adds to it, which is what roster fit
+// is worth. Printed rules and keys stay fixed: a played card keeps its meaning.
 export const TACTICS = {
   pocket: {
     key: 'pocket', name: 'POCKET STRAT', tier: 'common', tag: 'read',
-    role: null, rule: 'IGL + MAP', base: 1.25,
+    role: null, rule: 'IGL + MAP', base: 0.3,
   },
   hit: {
     key: 'hit', name: 'HIT THE SITE', tier: 'common', tag: 'tempo',
-    role: 'Duelist', rule: '2× DLT', base: 0.7, perRole: 0.75,
+    role: 'Duelist', rule: '2× DLT', base: 0.1, perRole: 0.4,
   },
   layers: {
     key: 'layers', name: 'UTILITY LAYERS', tier: 'common', tag: 'structure',
-    role: 'Controller', rule: 'CTL + INIT', base: 0.8, partner: 'Initiator', pair: 1.8,
+    role: 'Controller', rule: 'CTL + INIT', base: 0.2, partner: 'Initiator', pair: 0.9,
   },
   retake: {
     key: 'retake', name: 'RETAKE PROTOCOL', tier: 'common', tag: 'structure',
-    role: 'Sentinel', rule: 'SEN + CTL', base: 0.8, partner: 'Controller', pair: 1.8,
+    role: 'Sentinel', rule: 'SEN + CTL', base: 0.2, partner: 'Controller', pair: 0.9,
   },
   contact: {
     key: 'contact', name: 'CONTACT PLAY', tier: 'uncommon', tag: 'read',
-    role: 'Initiator', rule: 'INIT → FLICK', base: 1.2, specialty: 'flick', specialtyBonus: 0.8,
+    role: 'Initiator', rule: 'INIT → FLICK', base: 0.2, specialty: 'flick', specialtyBonus: 0.45,
   },
   flood: {
     key: 'flood', name: 'FLOOD THE GAP', tier: 'uncommon', tag: 'tempo',
-    role: 'Duelist', rule: 'DLT + FLEX', base: 1.1, specialty: 'flex', specialtyBonus: 1.2,
+    role: 'Duelist', rule: 'DLT + FLEX', base: 0.2, specialty: 'flex', specialtyBonus: 0.6,
   },
   defaults: {
     key: 'defaults', name: 'DEEP DEFAULT', tier: 'uncommon', tag: 'read',
-    role: 'Sentinel', rule: '4 ROLES', base: 0.6, coverage: 2.4,
+    role: 'Sentinel', rule: '4 ROLES', base: 0.1, coverage: 1.1,
   },
   calling: {
     key: 'calling', name: 'SECOND CALL', tier: 'rare', tag: 'read',
-    role: null, rule: 'MASTERMIND ×2', base: 1.0, specialty: 'mastermind', specialtyBonus: 2.2,
+    role: null, rule: 'MASTERMIND ×2', base: 0.2, specialty: 'mastermind', specialtyBonus: 1.2,
   },
   noRespect: {
-    key: 'no-respect', name: 'NO RESPECT', tier: 'rare', tag: 'tempo',
-    role: null, rule: 'FLICK LEADS', base: 0.8, specialty: 'flick', specialtyBonus: 1.5,
+    key: 'noRespect', name: 'NO RESPECT', tier: 'rare', tag: 'tempo',
+    role: null, rule: 'FLICK LEADS', base: 0.2, specialty: 'flick', specialtyBonus: 0.8,
   },
   lockout: {
     key: 'lockout', name: 'LOCK THE MAP', tier: 'rare', tag: 'structure',
-    role: null, rule: 'MAP RULE ×2', base: 0.5, mapMultiplier: 0.75,
+    role: null, rule: 'MAP RULE ×2', base: 0.1, mapMultiplier: 0.4,
   },
 };
 
 export const TACTIC_LIST = Object.values(TACTICS);
+// Hands saved before this key was fixed still hold the old spelling.
+TACTICS['no-respect'] = TACTICS.noRespect;
 
 function hasSpec(card, key) {
   return getCardSpecialties(card).some(spec => spec.key === key);
@@ -192,29 +230,54 @@ function hasSpec(card, key) {
 
 export function tacticActivation(instance, roster, mapActivationResult = null) {
   const tactic = TACTICS[instance?.key];
-  if (!tactic) return { bonus: 0, activeIds: [], tag: null };
+  if (!tactic) return { mult: 1, activeIds: [], tag: null };
   const active = new Set();
-  let bonus = tactic.base ?? 0;
+  let mult = 1 + (tactic.base ?? 0);
   if (tactic.role) {
     const roleCards = roster.filter(card => card.role === tactic.role);
     roleCards.forEach(card => active.add(card.id));
-    bonus += roleCards.length * (tactic.perRole ?? 0.35);
+    mult += roleCards.length * (tactic.perRole ?? 0.15);
   }
   if (tactic.partner && roster.some(card => card.role === tactic.role) && roster.some(card => card.role === tactic.partner)) {
     roster.filter(card => card.role === tactic.role || card.role === tactic.partner).forEach(card => active.add(card.id));
-    bonus += tactic.pair ?? 0;
+    mult += tactic.pair ?? 0;
   }
   if (tactic.coverage && new Set(roster.map(card => card.role)).size >= 4) {
     roster.forEach(card => active.add(card.id));
-    bonus += tactic.coverage;
+    mult += tactic.coverage;
   }
   if (tactic.specialty) {
     const specialists = roster.filter(card => hasSpec(card, tactic.specialty));
     specialists.forEach(card => active.add(card.id));
-    bonus += specialists.length * (tactic.specialtyBonus ?? 0);
+    mult += specialists.length * (tactic.specialtyBonus ?? 0);
   }
-  if (tactic.mapMultiplier && mapActivationResult) bonus += mapActivationResult.bonus * tactic.mapMultiplier;
-  return { bonus, activeIds: [...active], tag: tactic.tag, tactic };
+  if (tactic.mapMultiplier && mapActivationResult) mult += mapActivationResult.bonus * tactic.mapMultiplier;
+  return { mult, activeIds: [...active], tag: tactic.tag, tactic };
+}
+
+// What a side takes into a map: the base every squad brings plus the map, times
+// the tactic, then the counter on top. Every screen and every simulated series
+// goes through here, so a number on a card is the number that plays.
+export const BASE_EDGE = 2;
+export const EDGE_SCALE = 10;
+
+export function seriesEdge(mapResult, tacticResult = null, clash = 0) {
+  return (BASE_EDGE + (mapResult?.bonus ?? 0)) * (tacticResult?.mult ?? 1) + clash;
+}
+
+// Edge as players read it: 62 rather than 6.2.
+export function edgePoints(value) {
+  return Math.round(value * EDGE_SCALE);
+}
+
+// The same sum, one beat at a time, for the reveal after a tactic is played.
+export function edgeSteps(mapResult, tacticResult, clash = 0) {
+  return [
+    { key: 'base', value: edgePoints(BASE_EDGE), total: edgePoints(BASE_EDGE) },
+    { key: 'map', value: edgePoints(mapResult?.bonus ?? 0), total: edgePoints(seriesEdge(mapResult)) },
+    { key: 'tactic', value: tacticResult?.mult ?? 1, total: edgePoints(seriesEdge(mapResult, tacticResult)) },
+    { key: 'clash', value: edgePoints(clash), total: edgePoints(seriesEdge(mapResult, tacticResult, clash)) },
+  ];
 }
 
 const COUNTERS = { tempo: 'read', read: 'structure', structure: 'tempo' };
@@ -309,7 +372,7 @@ export function npcTacticChoices(rng, roster, map) {
   ));
   const mapResult = mapActivation(roster, map, 0);
   return choices.sort((a, b) => (
-    tacticActivation(b, roster, mapResult).bonus - tacticActivation(a, roster, mapResult).bonus
+    tacticActivation(b, roster, mapResult).mult - tacticActivation(a, roster, mapResult).mult
   ) || a.key.localeCompare(b.key));
 }
 
@@ -329,4 +392,105 @@ export function chooseNpcMap(maps, roster, masteryByName = {}) {
     mapActivation(roster, b, masteryByName[b.name] ?? 0).bonus
     - mapActivation(roster, a, masteryByName[a.name] ?? 0).bonus
   ) || a.name.localeCompare(b.name))[0];
+}
+
+// Plays a series whose map order is already settled. Each side's tactic is
+// asked for map by map, in A-then-B order, because npcTactic draws from the
+// rng and a Daily or a lobby replay depends on that order staying fixed.
+export function playCardSeries(rng, {
+  teamA, teamB, bestOf, maps, masteryA, masteryB, tacticA, tacticB,
+}) {
+  const needed = Math.ceil(bestOf / 2);
+  const played = [];
+  let scoreA = 0;
+  let scoreB = 0;
+
+  for (const map of maps) {
+    if (scoreA >= needed || scoreB >= needed) break;
+    const mapA = mapActivation(teamA.roster, map, masteryA[map.name]);
+    const mapB = mapActivation(teamB.roster, map, masteryB[map.name]);
+    const cardA = tacticA(map);
+    const cardB = tacticB(map);
+    const activationA = tacticActivation(cardA, teamA.roster, mapA);
+    const activationB = tacticActivation(cardB, teamB.roster, mapB);
+    const clash = tacticClash(activationA, activationB);
+    const result = simMap(
+      rng,
+      teamSimulationPower(teamA) + seriesEdge(mapA, activationA, clash.player),
+      teamSimulationPower(teamB) + seriesEdge(mapB, activationB, clash.opponent),
+      teamA.roster,
+      teamB.roster,
+      0,
+      teamA.iglId ?? null,
+      teamB.iglId ?? null,
+      { powerDivisor: ENDLESS_POWER_DIVISOR },
+    );
+    played.push({ map: map.name, a: result.a, b: result.b, tacticA: cardA, tacticB: cardB });
+    if (result.winA) scoreA += 1;
+    else scoreB += 1;
+  }
+
+  return { maps: played, scoreA, scoreB, winner: scoreA > scoreB ? teamA.id : teamB.id };
+}
+
+// Resolve an off-screen Endless round with the same cards the player sees:
+// seed decides first pick, both squads pick for roster fit, IGLs generate two
+// contextual calls, and the same soft counter triangle modifies the map. The
+// data is intentionally not stored on the bracket - the result is the durable
+// state, while each map's preparation is consumed as it is played.
+export function resolveEndlessNpcMatches(tour, rng, runSeed, year, yearMapByName) {
+  const stage = currentRound(tour);
+  for (const match of stage.matches) {
+    if (match.winner) continue;
+    const teamA = tour.teams[match.a];
+    const teamB = tour.teams[match.b];
+    const dealt = pickMaps(rng, match.bestOf).map(name => yearMapByName.get(name));
+    const masteryA = Object.fromEntries(dealt.map(map => [map.name, rivalMapMastery(runSeed, teamA.id, map.name, year)]));
+    const masteryB = Object.fromEntries(dealt.map(map => [map.name, rivalMapMastery(runSeed, teamB.id, map.name, year)]));
+    const aPicksFirst = seedOf(tour, teamA.id) < seedOf(tour, teamB.id);
+    const firstTeam = aPicksFirst ? teamA : teamB;
+    const secondTeam = aPicksFirst ? teamB : teamA;
+    const firstMastery = aPicksFirst ? masteryA : masteryB;
+    const secondMastery = aPicksFirst ? masteryB : masteryA;
+    // Same alternating draft the player gets: A B (A B), then the decider.
+    const picks = [];
+    for (let turn = 0; turn < mapPicksPerSide(match.bestOf) * 2; turn += 1) {
+      const firstTurn = turn % 2 === 0;
+      const pick = chooseNpcMap(
+        dealt.filter(map => !picks.includes(map)),
+        (firstTurn ? firstTeam : secondTeam).roster,
+        firstTurn ? firstMastery : secondMastery,
+      );
+      if (!pick) break;
+      picks.push(pick);
+    }
+    const maps = [...picks, ...dealt.filter(map => !picks.includes(map))];
+    const result = playCardSeries(rng, {
+      teamA, teamB, bestOf: match.bestOf, maps, masteryA, masteryB,
+      tacticA: map => npcTactic(rng, teamA.roster, map),
+      tacticB: map => npcTactic(rng, teamB.roster, map),
+    });
+
+    match.maps = result.maps.map(({ map, a, b }) => ({ map, a, b }));
+    match.scoreA = result.scoreA;
+    match.scoreB = result.scoreB;
+    match.winner = result.winner;
+  }
+}
+
+// Lobby picks are made in secret, so two squads can want the same map. The
+// higher seed's list is read first on each turn; a side whose next pick has
+// gone takes its next choice, then `fallback` once its list runs out.
+export function mergeMapPicks(dealt, firstPicks, secondPicks, perSide, fallback) {
+  const taken = [];
+  const remaining = () => dealt.filter(map => !taken.includes(map));
+  for (let turn = 0; turn < perSide * 2; turn += 1) {
+    const list = turn % 2 === 0 ? firstPicks : secondPicks;
+    const pick = (list ?? [])
+      .map(name => remaining().find(map => map.name === name))
+      .find(Boolean) ?? fallback(remaining(), turn % 2 === 0);
+    if (!pick) break;
+    taken.push(pick);
+  }
+  return [...taken, ...remaining()];
 }

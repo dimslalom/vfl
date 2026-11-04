@@ -1,6 +1,6 @@
 import { useDeferredValue, useState } from 'react';
-import { flushSync } from 'react-dom';
 import PlayerCard from '../../shared/src/components/PlayerCard';
+import { t } from '../lib/i18n';
 import CardFocusOverlay from '../components/CardFocusOverlay';
 import AppFrame from '../components/AppFrame';
 import StatusStrip from '../components/StatusStrip';
@@ -9,7 +9,6 @@ import CountryFlag from '../../shared/src/components/CountryFlag';
 import allCards from '../../shared/src/data/cards.json';
 import { assetPath, countryName, roleAbbr, thumbnailSrc } from '../../shared/src/lib/utils';
 import { getCardSpecialties } from '../../shared/src/data/specialties';
-import useReducedMotion from '../../shared/src/lib/useReducedMotion';
 import styles from './Collection.module.css';
 
 const TIER_ORDER = ['bronze', 'silver', 'gold', 'icon', 'legendary', 'prestige', 'iconic'];
@@ -37,29 +36,13 @@ export default function Collection() {
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
   const [focusedCard, setFocusedCard] = useState(null);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const reducedMotion = useReducedMotion();
 
   const deferredQuery = fold(useDeferredValue(query).trim());
 
-  const morphTo = (nextCard, slotId) => {
-    const slot = document.getElementById(slotId);
-    if (!document.startViewTransition || !slot || reducedMotion) {
-      setFocusedCard(nextCard);
-      return;
-    }
-    const opening = nextCard !== null;
-    if (opening) slot.style.viewTransitionName = 'focused-card';
-    const transition = document.startViewTransition(() => {
-      flushSync(() => setFocusedCard(nextCard));
-      slot.style.viewTransitionName = opening ? '' : 'focused-card';
-    });
-    transition.finished.finally(() => {
-      slot.style.viewTransitionName = '';
-    });
-  };
-
-  const openCard = (card) => morphTo(card, `card-slot-${card.id}`);
-  const closeCard = () => focusedCard && morphTo(null, `card-slot-${focusedCard.id}`);
+  // One animation system owns inspection. The overlay fades independently;
+  // a browser-wide view transition would also crossfade the whole library.
+  const openCard = card => setFocusedCard(card);
+  const closeCard = () => setFocusedCard(null);
 
   const filtered = allCards.filter((card) => {
     if (tierFilter !== 'All' && card.tier !== tierFilter) return false;
@@ -80,13 +63,13 @@ export default function Collection() {
 
   return (
     <AppFrame>
-      <StatusStrip crumb="Player Library" count={`${filtered.length} Players`}>
-          <div className={styles.viewToggle} role="group" aria-label="View mode">
+      <StatusStrip crumb={t('Player Library')} count={t('{n} players', { n: filtered.length })}>
+          <div className={styles.viewToggle} role="group" aria-label={t('View mode')}>
             <button
               className={[styles.iconToggleBtn, viewMode === 'grid' ? styles.toggleActive : ''].join(' ')}
               onClick={() => { setViewMode('grid'); setVisibleCount(PAGE_SIZE); }}
               aria-pressed={viewMode === 'grid'}
-              aria-label="Grid view"
+              aria-label={t('Grid view')}
             >
               <svg viewBox="0 0 20 20" width="16" height="16" fill="currentColor">
                 <rect x="2.5" y="2.5" width="6.5" height="6.5" rx="1" />
@@ -99,7 +82,7 @@ export default function Collection() {
               className={[styles.iconToggleBtn, viewMode === 'list' ? styles.toggleActive : ''].join(' ')}
               onClick={() => { setViewMode('list'); setVisibleCount(PAGE_SIZE); }}
               aria-pressed={viewMode === 'list'}
-              aria-label="List view"
+              aria-label={t('List view')}
             >
               <svg viewBox="0 0 20 20" width="16" height="16" fill="currentColor">
                 <rect x="2.5" y="3" width="15" height="3" rx="1" />
@@ -114,16 +97,16 @@ export default function Collection() {
           <input
             type="search"
             className={styles.search}
-            placeholder="Search players, teams, countries"
+            placeholder={t('Search players, teams, countries')}
             value={query}
             onChange={(e) => { setQuery(e.target.value); setVisibleCount(PAGE_SIZE); }}
-            aria-label="Search players"
+            aria-label={t('Search players')}
           />
           <div className={styles.filters}>
-            <FilterGroup label="Tier" options={TIERS} value={tierFilter} onChange={(value) => { setTierFilter(value); setVisibleCount(PAGE_SIZE); }} />
-            <FilterGroup label="Region" options={REGIONS} value={regionFilter} onChange={(value) => { setRegionFilter(value); setVisibleCount(PAGE_SIZE); }} />
-            <FilterGroup label="Role" options={ROLES} value={roleFilter} onChange={(value) => { setRoleFilter(value); setVisibleCount(PAGE_SIZE); }} />
-            <FilterGroup label="League" options={LEAGUES} value={leagueFilter} onChange={(value) => { setLeagueFilter(value); setVisibleCount(PAGE_SIZE); }} />
+            <FilterGroup label={t('Tier')} options={TIERS} value={tierFilter} onChange={(value) => { setTierFilter(value); setVisibleCount(PAGE_SIZE); }} />
+            <FilterGroup label={t('Region')} options={REGIONS} value={regionFilter} onChange={(value) => { setRegionFilter(value); setVisibleCount(PAGE_SIZE); }} />
+            <FilterGroup label={t('Role')} options={ROLES} value={roleFilter} onChange={(value) => { setRoleFilter(value); setVisibleCount(PAGE_SIZE); }} />
+            <FilterGroup label={t('League')} options={LEAGUES} value={leagueFilter} onChange={(value) => { setLeagueFilter(value); setVisibleCount(PAGE_SIZE); }} />
           </div>
         </div>
 
@@ -152,19 +135,19 @@ export default function Collection() {
               <table className={styles.denseTable}>
                 <thead>
                   <tr>
-                    <th>Player</th>
-                    <th>Org</th>
-                    <th>Role</th>
-                    <th>Region</th>
-                    <th>Tier</th>
-                    <th>Specialties</th>
+                    <th>{t('Player')}</th>
+                    <th>{t('Org')}</th>
+                    <th>{t('Role')}</th>
+                    <th>{t('Region')}</th>
+                    <th>{t('Tier')}</th>
+                    <th>{t('Specialties')}</th>
                     <th>OVR</th>
                     <th>AIM</th>
                     <th>POS</th>
                     <th>ABL</th>
                     <th>MNT</th>
                     <th>SYN</th>
-                    <th>Action</th>
+                    <th>{t('Action')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -228,7 +211,7 @@ export default function Collection() {
                         <td className={styles.statCell}>{card.stats?.mentality ?? '-'}</td>
                         <td className={styles.statCell}>{card.stats?.synergy ?? '-'}</td>
                         <td>
-                          <button className={styles.inspectBtn}>Inspect</button>
+                          <button className={styles.inspectBtn}>{t('Inspect')}</button>
                         </td>
                       </tr>
                     );
@@ -245,7 +228,7 @@ export default function Collection() {
               className={styles.loadMoreBtn}
               onClick={() => setVisibleCount(count => count + PAGE_SIZE)}
             >
-              Load {Math.min(PAGE_SIZE, remaining)} more players
+              {t('Load {n} more players', { n: Math.min(PAGE_SIZE, remaining) })}
             </button>
           </div>
         )}
@@ -253,9 +236,9 @@ export default function Collection() {
         {/* Announced so a filter change is perceivable without watching the
             grid - the result count is the only feedback the search gives. */}
         <div className={styles.footStrip} role="status" aria-live="polite">
-          <span>{anyFilter ? 'Filters active' : 'All players'}</span>
+          <span>{anyFilter ? t('Filters active') : t('All players')}</span>
           <span className={styles.footCount}>
-            {visibleCards.length} of {filtered.length} shown ({viewMode === 'list' ? 'List View' : 'Grid View'})
+            {t('{n} of {total} shown', { n: visibleCards.length, total: filtered.length })} ({viewMode === 'list' ? t('List view') : t('Grid view')})
           </span>
         </div>
 
@@ -275,7 +258,7 @@ function FilterGroup({ label, options, value, onChange }) {
             onClick={() => onChange(opt)}
             className={[styles.chip, value === opt ? styles.chipActive : ''].join(' ')}
           >
-            {opt}
+            {t(opt)}
           </button>
         ))}
       </div>

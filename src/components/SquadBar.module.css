@@ -107,6 +107,17 @@
 
 .actions > * { white-space: nowrap; }
 
+/* Hung beside the primary button rather than laid out with it, so the primary
+   stays centred over the dock whatever else a phase offers. */
+.actionSide {
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 10px;
+}
+
 /* ── Pack control: its own corner, not part of the dock's row ── */
 /* Pinned to the bar's own bottom-right, sized like the dock's own cards
    (see [data-large] below, matching SquadDock's normal/large chip scale) and
@@ -233,6 +244,15 @@
      (padding out, margin back) without moving anything. */
   .dockSlot { overflow-x: auto; padding-bottom: 10px; margin-bottom: -10px; }
   .actions { gap: 6px; }
+  /* No room either side of a centred button at phone width: the secondaries
+     stack above it instead, which still leaves the primary where it was. */
+  .actionSide {
+    left: 50%;
+    top: auto;
+    bottom: calc(100% + 6px);
+    transform: translateX(-50%);
+    gap: 6px;
+  }
   .bankCorners { right: 14px; bottom: 10px; gap: 8px; }
   .bankCorners[data-large='true'] { bottom: 10px; }
   .packCorner { width: 64px; height: 93px; }

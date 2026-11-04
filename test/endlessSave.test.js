@@ -12,7 +12,7 @@ import {
   saveEndlessRun,
   serializeEndlessRun,
 } from '../src/lib/endlessRunSave.js';
-import { migratePerfectRunSaves } from '../src/lib/perfectRunSaves.js';
+import { PERFECT_RUN_SAVE_VERSION, migratePerfectRunSaves } from '../src/lib/perfectRunSaves.js';
 
 function fakeStorage(seed = {}) {
   const map = new Map(Object.entries(seed));
@@ -171,7 +171,7 @@ test('v2 records migrate to v3 with the old endless score kept as an archive', (
   const migrated = migratePerfectRunSaves({
     saveVersion: 2, bestScore: 500, endlessV2: { bestScore: 4200, bestYears: 6 },
   });
-  assert.equal(migrated.saveVersion, 3);
+  assert.equal(migrated.saveVersion, PERFECT_RUN_SAVE_VERSION);
   assert.equal(migrated.bestScore, 500);
   assert.deepEqual(migrated.endlessV2, { bestScore: 4200, bestYears: 6 }, 'V2 record is preserved, not deleted');
   assert.deepEqual(migrated.endlessV3, {
@@ -195,4 +195,98 @@ test('the records blob stays small enough to parse on the render path', () => {
     enc: { bestWins: 5, bestFinish: 'Champion', titles: 2, flawless: 1 },
   });
   assert.ok(JSON.stringify(full).length < 4000);
+});
+
+// Real active brackets and map results exercise card hydration, including
+// developed opponents and MVP references nested in a locked outcome.
+test('a losing map, its committed tactic, and RNG survive repeated reloads', async () => {
+  const { mulberry32, rngState, restoreRng, simMap } = await import('../shared/src/engine/perfectRun.js');
+  const { buildEndlessBracket } = await import('../src/engine/endless/field.js');
+  const run = sampleRun();
+  const rng = mulberry32(42);
+  const roster = run.squad.starters;
+  const tour = buildEndlessBracket(rng, cards, new Set(roster.map(card => card.id)), {
+    id: 'player', roster, power: 60, isPlayer: true, name: 'YOU',
+  }, 0, { kind: 'masters', dev: {} });
+  const opponent = Object.values(tour.teams).find(team => team.id !== 'player');
+  const result = simMap(rng, 1, 1000, roster, opponent.roster);
+  assert.equal(result.winA, false);
+  const tactic = { uid: 'spent-1', tacticId: 'retake' };
+  run.rngState = rngState(rng);
+  run.active = {
+    phase: 'run', view: 'match', boardState: 'pairings', tour,
+    seriesPlan: { sequence: [{ side: 'player', id: 'lotus' }], order: ['lotus'] },
+    pendingMap: { result, seriesMaps: ['Lotus'], resultsSoFar: [], preparation: { playerCard: tactic }, remainingHand: [] },
+    mapResults: [], pendingReward: null,
+  };
+  const storage = fakeStorage();
+  saveEndlessRun(run, storage);
+  const first = loadEndlessRun(cards, storage);
+  assert.deepEqual(first.active, run.active);
+  assert.equal(first.rngState, run.rngState);
+  assert.equal(first.active.pendingMap.result.winA, false);
+  assert.equal(first.active.pendingMap.preparation.playerCard.uid, 'spent-1');
+  const loadedRng = restoreRng(first.rngState);
+  assert.equal(loadedRng(), rng());
+  saveEndlessRun(first, storage);
+  const second = loadEndlessRun(cards, storage);
+  assert.deepEqual(second.active, first.active);
+  assert.equal(second.rngState, first.rngState);
+  // Base card images and stat payloads are references, including inside MVPs.
+  const raw = storage.getItem(ENDLESS_RUN_KEY);
+  assert.equal(raw.includes('"photo"'), false);
+});
+
+test('developed opponent ratings are preserved in active saves', () => {
+  const run = sampleRun();
+  const base = run.squad.roster[0];
+  const developed = { ...base, rating: base.rating - 3, stats: { ...base.stats, aim: base.stats.aim + 4 } };
+  run.active = { phase: 'run', tour: { teams: { npc: { roster: [developed] } } } };
+  const loaded = hydrateEndlessRun(serializeEndlessRun(run), cards);
+  assert.deepEqual(loaded.active.tour.teams.npc.roster[0], developed);
+  assert.equal(base.stats.aim, cards.find(card => card.id === base.id).stats.aim);
+});
+
+test('reward offers, partial selections, pack costs and completed results survive reloads', () => {
+  const run = sampleRun();
+  run.packs = 1;
+  run.active = {
+    phase: 'run', view: 'reward', rewardStep: 'tactics',
+    pendingReward: { remaining: 1, results: [{ a: 13, b: 9, winA: true }] },
+    tacticOffers: [{ uid: 'a' }, { uid: 'b' }, { uid: 'c' }],
+    rewardTacticPicks: [{ uid: 'b' }], pendingTactics: [],
+  };
+  const storage = fakeStorage();
+  saveEndlessRun(run, storage);
+  assert.deepEqual(loadEndlessRun(cards, storage).active, run.active);
+  // Once paid, the saved state contains the new balance and no unpaid reward.
+  run.packs += 1;
+  run.active = { phase: 'result', currentResult: run.tourResults[0], pendingReward: null };
+  saveEndlessRun(run, storage);
+  const loaded = loadEndlessRun(cards, storage);
+  assert.equal(loaded.packs, 2);
+  assert.equal(loaded.active.pendingReward, null);
+  assert.equal(loaded.tourResults.length, 1);
+  assert.equal(loaded.active.currentResult.champion, true);
+});
+
+test('resume handoffs skip presentation and never repay a finished tournament', async () => {
+  const { endlessResumeAction, normalizeEndlessCheckpoint } = await import('../src/lib/endlessRunSave.js');
+  assert.equal(endlessResumeAction({ phase: 'run', pendingMap: { result: {} } }), 'settle-map');
+  assert.equal(endlessResumeAction({ phase: 'run', view: 'tactic', tacticReveal: {} }), 'play-committed-map');
+  assert.equal(endlessResumeAction({ phase: 'run', view: 'maps', seriesPlan: { order: ['lotus'] } }), 'prepare-map');
+  assert.equal(endlessResumeAction({ phase: 'run', view: 'maps', seriesPlan: { order: null } }), null);
+  assert.equal(endlessResumeAction({ phase: 'run', view: 'match', pendingBoardReturn: [{}] }), null);
+  assert.equal(endlessResumeAction({ phase: 'run', view: 'match', pendingReward: {} }), null);
+  assert.equal(endlessResumeAction({ phase: 'run', view: 'reward', rewardStep: 'tactics', rewardTacticPicks: [{}, {}] }), 'settle-tactics');
+  assert.equal(endlessResumeAction({ phase: 'run', view: 'reward', rewardStep: 'replace', rewardTacticPicks: [{}, {}] }), null);
+  assert.equal(endlessResumeAction({ phase: 'run', view: 'reward', pendingRewardChoice: { kind: 'player' } }), 'settle-player-pack');
+  assert.equal(endlessResumeAction({ phase: 'run', view: 'reward', pendingRewardChoice: { kind: 'replace', outgoingUid: 'spent' } }), 'settle-replacement');
+  assert.equal(endlessResumeAction({ phase: 'result', view: 'match', pendingMap: {} }), null);
+  const travel = normalizeEndlessCheckpoint({ boardState: 'travel', seriesActive: true });
+  assert.equal(travel.boardState, 'pairings');
+  assert.equal(travel.seriesActive, false);
+  const revealing = normalizeEndlessCheckpoint({ boardState: 'revealing', tour: { roundIdx: 0, rounds: [{ matches: [{}, {}, {}] }] } });
+  assert.equal(revealing.boardState, 'complete');
+  assert.equal(revealing.revealCount, 3);
 });

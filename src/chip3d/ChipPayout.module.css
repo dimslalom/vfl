@@ -1,0 +1,28 @@
+/* A light tag on the dark board, so it reads as a label on the chip, not a panel. */
+.card {
+  position: absolute;
+  z-index: 3;
+  transform: translateY(calc(-100% - 10px));
+  display: grid;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--ink);
+  color: var(--bg);
+  pointer-events: none;
+}
+.card::after {
+  content: '';
+  position: absolute;
+  left: calc(var(--tail, 40px) - 7px);
+  bottom: -7px;
+  width: 14px;
+  height: 7px;
+  background: inherit;
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+.name { justify-self: start; font-size: var(--fs-micro); letter-spacing: 0.12em; }
+.card[data-tier='rare'] .name { padding: 2px 6px; background: var(--gold); color: #211b06; }
+.ladder { margin: 0; padding: 0; list-style: none; display: flex; gap: var(--sp-3); }
+.ladder li { display: flex; align-items: center; gap: var(--sp-1); }
+.icons { display: flex; gap: 2px; }
+.mult { font-size: var(--fs-title); line-height: 1; font-variant-numeric: tabular-nums; }

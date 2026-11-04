@@ -1,5 +1,6 @@
 import useCardTilt from '../../shared/src/lib/useCardTilt';
 import { assetPath } from '../../shared/src/lib/utils';
+import { t } from '../lib/i18n';
 import { TACTIC_HAND_MAX } from '../engine/endless/seriesCards.js';
 import { TacticCard } from './SeriesCardTable.jsx';
 import styles from './SquadBar.module.css';
@@ -21,6 +22,9 @@ export default function SquadBar({
   // themselves off the same card footprint the dock is currently using, on
   // the manage screen where the squad (and its cards) are bigger.
   large = false,
+  // Secondary actions hang off the primary slot, so adding or removing one
+  // never moves the primary button: only its label changes between phases.
+  side = null,
   children,
 }) {
   return (
@@ -36,7 +40,10 @@ export default function SquadBar({
           )}
         </div>
       )}
-      <div className={styles.actions}>{children}</div>
+      <div className={styles.actions}>
+        {children}
+        {side && <div className={styles.actionSide}>{side}</div>}
+      </div>
     </div>
   );
 }
@@ -66,8 +73,8 @@ function PackCorner({ packs, onOpenPack, packActionLabel, large }) {
       onBlur={onBlur}
       data-bank="pack"
       aria-label={onOpenPack
-        ? (packs > 0 ? `${packActionLabel} - ${packs} banked` : 'No packs banked')
-        : `${packs} pack${packs === 1 ? '' : 's'} banked`}
+        ? (packs > 0 ? t('{action}: {n} banked', { action: packActionLabel, n: packs }) : t('No packs banked'))
+        : (packs === 1 ? t('1 pack banked') : t('{n} packs banked', { n: packs }))}
     >
       <span ref={tiltRef} className={styles.packTilt}>
         <img className={styles.packThumb} src={assetPath('/assets/brand/gauntlet-icon.webp')} alt="" aria-hidden="true" draggable={false} />
@@ -88,7 +95,7 @@ function TacticDock({ tactics, arrivingUid, large }) {
       className={styles.tacticDock}
       data-large={large ? 'true' : undefined}
       data-bank="tactic"
-      aria-label={`${tactics.length} of ${TACTIC_HAND_MAX} tactics in hand`}
+      aria-label={t('{n} of {max} tactics in hand', { n: tactics.length, max: TACTIC_HAND_MAX })}
     >
       {tactics.length === 0 && <span className={styles.tacticEmpty} aria-hidden="true" />}
       {tactics.map(card => (

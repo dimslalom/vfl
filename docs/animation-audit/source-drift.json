@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-11-02T07:31:11.470740+00:00",
+  "changedDuringAudit": [
+    {
+      "path": "src/i18n/es.js",
+      "inventorySha256": "bf131768279b861f03350ba25e28d53cf8b90fb1e655e209358d0c6c3a0b3bc8",
+      "finalSha256": "998cb2658012b8214e2100504cef5afaadbb0bab00d33d22bc1a274bb71614f3"
+    },
+    {
+      "path": "src/i18n/pt.js",
+      "inventorySha256": "90c46640eac4da5c07f18f0f895460ce36828aaf635e9b1ae23534f324b43f92",
+      "finalSha256": "663e2d9fd847e19615534acf5a62ce5c0546e2105f316470f4fd2d925b6d547d"
+    },
+    {
+      "path": "src/lib/endlessRunSave.js",
+      "inventorySha256": "822a93387ca90f6b3e587bec6460b044ae6941369c3a8c92aa785ce868dd3b10",
+      "finalSha256": "6ac18f9c4d9acc5ee6a977d8cc131af11cbd66c6cf6d2459b5e92e1c204090d8"
+    },
+    {
+      "path": "src/pages/PerfectRun.jsx",
+      "inventorySha256": "d6cc46ab68227e3661f8703cfba924708aa770af724b18cc35082fc3ff700c97",
+      "finalSha256": "70128adec49b80d34e26c71e2536e2a9ea1d8758c9c13e8ac2c59970f45e79ae"
+    }
+  ],
+  "note": "Concurrent workspace edits occurred. Rechecked the PerfectRun motion findings at completion: 240ms score floor, 140ms specialty cadence, nested scene keys, keyed score entrance and double-scaled travel remain present. This audit did not modify these source files."
+}

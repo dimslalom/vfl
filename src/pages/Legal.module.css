@@ -1,0 +1,19 @@
+.page {
+  min-height: 100dvh;
+  margin-left: calc(var(--rail-size) + var(--safe-l));
+  padding: var(--sp-12) var(--sp-6);
+  background: var(--bg);
+  color: var(--ink);
+}
+.body { max-width: 640px; margin: 0 auto; font-size: 15px; line-height: 1.5; }
+.body h1 { margin: 0 0 var(--sp-5); font-size: 40px; line-height: 1; }
+.body p { margin: 0 0 var(--sp-4); color: var(--muted); }
+.body a { color: var(--ink); }
+.back {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-min);
+}
+@media (max-width: 680px) {
+  .page { margin-left: 0; margin-top: var(--rail-size); padding: var(--sp-6) var(--sp-4); }
+}

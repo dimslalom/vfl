@@ -1,5 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import cards from '../shared/src/data/cards.json';
+import { DAILY_BOARD_START_MS, DAILY_SCORE_MAX } from '../src/lib/dailyRules.js';
 import {
   GameError,
   LOBBY_TTL_MS,
@@ -80,7 +81,7 @@ async function handleRequest(request, env) {
       if (!isSubmissionDate(date)
           || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clientId)
           || !squadName || squadName.length > 28
-          || !Number.isInteger(score) || score < 0 || score > 5000) {
+          || !Number.isInteger(score) || score < 0 || score > DAILY_SCORE_MAX) {
         return json({ error: 'invalid_submission' }, 400);
       }
       // UNIQUE(date, client_id) + OR IGNORE = atomic once-per-day gate.
@@ -105,11 +106,13 @@ async function handleRequest(request, env) {
 
     if (url.pathname === `${APP_PREFIX}/api/leaderboard/overall` && request.method === 'GET') {
       // Best single day per client; SQLite's bare-column rule pulls
-      // squad_name from the same row as MAX(score).
+      // squad_name from the same row as MAX(score). Scores from before the
+      // Daily became one year were uncapped, so they stay out of this board.
       const { results } = await env.DB.prepare(
         `SELECT client_id, squad_name, MAX(score) AS best, COUNT(*) AS days
-         FROM daily_scores GROUP BY client_id ORDER BY best DESC LIMIT 50`,
-      ).all();
+         FROM daily_scores WHERE created_at >= ?
+         GROUP BY client_id ORDER BY best DESC LIMIT 50`,
+      ).bind(DAILY_BOARD_START_MS).all();
       return json({
         rows: results.map(r => ({ clientId: r.client_id, squadName: r.squad_name, best: r.best, days: r.days })),
       });
@@ -213,8 +216,8 @@ export class Lobby extends DurableObject {
     server.serializeAttachment(identity);
     setConnection(this.game, identity.participantId, true, Date.now());
     await this.persistAndSchedule();
-    server.send(JSON.stringify({ type: 'snapshot', snapshot: publicSnapshot(this.game) }));
-    this.broadcast({ type: 'presence', snapshot: publicSnapshot(this.game) }, server);
+    server.send(JSON.stringify({ type: 'snapshot', snapshot: this.snapshotFor(identity) }));
+    this.broadcast({ type: 'presence' }, server);
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -237,12 +240,7 @@ export class Lobby extends DurableObject {
         }
       }
       if (!result.duplicate) await this.persistAndSchedule();
-      this.broadcast({
-        type: 'state_patch',
-        version: this.game.version,
-        snapshot: publicSnapshot(this.game),
-        events: result.events,
-      });
+      this.broadcast({ type: 'state_patch', version: this.game.version, events: result.events });
     } catch (error) {
       if (!(error instanceof GameError)) {
         console.error(JSON.stringify({
@@ -254,7 +252,7 @@ export class Lobby extends DurableObject {
         type: 'command_rejected',
         code: error.code ?? 'invalid_command',
         message: error instanceof GameError ? error.message : 'Invalid command.',
-        snapshot: publicSnapshot(this.game),
+        snapshot: this.snapshotFor(identity),
       }));
     }
   }
@@ -265,7 +263,7 @@ export class Lobby extends DurableObject {
     if (identity && !this.hasOtherSocket(identity.participantId, ws)) {
       setConnection(this.game, identity.participantId, false, Date.now());
       await this.persistAndSchedule();
-      this.broadcast({ type: 'presence', snapshot: publicSnapshot(this.game) });
+      this.broadcast({ type: 'presence' });
     }
   }
 
@@ -278,7 +276,8 @@ export class Lobby extends DurableObject {
     if (!this.game) return;
     const now = Date.now();
     const noSockets = this.ctx.getWebSockets().length === 0;
-    const noGameDeadline = !this.game.draft?.deadlineAt && !this.game.pendingTransition?.deadlineAt && !this.game.consolation?.deadlineAt;
+    const noGameDeadline = !this.game.draft?.deadlineAt && !this.game.pendingTransition?.deadlineAt
+      && !this.game.consolation?.deadlineAt && !this.game.seriesPrep?.deadlineAt;
     if (noSockets && noGameDeadline && now - this.game.lastActiveAt >= LOBBY_TTL_MS) {
       await this.ctx.storage.deleteAll();
       this.game = null;
@@ -288,7 +287,7 @@ export class Lobby extends DurableObject {
     const result = advanceDeadlines(this.game, cards, now);
     if (result.changed) {
       await this.persistAndSchedule();
-      this.broadcast({ type: 'state_patch', version: this.game.version, snapshot: publicSnapshot(this.game), events: result.events });
+      this.broadcast({ type: 'state_patch', version: this.game.version, events: result.events });
     } else {
       await this.scheduleAlarm();
     }
@@ -310,11 +309,18 @@ export class Lobby extends DurableObject {
     return this.ctx.getWebSockets().some(socket => socket !== closingSocket && socket.deserializeAttachment()?.participantId === participantId);
   }
 
+  snapshotFor(identity) {
+    return publicSnapshot(this.game, Date.now(), identity?.participantId ?? null);
+  }
+
+  // Each socket gets its own snapshot, because a squad's hand and picks are
+  // private until the series resolves.
   broadcast(payload, except = null) {
-    const message = JSON.stringify(payload);
     for (const socket of this.ctx.getWebSockets()) {
       if (socket === except) continue;
-      try { socket.send(message); } catch { /* stale sockets are cleaned up by the runtime */ }
+      try {
+        socket.send(JSON.stringify({ ...payload, snapshot: this.snapshotFor(socket.deserializeAttachment()) }));
+      } catch { /* stale sockets are cleaned up by the runtime */ }
     }
   }
 
@@ -440,7 +446,7 @@ function applySecurityHeaders(headers) {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob:",
-    "connect-src 'self' ws: wss:",
+    "connect-src 'self' ws: wss: https://fonts.googleapis.com https://fonts.gstatic.com",
     "object-src 'none'",
     "base-uri 'self'",
     "frame-ancestors 'none'",

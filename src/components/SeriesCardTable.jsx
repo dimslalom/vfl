@@ -6,10 +6,11 @@ import useCardTilt from '../../shared/src/lib/useCardTilt.js';
 import useMediaQuery from '../lib/useMediaQuery.js';
 import { DUR, EASE, STAGGER } from '../../shared/src/lib/motion.js';
 import { playUiSound } from '../../shared/src/lib/gameAudio.js';
+import useReducedMotion from '../../shared/src/lib/useReducedMotion.js';
 import { assetPath } from '../../shared/src/lib/utils.js';
+import { t } from '../lib/i18n.js';
 import SquadDock from './SquadDock.jsx';
 import TacticalButton from './TacticalButton.jsx';
-import Split from '../../shared/src/components/Split.jsx';
 import styles from './SeriesCardTable.module.css';
 
 const ROLE_MARK = { Duelist: 'DLT', Initiator: 'INI', Controller: 'CTL', Sentinel: 'SEN' };
@@ -207,13 +208,15 @@ function OpponentShelf({ opponent, activeIds = [] }) {
 
 // Small map face carries the place, its letter and the live rule; mastery
 // pips and role marks stay on the full face.
-export function MapCard({ card, owner = null, selectable = false, onPick, mastery = 0, compact = false }) {
+export function MapCard({ card, owner = null, selectable = false, onPick, mastery = 0, compact = false, edge = null }) {
   const ownerMark = owner === 'player' ? '★' : '◆';
   return (
     <TableCard
       className={styles.mapCard}
       seed={`map-${card.id}-${card.year}`}
-      label={`${card.name}: ${card.label}`}
+      label={edge
+        ? t('{map}: {rule}. You {you}, them {them}', { map: card.name, rule: card.label, you: edge.you, them: edge.them })
+        : `${card.name}: ${card.label}`}
       clickable={selectable}
       onClick={() => onPick?.(card)}
       small={compact}
@@ -230,10 +233,16 @@ export function MapCard({ card, owner = null, selectable = false, onPick, master
             <b>{card.label}</b>
             <span className={styles.roleRun}>{card.roles.map(role => <i key={role}><em>{ROLE_MARK[role]}</em></i>)}</span>
           </span>
-          <span className={styles.mastery} aria-label={`${mastery} map mastery`}>
+          <span className={styles.mastery} aria-label={t('{n} map mastery', { n: mastery })}>
             {Array.from({ length: 6 }, (_, index) => <i key={index} data-on={index < mastery ? 'true' : undefined} />)}
           </span>
           {owner && <span className={styles.ownerStamp} aria-hidden="true">{ownerMark}</span>}
+          {edge && (
+            <span className={styles.mapEdge} aria-hidden="true">
+              <b>{edge.you}</b>
+              <b data-side="them">{edge.them}</b>
+            </span>
+          )}
         </span>
       )}
       smallInformation={(
@@ -271,28 +280,28 @@ function useFanOverlap(count) {
   return [fanRef, overlap];
 }
 
-export function MapDealTable({ maps, playerPicks = [], opponentPicks = [], picksPerSide = 1, selectableIds, onPick, mastery, opponent }) {
+export function MapDealTable({ maps, playerPicks = [], opponentPicks = [], picksPerSide = 1, selectableIds, onPick, mastery, opponent, edgeFor = null }) {
   const picksLeft = Math.max(0, picksPerSide - playerPicks.length);
   const [fanRef, overlap] = useFanOverlap(maps.length);
   return (
     <section className={styles.table} data-phase="maps">
       <OpponentShelf opponent={opponent} />
-      <p className={styles.pickPrompt} aria-live="polite">
-        {picksLeft > 0
-          ? <Split parts={[`Pick ${picksPerSide === 1 ? 'a map' : `${picksPerSide} maps`}`, picksPerSide > 1 && <b>{picksLeft} left</b>]} />
-          : 'Series locked'}
-      </p>
+      <div className={styles.prepHead} aria-live="polite">
+        <p className={styles.pickPrompt}>{picksLeft > 0 ? t('Pick a map') : t('Series locked')}</p>
+        {picksPerSide > 1 && <StepPips current={playerPicks.length} total={picksPerSide} label={t('Pick {n} of {total}', { n: playerPicks.length, total: picksPerSide })} />}
+      </div>
       {/* A hand, like the dock: as many cards as the series deals, overlapped
           just enough to fit the row, each lifting clear on hover. */}
       <div ref={fanRef} className={styles.mapFan} style={{ '--map-overlap': `${overlap}px` }}>
         {maps.map((card, index) => (
-          <m.div key={card.id} className={styles.dealtMap} initial={{ opacity: 0, y: -80, rotate: (index - maps.length / 2) * 4 }} animate={{ opacity: 1, y: 0, rotate: 0 }} transition={{ duration: DUR.enter, ease: EASE.out, delay: index * STAGGER }}>
+          <m.div key={card.id} className={styles.dealtMap} initial={{ opacity: 0, y: -32, rotate: (index - maps.length / 2) * 4 }} animate={{ opacity: 1, y: 0, rotate: 0 }} transition={{ duration: DUR.deal, ease: EASE.deal, delay: index * STAGGER }}>
             <MapCard
               card={card}
               owner={playerPicks.includes(card.id) ? 'player' : opponentPicks.includes(card.id) ? 'opponent' : null}
               selectable={picksLeft > 0 && selectableIds.has(card.id)}
               onPick={onPick}
               mastery={mastery?.[card.name] ?? 0}
+              edge={edgeFor?.(card) ?? null}
             />
           </m.div>
         ))}
@@ -303,14 +312,18 @@ export function MapDealTable({ maps, playerPicks = [], opponentPicks = [], picks
 
 // Small tactic face carries name and rule; the tag becomes the edge colour
 // rather than a label that cannot fit.
-export function TacticCard({ instance, selected = false, disabled = false, onPlay, compact = false, replace = false, hidden = false }) {
+export function TacticCard({ instance, selected = false, disabled = false, onPlay, compact = false, replace = false, hidden = false, mult = null }) {
   const tactic = TACTICS[instance?.key];
   if (!tactic) return null;
   return (
     <TableCard
       className={styles.tacticCard}
       seed={`tactic-${instance.uid}`}
-      label={hidden ? 'Opponent tactic face down' : `${tactic.name}: ${tactic.rule}`}
+      label={hidden
+        ? t('Opponent tactic face down')
+        : mult != null
+          ? t('{name}: {rule}. Multiplies by {mult}', { name: tactic.name, rule: tactic.rule, mult: mult.toFixed(1) })
+          : `${tactic.name}: ${tactic.rule}`}
       clickable={!disabled && !hidden}
       onClick={() => onPlay?.(instance)}
       small={compact}
@@ -331,6 +344,7 @@ export function TacticCard({ instance, selected = false, disabled = false, onPla
           <b className={styles.tacticName}>{tactic.name}</b>
           <span className={styles.tacticRule}>{tactic.rule}</span>
           <span className={styles.tacticSource} data-source={instance.source}>{instance.source === 'igl' ? '⌁' : '✦'}</span>
+          {mult != null && <span className={styles.tacticBonus}>×{mult.toFixed(1)}</span>}
         </span>
       )}
       smallSubject={<span className={styles.tacticSmallBand} aria-hidden="true" />}
@@ -338,13 +352,88 @@ export function TacticCard({ instance, selected = false, disabled = false, onPla
         <span className={styles.tacticSmallInformation}>
           <b className={styles.tacticSmallName}>{tactic.name}</b>
           <span className={styles.tacticSmallRule}>{tactic.rule}</span>
+          {mult != null && <span className={styles.tacticSmallBonus}>×{mult.toFixed(1)}</span>}
         </span>
       )}
     />
   );
 }
 
-export function TacticTable({ map, hand, opponentHand = [], opponent, opponentActiveIds = [], onPlay, reveal }) {
+// One pip per map in the series, filled up to the one in play. `current` counts
+// from 1 for a map in progress and from 0 for picks already made.
+function StepPips({ current, total, label }) {
+  return (
+    <ol className={styles.stepPips} role="img" aria-label={label}>
+      {Array.from({ length: total }, (_, index) => (
+        <li key={index} data-on={index < current ? 'true' : undefined} />
+      ))}
+    </ol>
+  );
+}
+
+// A tug between the two squads. The bar's split is the read; the numbers at
+// each end are there to compare exactly. Your side is always the accent.
+function EdgeBar({ you, them, heat = 0 }) {
+  const share = you + them > 0 ? (you / (you + them)) * 100 : 50;
+  return (
+    <div className={styles.edgeBar} data-heat={heat || undefined} role="img" aria-label={t('Edge: you {you}, them {them}', { you, them })}>
+      <b className={styles.edgeYou}>{you}</b>
+      <span className={styles.edgeTrack} aria-hidden="true">
+        <i style={{ transform: `scaleX(${share / 100})` }} />
+      </span>
+      <b className={styles.edgeThem}>{them}</b>
+    </div>
+  );
+}
+
+const STEP_LABEL = { base: 'Base', map: 'Map', tactic: 'Call', clash: 'Counter' };
+
+function stepValue(step) {
+  return step.key === 'tactic' ? `×${step.value.toFixed(1)}` : `+${step.value}`;
+}
+
+function StepTokens({ steps, shown, side }) {
+  return (
+    <ol className={styles.edgeTokens} data-side={side}>
+      {steps.slice(0, shown).map(step => (step.value ? (
+        <m.li key={step.key} data-step={step.key} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: DUR.hover, ease: EASE.out }}>
+          <small>{t(STEP_LABEL[step.key])}</small>
+          <b>{stepValue(step)}</b>
+        </m.li>
+      ) : null))}
+    </ol>
+  );
+}
+
+// How big a final edge has to be before the meter reacts to it.
+const HEAT_AT = [85, 105];
+
+// The sum after a tactic is played, one beat at a time: base, map, tactic,
+// counter. Both sides move on the same beat, so the tug is the story.
+function EdgeStack({ stack }) {
+  const reducedMotion = useReducedMotion();
+  const last = stack.you.length - 1;
+  const [beat, setBeat] = useState(reducedMotion ? last : 0);
+  useEffect(() => {
+    if (beat >= last) return undefined;
+    const timer = setTimeout(() => setBeat(value => value + 1), stack.beatMs);
+    return () => clearTimeout(timer);
+  }, [beat, last, stack.beatMs]);
+  useEffect(() => {
+    if (beat > 0) playUiSound(beat === last && stack.you[last].total >= HEAT_AT[0] ? 'impact' : 'specialty');
+  }, [beat, last, stack.you]);
+  const you = stack.you[beat].total;
+  const heat = beat === last ? HEAT_AT.filter(at => you >= at).length : 0;
+  return (
+    <div className={styles.edgeStack}>
+      <StepTokens steps={stack.you} shown={beat + 1} side="you" />
+      <EdgeBar you={you} them={stack.them[beat].total} heat={heat} />
+      <StepTokens steps={stack.them} shown={beat + 1} side="them" />
+    </div>
+  );
+}
+
+export function TacticTable({ map, hand, opponentHand = [], opponent, opponentActiveIds = [], onPlay, reveal, step = null, edge = null, multFor = null, onHover = null }) {
   const enemyCards = opponentHand.length ? opponentHand : (reveal?.opponent ? [reveal.opponent] : []);
   // The arena squeezes cards to ~105px below 820px, which is small-face
   // territory; the full face is one press away.
@@ -352,26 +441,31 @@ export function TacticTable({ map, hand, opponentHand = [], opponent, opponentAc
   return (
     <section className={styles.table} data-phase="tactics">
       <OpponentShelf opponent={opponent} activeIds={opponentActiveIds} />
+      {step && (
+        <div className={styles.prepHead} aria-live="polite">
+          <StepPips current={step.current} total={step.total} label={t('Map {n} of {total}', { n: step.current, total: step.total })} />
+        </div>
+      )}
       {/* Your hand | the map being fought over | their hand. The map is the
           axis the two sides mirror across, so it sits in the middle column
           and each hand pulls in toward it. */}
       <div className={styles.tacticArena} data-reveal={reveal ? 'true' : undefined}>
         <AnimatePresence mode="popLayout">
           {reveal ? (
-            <m.div key={reveal.player.uid} className={styles.selectedTactic} layout initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}>
+            <m.div key={reveal.player.uid} className={styles.selectedTactic} layout initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: DUR.deal, ease: EASE.deal }}>
               <TacticCard instance={reveal.player} selected disabled compact={narrow} />
             </m.div>
           ) : (
             <m.div key="player-hand" className={styles.tacticHand} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               {hand.map((card, index) => (
-                <m.div key={card.uid} className={styles.handCard} initial={{ opacity: 0, y: 50, rotate: (index - hand.length / 2) * 2 }} animate={{ opacity: 1, y: 0, rotate: 0 }} transition={{ duration: DUR.enter, ease: EASE.out, delay: index * STAGGER }}><TacticCard instance={card} onPlay={onPlay} compact={narrow} /></m.div>
+                <m.div key={card.uid} className={styles.handCard} onPointerEnter={() => onHover?.(card)} onPointerLeave={() => onHover?.(null)} onFocus={() => onHover?.(card)} onBlur={() => onHover?.(null)} initial={{ opacity: 0, y: 24, rotate: (index - hand.length / 2) * 2 }} animate={{ opacity: 1, y: 0, rotate: 0 }} transition={{ duration: DUR.deal, ease: EASE.deal, delay: index * STAGGER }}><TacticCard instance={card} onPlay={onPlay} compact={narrow} mult={multFor?.(card) ?? null} /></m.div>
               ))}
             </m.div>
           )}
         </AnimatePresence>
         <div className={styles.arenaCenter}>
           <div className={styles.activeMap}><MapCard card={map} compact /></div>
-          <m.span className={styles.clashMark} data-edge={reveal?.edge} animate={{ opacity: reveal ? 1 : 0, scale: reveal ? 1 : .75 }}>×</m.span>
+          <m.span className={styles.clashMark} data-edge={reveal?.edge} transition={{ duration: DUR.transform, ease: EASE.deal }} animate={{ opacity: reveal ? 1 : 0, scale: reveal ? 1 : .75 }}>×</m.span>
         </div>
         <div className={styles.enemyTacticHand}>
           <AnimatePresence mode="popLayout">
@@ -379,7 +473,7 @@ export function TacticTable({ map, hand, opponentHand = [], opponent, opponentAc
               const chosen = reveal?.opponent?.uid === card.uid;
               if (reveal && !chosen) return null;
               return (
-                <m.div key={card.uid} layout initial={{ opacity: 0, y: -45, rotate: index ? 3 : -3 }} animate={{ opacity: 1, y: 0, rotate: 0 }} exit={{ opacity: 0, y: -35, scale: .85 }} transition={{ duration: DUR.enter, ease: EASE.out }}>
+                <m.div key={card.uid} layout initial={{ opacity: 0, y: -24, rotate: index ? 3 : -3 }} animate={{ opacity: 1, y: 0, rotate: 0 }} exit={{ opacity: 0, y: -16, scale: .96 }} transition={{ duration: DUR.deal, ease: EASE.deal }}>
                   <TacticCard instance={card} selected={chosen} disabled hidden={!reveal} compact={narrow} />
                 </m.div>
               );
@@ -387,6 +481,9 @@ export function TacticTable({ map, hand, opponentHand = [], opponent, opponentAc
           </AnimatePresence>
         </div>
       </div>
+      {reveal?.stack
+        ? <EdgeStack key={reveal.player.uid} stack={reveal.stack} />
+        : edge && <EdgeBar you={edge.you} them={edge.them} />}
     </section>
   );
 }
@@ -396,13 +493,13 @@ function RewardPack({ kind, mark, onChoose }) {
     <TableCard
       className={styles.rewardPack}
       seed={`reward-${kind}`}
-      label={`${kind} pack`}
+      label={kind === 'player' ? t('Player pack') : t('Tactic pack')}
       clickable
       onClick={() => onChoose(kind)}
       data-kind={kind}
       background={<span className={styles.rewardMaterial} />}
       subject={<span className={styles.packBurst}>{mark}</span>}
-      information={<span className={styles.rewardInformation}><b>{kind}</b><i>+</i></span>}
+      information={<span className={styles.rewardInformation}><b>{kind === 'player' ? t('Player') : t('Tactic')}</b><i>+</i></span>}
     />
   );
 }
@@ -417,7 +514,7 @@ export function RewardTable({
       {step === 'packs' && <div className={styles.rewardPair}><RewardPack kind="player" mark="★" onChoose={onChoosePack} /><RewardPack kind="tactic" mark="⌁" onChoose={onChoosePack} /></div>}
       {step === 'tactics' && (
         <div className={styles.rewardTacticsWrap}>
-          <span className={styles.rewardPickLabel}>Pick {picksNeeded - rewardTacticPicks.length} of {tacticOffers.length}</span>
+          <span className={styles.rewardPickLabel}>{t('Pick {n} of {total}', { n: picksNeeded - rewardTacticPicks.length, total: tacticOffers.length })}</span>
           <div className={styles.rewardTactics}>
             {tacticOffers.map(card => (
               <TacticCard key={card.uid} instance={card} selected={rewardTacticPicks.some(picked => picked.uid === card.uid)} onPlay={onChooseTactic} />
@@ -427,11 +524,11 @@ export function RewardTable({
       )}
       {step === 'replace' && incoming && (
         <div className={styles.replaceTable}>
-          {pendingTactics.length > 1 && <span className={styles.rewardPickLabel}>{pendingTactics.length} tactics left to place</span>}
+          {pendingTactics.length > 1 && <span className={styles.rewardPickLabel}>{t('{n} tactics left to place', { n: pendingTactics.length })}</span>}
           <TacticCard instance={incoming} selected disabled />
           <span className={styles.replaceArrow}>→</span>
           <div className={styles.replaceHand}>{tacticHand.map(card => <TacticCard key={card.uid} instance={card} compact replace onPlay={onReplace} />)}</div>
-          <TacticalButton className={styles.replaceKeep} onClick={() => onReplace(null)}>Keep hand</TacticalButton>
+          <TacticalButton className={styles.replaceKeep} onClick={() => onReplace(null)}>{t('Keep hand')}</TacticalButton>
         </div>
       )}
     </section>
@@ -441,8 +538,8 @@ export function RewardTable({
 export function MapPatchTable({ cards }) {
   if (!cards?.length) return null;
   return (
-    <section className={styles.patchTable} aria-label="Map rule changes">
-      <div className={styles.patchCards}>{cards.map((card, index) => <m.div key={card.id} initial={{ opacity: 0, y: -30, rotate: index - 1 }} animate={{ opacity: 1, y: 0, rotate: 0 }} transition={{ duration: DUR.enter, ease: EASE.out, delay: index * STAGGER }}><MapCard card={card} compact /></m.div>)}</div>
+    <section className={styles.patchTable} aria-label={t('Map rule changes')}>
+      <div className={styles.patchCards}>{cards.map((card, index) => <m.div key={card.id} initial={{ opacity: 0, y: -20, rotate: (index - 1) * .5 }} animate={{ opacity: 1, y: 0, rotate: 0 }} transition={{ duration: DUR.deal, ease: EASE.deal, delay: index * STAGGER }}><MapCard card={card} compact /></m.div>)}</div>
     </section>
   );
 }

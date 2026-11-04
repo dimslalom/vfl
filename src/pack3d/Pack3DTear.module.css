@@ -1,0 +1,32 @@
+/* The same footprint as the flat PackTear (shared/src/components/PackTear.module.css),
+   so PackRip's layout and its fly-out from the pack's rect stay exactly as they were. */
+.packWrap {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(200px * var(--pack-scale, 1));
+  height: calc(283px * var(--pack-scale, 1));
+  flex-shrink: 0;
+}
+
+/* The canvas overhangs the footprint so the torn strip can fly clear of the pack.
+   It never takes the pointer: the footprint does. */
+.stage {
+  position: absolute;
+  top: calc((1 - var(--spread)) * 50%);
+  left: -100%;
+  width: 300%;
+  height: calc(var(--spread) * 100%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--dur-quick, 160ms) ease-out;
+}
+.packWrap[data-ready] .stage { opacity: 1; }
+
+.packWrap[role='button'] { cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+.packWrap[role='button']:active { cursor: grabbing; }
+.packWrap:focus-visible { outline: var(--focus-ring) solid var(--accent); outline-offset: var(--focus-offset); }
+
+@media (max-width: 680px) {
+  .packWrap { width: calc(160px * var(--pack-scale, 1)); height: calc(226px * var(--pack-scale, 1)); }
+}

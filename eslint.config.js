@@ -5,7 +5,7 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist', 'shared', '**/.wrangler', 'graphify-out']),
+  globalIgnores(['dist', 'shared', 'docs/animation-audit', '**/.wrangler', 'graphify-out']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [

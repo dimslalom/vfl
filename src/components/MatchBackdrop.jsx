@@ -23,26 +23,20 @@ const ZOOM_SCALE = { 1: 1.04, 2: 1.14, 3: 1.25 };
 const ZOOM_EASE = [0.16, 1, 0.3, 1];
 const ZOOM_DURATION = 0.8;
 
-// The shake animation itself is 480ms - already longer than one 150ms round
-// tick, which is fine, the effect is allowed to spill into the next round or
-// two. What isn't fine is restarting it from scratch on every consecutive
-// significant round (a close finish can hold several in a row): that reads
-// as jittering rather than a shake, the same failure the zoom escalation had
-// before it became a guarded, persistent state. This is a simpler time-based
-// guard rather than state, since shake has no state of its own to be
-// monotonic about - it just needs to not retrigger mid-flight.
-const SHAKE_MS = 200;
+// Decisive events get one gentle 300ms impulse. Routine round events do
+// not shake the whole viewport, and an impulse is never restarted mid-flight.
+const SHAKE_MS = 300;
 
 // `variant` selects the image and is expected to change rarely - once per
-// match series, plus up to twice more as `zoomLevel` escalates. `zoomLevel`
+// match series. The image stays stable as `zoomLevel` escalates. `zoomLevel`
 // (1-3) is a persistent state owned by the caller, not something this
 // component animates through on its own: it renders whichever level it's
 // given, and an FM `scale` animation carries it there and leaves it - so
 // "zoomed in to 2" just stays at 2 until the caller passes a different
 // level, the same way the caller intends it to read as a state rather than
 // a pulse. `reaction` is unrelated: it only drives the one-shot shake
-// flourish, animated on the same `controls` as an independent `y` motion
-// value - Framer Motion composes scale and y into one transform natively,
+// flourish, animated on the same `controls` as an independent `x` motion
+// value - Framer Motion composes scale and x into one transform natively,
 // so the shake perturbs around whatever zoom level is currently active
 // without either effect fighting or resetting the other (the CSS version
 // this replaced had to read a shared --zoom-scale custom property to get
@@ -60,17 +54,21 @@ export default function MatchBackdrop({ active, mode = 'calm', kind = null, vari
   }, [zoomLevel, controls, reducedMotion]);
 
   useEffect(() => {
-    if (reducedMotion || !reaction || reaction.kind !== 'shake') return;
+    if (reducedMotion || !active || !reaction || reaction.kind !== 'shake' || (reaction.amplitude ?? 0) < 2) return;
     const now = Date.now();
     if (now - shakeStartedAt.current < SHAKE_MS) return; // let the in-flight shake finish
     shakeStartedAt.current = now;
-    const amplitude = Math.max(0, Math.min(5, reaction.amplitude ?? 1.5));
-    const duration = amplitude >= 5 ? 0.2 : 0.08;
+    const amplitude = Math.max(0, Math.min(2, reaction.amplitude ?? 0));
+    const duration = SHAKE_MS / 1000;
     controls.start({
-      x: [0, -amplitude, amplitude, -amplitude * 0.55, amplitude * 0.35, 0],
+      x: [0, -amplitude, 0],
       transition: { duration, ease: 'easeInOut' },
     });
-  }, [reaction, controls, reducedMotion]);
+  }, [reaction, controls, reducedMotion, active]);
+
+  useEffect(() => {
+    if (reducedMotion || !active) controls.set({ x: 0 });
+  }, [reducedMotion, active, controls]);
 
   if (!active) return null;
 
@@ -89,14 +87,14 @@ export default function MatchBackdrop({ active, mode = 'calm', kind = null, vari
       </m.div>
       <div className={styles.scrim} />
       <AnimatePresence>
-        {reaction?.kind === 'shake' && (reaction.amplitude ?? 0) >= 5 && (
+        {!reducedMotion && reaction?.kind === 'shake' && (reaction.amplitude ?? 0) >= 2 && (
           <m.div
             key={reaction.key}
             className={styles.impactVignette}
-            initial={{ opacity: 0.78 }}
+            initial={{ opacity: 0.3 }}
             animate={{ opacity: 0 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: reducedMotion ? 0.12 : 0.15 }}
+            transition={{ duration: 0.3 }}
           />
         )}
       </AnimatePresence>

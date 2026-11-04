@@ -1,0 +1,91 @@
+.lab {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: var(--sp-10);
+  padding: var(--sp-10);
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+.side { display: flex; flex-direction: column; gap: var(--sp-5); }
+.side h1 { margin: 0; font-size: var(--fs-heading); line-height: 1.1; }
+.hint { margin: 0; color: var(--muted); font-size: var(--fs-body); }
+.group { display: flex; flex-direction: column; gap: var(--sp-1); }
+.group button {
+  min-height: var(--tap-min);
+  padding: 0 var(--sp-4);
+  display: flex;
+  align-items: center;
+  border: 0;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.group button[data-on] { background: var(--ink); color: var(--bg); }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-1); }
+.solid, .ghost { min-height: var(--tap-min); border: 0; font: inherit; font-weight: 800; cursor: pointer; }
+.solid { background: var(--ink); color: var(--bg); }
+.ghost { background: var(--surface); color: var(--ink); }
+.solid:disabled, .ghost:disabled { opacity: 0.4; cursor: default; }
+.stats { margin: auto 0 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.stats div { display: flex; justify-content: space-between; font-size: var(--fs-label); }
+.stats dt { color: var(--muted); }
+.stats dd { margin: 0; font-variant-numeric: tabular-nums; }
+.stage { position: relative; min-height: 0; }
+.host { position: absolute; inset: 0; touch-action: none; }
+.notice { position: absolute; top: 50%; left: 50%; margin: 0; transform: translate(-50%, -50%); color: var(--muted); }
+
+
+/* Flat labels pinned into the scene: they stay crisp however the camera tilts.
+   The 1b board: you are green, the enemy red; the stat sits on a gold tab. */
+.overlay { position: absolute; inset: 0; pointer-events: none; overflow: hidden; --you: var(--win); --foe: var(--accent); }
+.overlay [data-role='head'] { position: absolute; left: 0; top: 0; display: grid; justify-items: center; gap: 4px; line-height: 1; text-shadow: 0 1px 2px var(--bg); }
+.overlay [data-role='head'] b { font-size: var(--fs-title); }
+.overlay [data-role='head'] small { font-size: var(--fs-micro); font-weight: 700; letter-spacing: 0.24em; color: var(--muted); }
+.overlay [data-role='head'] em {
+  margin-top: 4px;
+  padding: 4px var(--sp-3) 8px;
+  background: var(--gold);
+  color: var(--gold-ink);
+  font-style: normal;
+  font-size: var(--fs-micro);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-shadow: none;
+  clip-path: polygon(0 0, 100% 0, 100% 76%, 50% 100%, 0 76%);
+}
+.overlay [data-role='bar'] { position: absolute; left: 0; top: 0; display: grid; gap: 3px; }
+.overlay [data-tug] { position: relative; height: 40px; display: flex; background: var(--surface); }
+.overlay [data-tug] i[data-side='you'] { background: var(--you); }
+.overlay [data-tug] i[data-side='them'] { margin-left: auto; background: var(--foe); }
+.overlay [data-tug] b { position: absolute; top: 50%; transform: translateY(-50%); font-size: var(--fs-title); font-variant-numeric: tabular-nums; }
+.overlay [data-tug] b[data-side='you'] { left: var(--sp-3); color: var(--win-ink); }
+.overlay [data-tug] i[data-side='you'][style*='width: 0'] + i + b { color: var(--muted); }
+.overlay [data-tug] b[data-side='them'] { right: var(--sp-3); color: var(--accent-ink); }
+.overlay [data-tug] s { position: absolute; top: -6px; bottom: -6px; width: 2px; margin-left: -1px; background: var(--ink); }
+.overlay [data-row] { display: flex; gap: 2px; height: 22px; }
+.overlay [data-row] span { min-width: 0; display: grid; place-items: center; font-size: var(--fs-label); font-weight: 800; font-variant-numeric: tabular-nums; }
+.overlay [data-row='you'] span { background: color-mix(in srgb, var(--you) 34%, var(--bg)); }
+.overlay [data-row='them'] span { background: color-mix(in srgb, var(--foe) 34%, var(--bg)); }
+.overlay [data-row='you'] span[data-solid] { background: var(--you); color: var(--win-ink); }
+.overlay [data-row='them'] span[data-solid] { background: var(--foe); color: var(--accent-ink); }
+.overlay [data-row] span[data-outline] { background: transparent; box-shadow: inset 0 0 0 2px currentColor; }
+
+@media (max-width: 759px) {
+  .lab { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); padding: var(--sp-4); gap: var(--sp-4); }
+  .side { gap: var(--sp-2); min-width: 0; }
+  .hint { display: none; }
+  .group { flex-direction: row; flex-wrap: wrap; }
+  .group button { min-height: 36px; padding: 0 var(--sp-3); }
+  .stats { display: none; }
+  .overlay [data-tug] { height: 28px; }
+  .overlay [data-tug] b { font-size: var(--fs-body); }
+  .overlay [data-row] { height: 16px; }
+  .overlay [data-row] span { font-size: var(--fs-micro); }
+}
