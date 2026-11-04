@@ -28,18 +28,11 @@ const ICON = {
       <path d="M10 2.5 16.5 5v5c0 3.6-2.6 6.2-6.5 7.5C6.1 16.2 3.5 13.6 3.5 10V5L10 2.5Z" /><path d="M7 9.5 9.2 12 13 7.8" />
     </svg>
   ),
-  multiplayer: (
-    <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <circle cx="7" cy="6.5" r="2.6" /><circle cx="14" cy="7.5" r="2" />
-      <path d="M2.5 16.5c0-2.6 2-4.3 4.5-4.3s4.5 1.7 4.5 4.3" /><path d="M12.8 15.5c.2-1.9 1.5-3.1 3.2-3.1 1.5 0 2.7 1 3 2.6" />
-    </svg>
-  ),
 };
 
 const RAIL = [
   { to: '/club', key: 'club', label: 'Club' },
   { to: '/cards', key: 'library', label: 'Player Library' },
-  { to: '/multiplayer', key: 'multiplayer', label: 'Multiplayer' },
 ];
 
 export default function ModeRail() {

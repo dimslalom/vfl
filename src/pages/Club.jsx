@@ -1,6 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
 import allCards from '../../shared/src/data/cards.json';
 import { STAT_LABELS } from '../../shared/src/data/statFields';
 import PlayerCard from '../../shared/src/components/PlayerCard';
@@ -211,7 +210,7 @@ function Road({ state }) {
 
 // ── start ───────────────────────────────────────────────────────────────────
 
-function Start({ onStart, onExit, scale }) {
+function Start({ onStart, scale }) {
   const [seed] = useState(() => (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0);
   const [name, setName] = useState('');
   const [picks, setPicks] = useState([]);
@@ -236,7 +235,6 @@ function Start({ onStart, onExit, scale }) {
           </label>
         </div>
         <div className={styles.chips}>
-          <BackButton onClick={onExit} label="Other modes" />
           <div className={styles.chip}><b>{Math.min(picks.length + 1, DRAFT_PACKS)} / {DRAFT_PACKS}</b><span>Pack</span></div>
         </div>
       </header>
@@ -272,7 +270,7 @@ function Start({ onStart, onExit, scale }) {
 
 // ── hub ─────────────────────────────────────────────────────────────────────
 
-function ClubMenu({ onExit, onAbandon }) {
+function ClubMenu({ onAbandon }) {
   const [open, setOpen] = useState(false);
   const [armed, setArmed] = useState(false);
   useEscape(() => { setOpen(false); setArmed(false); });
@@ -283,7 +281,6 @@ function ClubMenu({ onExit, onAbandon }) {
       </button>
       {open && (
         <div className={styles.menu}>
-          <button type="button" onClick={onExit}>Other modes</button>
           <button type="button" data-armed={armed || undefined} onBlur={() => setArmed(false)} onClick={() => (armed ? onAbandon() : setArmed(true))}>
             {armed ? 'Tap again to delete this club' : 'Abandon club'}
           </button>
@@ -366,7 +363,7 @@ function BenchOpen({ scale, onClick }) {
     : <span className={styles.benchOpen} style={style}>{body}</span>;
 }
 
-function Home({ state, go, onExit, onAbandon, size }) {
+function Home({ state, go, onAbandon, size }) {
   const squad = squadCards(state, allCards);
   const match = nextMatch(state);
   const opponent = clubById(state, match.id);
@@ -379,7 +376,7 @@ function Home({ state, go, onExit, onAbandon, size }) {
     <div className={styles.stage}>
       <Hud title={state.name} tags={[[tierName(state.tier), true], [`Year ${state.year}`], ...(started ? [[`${ordinal(pos)} in table`]] : [])]} logo={null}>
         <PackCounter state={state} onOpen={() => go('vault')} />
-        <ClubMenu onExit={onExit} onAbandon={onAbandon} />
+        <ClubMenu onAbandon={onAbandon} />
       </Hud>
       <Ground map={firstMap?.image && assetPath(firstMap.image)} className={styles.home}>
         <Road state={state} />
@@ -1463,7 +1460,6 @@ function readSave() {
 // ── the game ────────────────────────────────────────────────────────────────
 
 export default function Club() {
-  const navigate = useNavigate();
   const size = useCardScale();
   const [boot] = useState(readSave);
   const [state, setState] = useState(boot.state);
@@ -1571,7 +1567,7 @@ export default function Club() {
   const alerts = saveFailed && <p className={styles.alert} role="alert">Progress isn't saving on this device</p>;
 
   if (damaged) return <Damaged onReset={fresh} />;
-  if (screen === 'start' || !state) return <Start onStart={start} onExit={() => navigate('/multiplayer')} scale={size.scale} />;
+  if (screen === 'start' || !state) return <Start onStart={start} scale={size.scale} />;
   if (screen === 'train') {
     return <Train state={state} size={size} onBack={() => show('home')} onTrain={trainPlayer} onTape={tapePlayer} onBuy={() => setState(buySession(state))} canBuy={canBuySession(state)} />;
   }
@@ -1612,7 +1608,6 @@ export default function Club() {
         state={state}
         size={size}
         go={(next) => { setNotice(''); show(next); }}
-        onExit={() => navigate('/multiplayer')}
         onAbandon={fresh}
       />
       {notice && <p className={styles.toast} role="status">{notice}</p>}

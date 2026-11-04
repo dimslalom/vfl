@@ -6,7 +6,6 @@ import { t } from './lib/i18n';
 import useLang from './lib/useLang';
 
 const Collection = lazy(() => import('./pages/Collection'));
-const Multiplayer = lazy(() => import('./pages/Multiplayer'));
 const Legal = lazy(() => import('./pages/Legal'));
 const BoardPrototype = lazy(() => import('./pages/BoardPrototype'));
 const Club = lazy(() => import('./pages/Club'));
@@ -59,8 +58,8 @@ export default function App() {
                   <Route path="/lab/table" element={<TableLab />} />
                   <Route path="/lab/fx" element={<FxLab />} />
                   <Route path="/lab/arena" element={<ArenaLab />} />
-                  <Route path="/multiplayer" element={<Multiplayer />} />
-                  <Route path="/lobby/:code" element={<Multiplayer />} />
+                  <Route path="/multiplayer" element={<Navigate to="/club" replace />} />
+                  <Route path="/lobby/:code" element={<Navigate to="/club" replace />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
