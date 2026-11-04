@@ -33,6 +33,14 @@ The repo history mentions an OpVAL account flow (commit `c38f7b1`: cookie auth, 
 - Client: `clubSave.js` keeps `localStorage` as the source of truth while offline and pushes on change when signed in. On sign-in with both a local and a cloud club, ask which one to keep, with no silent merge.
 - Entry UI: a "Sync this club" row in Club settings, not on the landing.
 
+## One VFL login, not a Clubs login
+
+The owner wants this Discord app ("VFL") to be the login for every VFL product, present and future. So:
+
+- `users` and `sessions` are VFL-wide and know nothing about Clubs. Each product keeps its own data table keyed by user id (`club_saves` for Clubs).
+- They live in a new D1 database, `vfl-accounts`, kept apart from the OpVAL-owned `vfl-daily-scores`.
+- The session cookie is host-only on `vctfantasy.dimas.works` for now. If a future product moves to another `dimas.works` subdomain, move sign-in to one host and widen the cookie to `.dimas.works` then. A product on a different domain adds its own redirect URI in the Discord app.
+
 ## Discord, optional: the build
 
 1. **Owner:** create a Discord application (Developer Portal, OAuth2), set the redirect URI to `https://vctfantasy.dimas.works/api/auth/discord/callback`, and add `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` as Worker secrets. Claude never sees the secret.
