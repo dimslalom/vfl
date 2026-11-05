@@ -22,6 +22,11 @@ export const BOARD_SKILLS = {
   one_trick: { label: 'One Trick', text: '+20 on maps that suit their agent' },
   mastermind: { label: 'Mastermind', text: 'As IGL: two rotates' },
   aura: { label: 'Aura', text: '-15 to the enemy on their lane' },
+  anchor: { label: 'Anchor', text: 'With 1 teammate: both +12' },
+  first_blood: { label: 'First Blood', text: 'On primary lane: +20' },
+  clutch: { label: 'Clutch', text: 'Alone vs 2+: +25' },
+  synergy_link: { label: 'Synergy Link', text: 'Teammate combo with anyone' },
+  overdrive: { label: 'Overdrive', text: 'Win lane: +0.2x other lanes' },
 };
 
 export function hasSkill(card, key) {
@@ -99,8 +104,23 @@ export function laneScore(cards, lane, tactic = null, ctx = {}) {
       add('trick', ONE_TRICK_BONUS, 'Trick');
     }
   }
+  // Anchor: When sharing a lane with exactly 1 teammate, both gain +12 (+24 to lane).
+  if (cards.length === 2 && cards.some(card => hasSkill(card, 'anchor'))) {
+    add('anchor', 24, 'Anchor');
+  }
+  // First Blood: On the primary (leftmost) lane, +20 opening duel bonus per player.
+  if (ctx.laneIndex === 0) {
+    for (const card of cards) {
+      if (hasSkill(card, 'first_blood')) add('first_blood', 20, 'First Blood');
+    }
+  }
+  // Clutch: Alone on a lane against 2 or more enemies, gains +25 power.
+  if (cards.length === 1 && hasSkill(cards[0], 'clutch') && (ctx.enemyCount >= 2)) {
+    add('clutch', 25, 'Clutch');
+  }
   for (const [a, b] of pairs(cards)) {
     if (a.org && a.org === b.org) add('teammates', TEAMMATE_PAIR, 'Team');
+    else if (hasSkill(a, 'synergy_link') || hasSkill(b, 'synergy_link')) add('synergy_link', TEAMMATE_PAIR, 'Link');
     else if (a.nationality && a.nationality === b.nationality) add('country', COUNTRY_PAIR, 'Nation');
   }
   const tacticCtx = { ...ctx, rule: cards.length > 0 && ruleFires(cards, lane) };
@@ -197,7 +217,7 @@ export function chipList(tactics) {
  * lane only when that lane carries none of your own chips. `tactic` and
  * `enemy` each take one chip or a list.
  */
-export function sideScores({ roster, slots, maps, tactic = null, tactics = null, enemy = null }) {
+export function sideScores({ roster, slots, maps, tactic = null, tactics = null, enemy = null, enemyCounts = null }) {
   const lanes = maps.map((_, lane) => laneCards(roster, slots, lane));
   const mine = chipList(tactics ?? tactic);
   const theirs = chipList(enemy);
@@ -211,7 +231,12 @@ export function sideScores({ roster, slots, maps, tactic = null, tactics = null,
     chains[to] = Math.max(chains[to] ?? 1, chainMult(lanes[chip.lane]));
   }
   return maps.map((map, lane) => {
-    const ctx = { igl: roster[0]?.id, cancelled: cancelled(lane) };
+    const ctx = {
+      igl: roster[0]?.id,
+      laneIndex: lane,
+      enemyCount: enemyCounts?.[lane] ?? (theirs.length ? 1 : 0),
+      cancelled: cancelled(lane),
+    };
     if (chains[lane]) ctx.chain = chains[lane];
     // The enemy's No Respect hits our best player here, unless our own Lock the Map faces it.
     if (keyOf(on(theirs, lane)) === 'noRespect' && keyOf(on(mine, lane)) !== 'lockout') {
@@ -226,13 +251,13 @@ export function laneFormula(steps) {
   const sum = steps.filter(step => step.key === 'player').reduce((total, step) => total + step.value, 0);
   const bonuses = new Map();
   for (const step of steps) {
-    if (['player', 'tactic', 'aura', 'chain', 'cancelled', 'disrespect'].includes(step.key)) continue;
+    if (['player', 'tactic', 'aura', 'chain', 'cancelled', 'disrespect', 'overdrive'].includes(step.key)) continue;
     bonuses.set(step.label, (bonuses.get(step.label) ?? 0) + step.value);
   }
   const rest = [...bonuses].map(([label, value]) => `+${value} ${label}`);
   const cut = steps.find(step => step.key === 'disrespect');
   if (cut) rest.unshift(`-${cut.value} ${cut.label}`);
-  for (const step of steps.filter(item => item.key === 'tactic' || item.key === 'chain')) rest.push(`×${step.value} ${step.label}`);
+  for (const step of steps.filter(item => item.key === 'tactic' || item.key === 'chain' || item.key === 'overdrive')) rest.push(`×${step.value} ${step.label}`);
   const aura = steps.find(step => step.key === 'aura');
   if (aura) rest.push(`-${aura.value} ${aura.label}`);
   return steps.length ? [String(sum), ...rest].join('  ') : '';
@@ -254,9 +279,11 @@ function underAura(score, opposing) {
 export function resolveBoard({ maps, you, them }) {
   const myLanes = maps.map((_, lane) => laneCards(you.roster, you.slots, lane));
   const theirLanes = maps.map((_, lane) => laneCards(them.roster, them.slots, lane));
-  const myScores = sideScores({ ...you, maps, enemy: chipList(them.tactics ?? them.tactic) });
-  const theirScores = sideScores({ ...them, maps, enemy: chipList(you.tactics ?? you.tactic) });
-  const lanes = maps.map((map, lane) => {
+  const myEnemyCounts = theirLanes.map(cards => cards.length);
+  const theirEnemyCounts = myLanes.map(cards => cards.length);
+  const myScores = sideScores({ ...you, maps, enemy: chipList(them.tactics ?? them.tactic), enemyCounts: myEnemyCounts });
+  const theirScores = sideScores({ ...them, maps, enemy: chipList(you.tactics ?? you.tactic), enemyCounts: theirEnemyCounts });
+  let lanes = maps.map((map, lane) => {
     const myCards = myLanes[lane];
     const theirCards = theirLanes[lane];
     const mine = underAura(myScores[lane], theirCards);
@@ -266,8 +293,35 @@ export function resolveBoard({ maps, you, them }) {
     const winner = mine.total !== theirs.total
       ? (mine.total > theirs.total ? 'you' : 'them')
       : rawMine === rawTheirs ? null : (rawMine > rawTheirs ? 'you' : 'them');
-    return { mine, theirs, winner };
+    return { mine, theirs, winner, rawMine, rawTheirs };
   });
+
+  // Overdrive: If a player with overdrive won their lane, they boost ALL OTHER lanes by +0.2x multiplier!
+  const youOverdriveLanes = lanes.map((lane, index) => (lane.winner === 'you' && myLanes[index].some(card => hasSkill(card, 'overdrive')) ? index : -1)).filter(idx => idx !== -1);
+  const themOverdriveLanes = lanes.map((lane, index) => (lane.winner === 'them' && theirLanes[index].some(card => hasSkill(card, 'overdrive')) ? index : -1)).filter(idx => idx !== -1);
+
+  if (youOverdriveLanes.length > 0 || themOverdriveLanes.length > 0) {
+    lanes = lanes.map((lane, index) => {
+      let { mine, theirs, rawMine, rawTheirs } = lane;
+      const youBoost = youOverdriveLanes.filter(l => l !== index).length * 0.2;
+      if (youBoost > 0 && mine.total > 0) {
+        const mult = Number((1 + youBoost).toFixed(1));
+        const total = Math.round(mine.total * mult);
+        mine = { ...mine, total, steps: [...mine.steps, { key: 'overdrive', op: '×', value: mult, label: 'Overdrive', total }] };
+      }
+      const themBoost = themOverdriveLanes.filter(l => l !== index).length * 0.2;
+      if (themBoost > 0 && theirs.total > 0) {
+        const mult = Number((1 + themBoost).toFixed(1));
+        const total = Math.round(theirs.total * mult);
+        theirs = { ...theirs, total, steps: [...theirs.steps, { key: 'overdrive', op: '×', value: mult, label: 'Overdrive', total }] };
+      }
+      const winner = mine.total !== theirs.total
+        ? (mine.total > theirs.total ? 'you' : 'them')
+        : rawMine === rawTheirs ? null : (rawMine > rawTheirs ? 'you' : 'them');
+      return { mine, theirs, winner };
+    });
+  }
+
   const youWon = lanes.filter(lane => lane.winner === 'you').length;
   const themWon = lanes.filter(lane => lane.winner === 'them').length;
   const youTotal = lanes.reduce((sum, lane) => sum + lane.mine.total, 0);

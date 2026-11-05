@@ -1,0 +1,12 @@
+.chip { display: block; overflow: visible; filter: var(--shadow-rest); }
+.sheen { animation: sheen 3.2s ease-in-out infinite; }
+@keyframes sheen { 0%, 55% { transform: rotate(20deg) translateX(0); } 100% { transform: rotate(20deg) translateX(190px); } }
+.sheen { transform-box: view-box; transform-origin: 50px 50px; }
+.comet { stroke-dasharray: 7 93; animation: comet 3s linear infinite; }
+@keyframes comet { to { stroke-dashoffset: -100; } }
+@media (prefers-reduced-motion: reduce) { .sheen, .comet { animation: none; } .sheen { display: none; } }
+
+.facts { margin: 0; display: grid; gap: var(--sp-2); width: 100%; text-align: left; }
+.facts div { text-align: left; display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: var(--sp-2); align-items: baseline; }
+.facts dt { font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--muted); }
+.facts dd { margin: 0; font-size: 12px; line-height: 1.4; color: var(--ink); }

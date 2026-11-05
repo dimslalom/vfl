@@ -119,6 +119,10 @@ export function chooseChip(state, uid, replaceUid = null) {
   if (uid == null) return { ...state, chipOffer: null };
   const chip = offer.options.find(option => option.uid === uid);
   if (!chip) return state;
+  if (chip.kind === 'evo' || chip.evo) {
+    const evoInventory = [...(state.evoInventory ?? []), chip.key];
+    return { ...state, evoInventory, chipOffer: null };
+  }
   const held = replaceUid ? state.hand.filter(card => card.uid !== replaceUid) : state.hand;
   const { hand, overflow } = bankTactics(held, [chip]);
   if (overflow.length) return state;

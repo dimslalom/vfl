@@ -1,0 +1,16 @@
+.root { position: relative; flex-shrink: 0; }
+.flat[data-hidden] { visibility: hidden; }
+.holder { position: absolute; inset: 0; }
+/* Same reach past the card as EvoFx and apexScene.js SPILL. */
+.gl {
+  position: absolute;
+  left: -22%;
+  top: -18%;
+  width: 144%;
+  height: 136%;
+  opacity: 0;
+  pointer-events: none;
+  touch-action: pan-y;
+}
+.gl[data-live] { opacity: 1; pointer-events: auto; cursor: grab; transition: opacity .25s ease-out; }
+.fx { position: absolute; left: 0; top: 0; width: 400px; height: 580px; transform-origin: top left; pointer-events: none; }

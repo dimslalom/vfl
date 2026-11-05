@@ -78,7 +78,7 @@ export function clubFatigueExtra(dev) {
 
 /** Fields a save from before this system lacks. */
 export function rewardDefaults() {
-  return { gold: 0, icons: 0, pity: { gold: 0 }, tapes: 0, opens: 0, opening: null, chipOffer: null };
+  return { gold: 0, icons: 0, pity: { gold: 0 }, tapes: 0, opens: 0, opening: null, chipOffer: null, evoInventory: [], activeEvo: null };
 }
 
 const NEWS_KEPT = 8;

@@ -86,6 +86,8 @@ export function createChipView(canvas, key, { reducedMotion = false, onFail, pha
   chip.group.rotation.x = Math.PI / 2;
   pivot.add(chip.group);
   const state = { yaw: 0, tilt: 0, lift: 1, aimYaw: 0, aimTilt: 0, aimLift: 1, visible: true, drawn: false };
+  // An evo chip paints its face once its art has loaded: draw again then.
+  chip.ready?.then(() => { state.drawn = false; wake(); });
   const visibility = new IntersectionObserver(([entry]) => { state.visible = entry.isIntersecting; if (state.visible) wake(); });
   visibility.observe(canvas);
 
@@ -113,6 +115,7 @@ export function createChipView(canvas, key, { reducedMotion = false, onFail, pha
       const idle = reducedMotion ? 0.35 : Math.sin(now * 0.7 + phase) * SWAY + 0.15;
       pivot.rotation.set(-lean + state.tilt + (reducedMotion ? 0 : Math.sin(now * 0.9 + phase) * 0.04), idle + state.yaw, 0);
       pivot.scale.setScalar(state.lift);
+      if (!reducedMotion) chip.animate?.(now);
 
       const w = Math.max(1, Math.round(canvas.clientWidth * Math.min(window.devicePixelRatio || 1, MAX_DPR)));
       const h = Math.max(1, Math.round(canvas.clientHeight * Math.min(window.devicePixelRatio || 1, MAX_DPR)));

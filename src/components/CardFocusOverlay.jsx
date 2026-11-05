@@ -132,6 +132,7 @@ export default function CardFocusOverlay({ card, onClose, action = null, onActio
                 card={card}
                 layoutId={releasingId === card.id ? undefined : `card-${card.id}`}
                 displayScale={scale}
+                evoFx
                 flippable
                 flipped={flipped}
                 onClick={() => setFlipped((f) => !f)}

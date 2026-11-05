@@ -14,7 +14,7 @@
 // to that spot on screen however the camera moves, and a tap sends it home.
 
 import {
-  ACESFilmicToneMapping, CanvasTexture, CircleGeometry, DirectionalLight, DoubleSide, Group, LatheGeometry, Mesh,
+  ACESFilmicToneMapping, CanvasTexture, CircleGeometry, Color, DirectionalLight, NoColorSpace, DoubleSide, Group, LatheGeometry, Mesh,
   MeshBasicMaterial, MeshPhysicalMaterial, Object3D, RingGeometry, PMREMGenerator, PerspectiveCamera, Raycaster, Scene, SRGBColorSpace, TorusGeometry, Vector2,
   Vector3, WebGLRenderer,
 } from 'three';
@@ -24,6 +24,7 @@ import { playUiSound } from '../../shared/src/lib/gameAudio';
 import { CHIP_TIERS, chipInfo } from './chipData';
 import { ICON_PATHS } from './chipIcons';
 import { chipStyle } from './chipStyle';
+import { makeEvoChip } from './evoChip3d';
 
 // Thick enough that the rim reads from the board's top-down camera.
 export const THICK = 0.27;
@@ -50,11 +51,32 @@ function canvas(w, h) {
   return [el, el.getContext('2d')];
 }
 
-function texture(el) {
+function texture(el, data = false) {
   const map = new CanvasTexture(el);
-  map.colorSpace = SRGBColorSpace;
+  map.colorSpace = data ? NoColorSpace : SRGBColorSpace;
   map.anisotropy = 8;
   return map;
+}
+
+// Surface data for the same print, as grey levels. Relief: higher is raised, so
+// the ink stands proud and the inlay sits in a shallow well. Rough: lower is
+// glossier. Everything is glossy, like the evo chips' enamel: a rough surface
+// spreads the room's light into a haze that greys the colours out, a smooth one
+// gathers it into highlights and keeps them deep.
+const RELIEF = { body: '#8a8a8a', spot: '#9e9e9e', face: '#5a5a5a', ink: '#d2d2d2', next: '#d2d2d2', off: '#d2d2d2' };
+const ROUGH = { body: '#5a5a5a', spot: '#525252', face: '#464646', ink: '#3c3c3c', next: '#3c3c3c', off: '#3c3c3c' };
+
+/** Fine grain over a data canvas, so no surface is perfectly flat or evenly lit. */
+export function grain(ctx, w, h, amount) {
+  const img = ctx.getImageData(0, 0, w, h);
+  const d = img.data;
+  let seed = 7;
+  for (let i = 0; i < d.length; i += 4) {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    const n = ((seed >>> 24) / 255 - 0.5) * amount;
+    d[i] += n; d[i + 1] += n; d[i + 2] += n;
+  }
+  ctx.putImageData(img, 0, 0);
 }
 
 function drawIcon(ctx, name, x, y, size, color) {
@@ -85,8 +107,8 @@ const MONO = { weight: 700, family: 'ui-monospace, Menlo, monospace' };
 const infoOf = key => (typeof key === 'string' ? chipInfo(key) : key);
 const toneOf = info => info.tone ?? CHIP_TIERS[info.tier];
 
-export function faceArt(info, face = chipStyle().face) {
-  const tone = toneOf(info);
+export function faceArt(info, face = chipStyle().face, pass = 'color') {
+  const tone = pass === 'relief' ? RELIEF : pass === 'rough' ? ROUGH : toneOf(info);
   const [el, ctx] = canvas(512, 512);
   ctx.translate(256, 256);
   ctx.fillStyle = tone.body;
@@ -119,7 +141,7 @@ export function faceArt(info, face = chipStyle().face) {
       ctx.arc((i - (of - 1) / 2) * gap, 84, 15, 0, Math.PI * 2);
       ctx.fill();
     }
-    return texture(el);
+    return finish(el, ctx, pass);
   }
   if (face === 'code') {
     fitText(ctx, info.code, MONO, 64, 250);
@@ -133,25 +155,61 @@ export function faceArt(info, face = chipStyle().face) {
   // The most it can pay, big: the one number a player needs before anything else.
   fitText(ctx, info.headline, SANS, 132, 250);
   ctx.fillText(info.headline, 0, 62);
-  return texture(el);
+  return finish(el, ctx, pass);
+}
+
+function finish(el, ctx, pass) {
+  if (pass === 'color') return texture(el);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  grain(ctx, el.width, el.height, pass === 'relief' ? 14 : 30);
+  return texture(el, true);
 }
 
 // The edge: clay with the spots running round it, lined up with the face's spots.
-function edgeArt(info) {
-  const tone = toneOf(info);
+// Its relief is the fine grooves a pressed casino chip has round its rim.
+function edgeArt(info, pass = 'color') {
+  const tone = pass === 'relief' ? RELIEF : pass === 'rough' ? ROUGH : toneOf(info);
   const [el, ctx] = canvas(1024, 32);
   ctx.fillStyle = tone.body;
   ctx.fillRect(0, 0, 1024, 32);
   ctx.fillStyle = tone.spot;
   const step = 1024 / SPOTS;
   for (let i = 0; i < SPOTS; i++) ctx.fillRect(i * step + step * 0.5 - 22, 0, 44, 32);
-  return texture(el);
+  if (pass === 'color') return texture(el);
+  if (pass === 'relief') {
+    ctx.fillStyle = 'rgba(0,0,0,.28)';
+    for (let x = 0; x < 1024; x += 6) ctx.fillRect(x, 0, 2, 32);
+  }
+  grain(ctx, 1024, 32, 20);
+  return texture(el, true);
 }
 
-function clay(map) {
-  // Matte clay with a faint sheen: a glossier coat washes the dark inlay out when
-  // a chip stands facing the light.
-  return new MeshPhysicalMaterial({ map, roughness: 0.68, metalness: 0, clearcoat: 0.12, clearcoatRoughness: 0.6, envMapIntensity: 0.5 });
+// Glossy lacquered clay, the same finish as the evo chips: a smooth glaze with a
+// clear coat over it, so highlights stay sharp and colours stay rich. The relief
+// and roughness maps keep it from reading as one flat plastic colour.
+function clay(info, art) {
+  const tone = toneOf(info);
+  return new MeshPhysicalMaterial({
+    map: art('color'),
+    bumpMap: art('relief'),
+    bumpScale: 2.2,
+    roughnessMap: art('rough'),
+    roughness: 1,
+    metalness: 0,
+    specularIntensity: 0.5,
+    clearcoat: 0.35,
+    clearcoatRoughness: 0.12,
+    sheen: 0.15,
+    sheenRoughness: 0.4,
+    sheenColor: new Color(tone.body).lerp(new Color('#ffffff'), 0.35),
+    envMapIntensity: 0.4,
+  });
+}
+
+// The ridge round the inlay is a polished metal ring: silver, gold on rare chips.
+function inlayMetal(info) {
+  const color = info.tone?.metal ?? (info.tier === 'rare' ? '#d8b34c' : '#c3c9d6');
+  return new MeshPhysicalMaterial({ color, metalness: 1, roughness: 0.28, clearcoat: 0.4, clearcoatRoughness: 0.2, envMapIntensity: 1.2 });
 }
 
 // The rim as a lathe: flat at the faces, a quarter round into the side and back,
@@ -182,11 +240,12 @@ function geometries() {
 
 export function makeChip(key, index) {
   const info = infoOf(key);
+  if (info.evo) return makeEvoChip(info, index, { THICK, grain });
   const { edge, face, ridge } = geometries();
-  const faceMat = clay(faceArt(info));
-  const ridgeMat = new MeshPhysicalMaterial({ color: toneOf(info).body, roughness: 0.45, metalness: 0, clearcoat: 0.3, envMapIntensity: 0.8 });
+  const faceMat = clay(info, pass => faceArt(info, undefined, pass));
+  const ridgeMat = inlayMetal(info);
   const group = new Group();
-  const side = new Mesh(edge, clay(edgeArt(info)));
+  const side = new Mesh(edge, clay(info, pass => edgeArt(info, pass)));
   const top = new Mesh(face, faceMat);
   top.rotation.x = -Math.PI / 2;
   top.position.y = THICK / 2;
@@ -213,10 +272,15 @@ export function makeChip(key, index) {
 
 /** Reprints a chip's face with a different big number: a placed chip shows what it pays there. */
 export function printChip(chip, headline) {
-  if (chip.printed === headline) return false;
+  if (chip.printed === headline || chip.info.evo) return false;
   chip.printed = headline;
+  const info = { ...chip.info, headline };
   chip.faceMat.map?.dispose();
-  chip.faceMat.map = faceArt({ ...chip.info, headline });
+  chip.faceMat.bumpMap?.dispose();
+  chip.faceMat.roughnessMap?.dispose();
+  chip.faceMat.map = faceArt(info);
+  chip.faceMat.bumpMap = faceArt(info, undefined, 'relief');
+  chip.faceMat.roughnessMap = faceArt(info, undefined, 'rough');
   chip.faceMat.needsUpdate = true;
   return true;
 }
@@ -226,8 +290,11 @@ export function disposeChip(chip) {
   chip.ring.material.dispose();
   for (const material of new Set(chip.meshes.map(mesh => mesh.material))) {
     material.map?.dispose();
+    material.bumpMap?.dispose();
+    material.roughnessMap?.dispose();
     material.dispose();
   }
+  chip.dispose?.();
 }
 
 // A seeded wobble, so the same hand always stacks the same way.

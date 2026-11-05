@@ -194,6 +194,21 @@
         "rule": "design-system-color",
         "value": "rgb(0 0 0 / .45)",
         "createdAt": "2026-11-04T01:26:09.645Z"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#c79bff",
+        "createdAt": "2026-11-05T03:09:49.061Z",
+        "reason": "Claude: rare tier label uses the Clutch Factor evo line colour from evoArt.js, an evo art palette value"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "*",
+        "files": [
+          "src/chip3d/evoChip3d.js"
+        ],
+        "createdAt": "2026-11-05T03:35:14.230Z",
+        "reason": "Claude: 3D material colours (gold bezel, ruby, running light) for the Apex evo chip, matching apex.glb and evoArt.js"
       }
     ]
   }

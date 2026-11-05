@@ -703,6 +703,11 @@
 .now { font-size: var(--fs-display); line-height: 1; }
 .plus { align-self: flex-start; padding: 2px 6px; background: var(--win); color: var(--win-ink); font: 800 var(--fs-label)/1.2 var(--font-mono); font-style: normal; }
 .pedestal .gainNote { min-height: 1.3em; flex-basis: auto; }
+.gainNote[data-bad] { color: var(--accent); }
+/* Banked evo chips to choose between: the token itself is the button. */
+.evoPick { padding: 0; border: 0; background: none; cursor: pointer; opacity: .45; transition: opacity .15s, transform .15s; }
+.evoPick:hover { opacity: .8; }
+.evoPick[data-on] { opacity: 1; transform: translateY(-3px); }
 
 /* Pressing Train: the old card folds into the new one, which charges up, and the
    number ticks over before the club moves on. */
@@ -962,6 +967,11 @@ span.counter { cursor: default; }
 .chipQ { position: absolute; top: var(--sp-2); right: var(--sp-2); z-index: 2; transition: transform .18s cubic-bezier(.2, .8, .2, 1); }
 .chipSlot:has(> [data-on]) .chipQ { transform: translateY(-8px); }
 .chipTier { color: var(--muted); font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; }
+.chipTier[data-evo='rare'] { color: #c79bff; }
+.chipTier[data-evo='apex'] { color: var(--gold); }
+
+
+
 .chipDisc { pointer-events: auto; }
 .chipHand { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); }
 .handSlots { display: flex; gap: var(--sp-2); }
@@ -1342,6 +1352,8 @@ img.tapeCard { object-fit: contain; filter: var(--shadow-rest); }
   animation: deal .38s cubic-bezier(.22, 1, .36, 1) calc(120ms + var(--deal, 0) * 45ms) both;
 }
 
+.handTags { display: flex; gap: var(--sp-1); }
+
 .levelUp {
   padding: 2px 8px;
   background: var(--win);
@@ -1424,3 +1436,32 @@ img.tapeCard { object-fit: contain; filter: var(--shadow-rest); }
 @media (max-width: 759px) {
   .clay > span.clay3d, .clay[data-on] > span.clay3d, .clay:disabled > span.clay3d { width: 50px; height: 50px; }
 }
+
+/* An evo stage finished: a full-screen moment in the verdict's voice. The
+   stage in the evo's metal, the evo name in hero type, the evolved card, then
+   each gain in its own slot and the skill it learned as a rail crest. */
+.evoMoment {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-4);
+  padding: max(var(--sp-6), env(safe-area-inset-top)) var(--sp-6) max(var(--sp-6), env(safe-area-inset-bottom));
+  background: var(--bg);
+  text-align: center;
+  animation: groundSettle .34s cubic-bezier(.22, 1, .36, 1) both;
+}
+.evoStage { font: 800 var(--fs-label)/1 var(--font-mono); letter-spacing: var(--track-mono); text-transform: uppercase; }
+.evoName { margin: 0 0 var(--sp-6); font-size: var(--fs-hero); font-weight: 900; line-height: 1; letter-spacing: -.01em; text-transform: uppercase; color: var(--ink); text-wrap: balance; }
+.evoGains { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--sp-4); margin-top: var(--sp-6); }
+.evoGain { display: inline-flex; align-items: center; gap: var(--sp-2); }
+.evoGain b { font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: var(--track-mono); color: var(--muted); }
+.evoSkill { display: grid; grid-template-columns: auto auto auto; align-items: center; justify-content: center; gap: var(--sp-1) var(--sp-2); }
+.evoSkill b { font: 700 var(--fs-label)/1 var(--font-mono); letter-spacing: var(--track-caps); }
+.evoSkill span { color: var(--ink); font-size: var(--fs-body); font-weight: 700; }
+.evoSkill small { grid-column: 1 / -1; color: var(--muted); font-size: var(--fs-label); }
+.evoMoment .primary { margin-top: var(--sp-4); }
+@media (prefers-reduced-motion: reduce) { .evoMoment { animation: none; } }

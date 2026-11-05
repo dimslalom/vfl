@@ -10,7 +10,7 @@
 
 import { effectiveCard, emptyDev, tickCareerYear, tickFatigue, careerStage } from '../../../shared/src/engine/endless/career.js';
 import { eligibleOrgs, mulberry32, pickN, samplePack } from '../../../shared/src/engine/perfectRun.js';
-import { BOARD_SKILLS, chipTier } from '../board/board.js';
+import { chipTier } from '../board/board.js';
 import { TIERS, reputationDelta, tierPools } from '../endless/ladder.js';
 import { releaseFee, signingCost } from '../endless/market.js';
 import { maxSignableRating } from '../endless/stature.js';
@@ -44,9 +44,76 @@ const DRAFT_MIN_RATING = 68;
 // A last place in the bottom tier is a warning; two in a row ends the run.
 const SACKED_AFTER = 2;
 const STAT_KEYS = ['aim', 'positioning', 'ability', 'mentality', 'synergy'];
-const SKILL_KEYS = Object.keys(BOARD_SKILLS);
+const BASE_SKILL_KEYS = ['flex', 'flick', 'one_trick', 'mastermind', 'aura'];
 const ROUND_EDGE_PER_POINT = 0.04;
 const YOU = 'you';
+
+// ── Evo Chips Catalog ───────────────────────────────────────────────────────
+
+export const EVO_CHIPS = {
+  glacier: {
+    key: 'glacier',
+    name: 'Glacier Shield',
+    tier: 'common',
+    theme: 'glacier',
+    badge: 'ANC',
+    color: '#4ade80',
+    headline: 'ANC',
+    requirements: { maxRating: 80, roles: ['Sentinel', 'Controller'] },
+    level1: { type: 'win', count: 1, stats: { positioning: 1, mentality: 1 }, label: 'Win 1 match with player starting' },
+    level2: { type: 'win', count: 2, stats: { positioning: 1, mentality: 1 }, skill: 'anchor', label: 'Win 2 matches with player in starting 5' },
+  },
+  first_strike: {
+    key: 'first_strike',
+    name: 'First Strike',
+    tier: 'common',
+    theme: 'ember',
+    badge: 'FBD',
+    color: '#f87171',
+    headline: 'FBD',
+    requirements: { maxRating: 82, roles: ['Duelist', 'Initiator'] },
+    level1: { type: 'play', count: 1, stats: { aim: 1, ability: 1 }, label: 'Play 1 match with player starting' },
+    level2: { type: 'win', count: 2, stats: { aim: 1, ability: 1 }, skill: 'first_blood', label: 'Win 2 matches with player in starting 5' },
+  },
+  clutch_factor: {
+    key: 'clutch_factor',
+    name: 'Clutch Factor',
+    tier: 'rare',
+    theme: 'amethyst',
+    badge: 'CLT',
+    color: '#c084fc',
+    headline: 'CLT',
+    requirements: { maxRating: 84, roles: null },
+    level1: { type: 'win', count: 1, stats: { aim: 2, mentality: 2 }, label: 'Win 1 match with player starting' },
+    level2: { type: 'mvp', count: 2, stats: { aim: 2, mentality: 2 }, skill: 'clutch', label: 'Win 2 matches where player is MVP' },
+  },
+  hivemind: {
+    key: 'hivemind',
+    name: 'Hivemind',
+    tier: 'rare',
+    theme: 'cyber',
+    badge: 'LNK',
+    color: '#38bdf8',
+    headline: 'LNK',
+    requirements: { maxRating: 85, roles: null },
+    level1: { type: 'play', count: 2, stats: { synergy: 2, ability: 2 }, label: 'Play 2 matches with player starting' },
+    level2: { type: 'win', count: 2, stats: { synergy: 2, ability: 2 }, skill: 'synergy_link', label: 'Win 2 matches with player in starting 5' },
+  },
+  apex_predator: {
+    key: 'apex_predator',
+    name: 'Apex Predator',
+    tier: 'apex',
+    theme: 'apex',
+    badge: 'OVD',
+    color: '#ff003c',
+    headline: 'OVD',
+    requirements: { maxRating: 83, roles: null },
+    level1: { type: 'play', count: 2, stats: { aim: 2, positioning: 2, ability: 2, mentality: 2, synergy: 2 }, label: 'Play 2 matches with player starting' },
+    level2: { type: 'mvp', count: 3, stats: { aim: 3, positioning: 3, ability: 3, mentality: 3, synergy: 3 }, skill: 'overdrive', label: 'Win 3 matches where player is MVP' },
+  },
+};
+
+export const EVO_KEYS = Object.keys(EVO_CHIPS);
 
 function hash(...parts) {
   let value = 2166136261;
@@ -63,13 +130,24 @@ const byId = cards => new Map(cards.map(card => [card.id, card]));
 // ── the card as it stands today ─────────────────────────────────────────────
 
 export function clubCard(state, card) {
+  if (!card) return card;
   const developed = effectiveCard(card, state.dev[card.id]);
   const growth = developed.rating - card.rating;
   const training = state.training[card.id];
   // The board scores stats, so growth has to reach them to count in a match.
   const tired = Math.round(clubFatigueExtra(state.dev[card.id]));
   const stats = Object.fromEntries(STAT_KEYS.map(key => [key, Math.round(developed.stats[key] + growth + (training?.stats?.[key] ?? 0) - tired)]));
-  return { ...developed, rating: developed.rating - tired, stats, learned: training?.skills ?? [] };
+  const evoOvrGain = Math.round(Object.values(training?.stats ?? {}).reduce((a, b) => a + b, 0) / STAT_KEYS.length);
+  return {
+    ...developed,
+    rating: developed.rating - tired + evoOvrGain,
+    stats,
+    learned: training?.skills ?? [],
+    evoTheme: training?.evoTheme ?? null,
+    evoLevel: training?.evoLevel ?? null,
+    evoBadge: training?.evoBadge ?? null,
+    evolutions: training?.evolutions ?? [],
+  };
 }
 
 export function squadCards(state, cards) {
@@ -314,17 +392,123 @@ export function rollChipOffer(state, stage, attempt = 0) {
     const pool = of(floor).filter(tactic => !keys.includes(tactic.key));
     keys[2] = pool[Math.floor(rng() * pool.length)].key;
   }
-  return { stage, floor, attempt, options: keys.map(key => createTacticInstance(rng, key, 'owned')) };
+  const options = keys.map(key => createTacticInstance(rng, key, 'owned'));
+
+  // Rare chance (~28%) to replace a non-floor slot with an Evo Chip
+  const evoRoll = rng();
+  if (evoRoll < 0.28) {
+    const evoPool = stage === 'Final' || stage === 'Semifinal'
+      ? ['clutch_factor', 'hivemind', 'apex_predator']
+      : ['glacier', 'first_strike', 'clutch_factor', 'hivemind'];
+    const chosenEvoKey = evoPool[Math.floor(rng() * evoPool.length)];
+    const evoDef = EVO_CHIPS[chosenEvoKey];
+
+    // Pick a slot that doesn't compromise the guaranteed floor
+    const meetsFloor = options.map((opt, i) => (reaches(opt.key) ? i : -1)).filter(i => i !== -1);
+    const candidateSlots = [0, 1, 2].filter(i => !meetsFloor.includes(i) || meetsFloor.length > 1);
+    const replaceSlot = candidateSlots[0] ?? 0;
+
+    options[replaceSlot] = {
+      uid: `evo_${chosenEvoKey}_${state.year}_${state.week}_${attempt}`,
+      kind: 'evo',
+      key: chosenEvoKey,
+      name: evoDef.name,
+      tier: evoDef.tier,
+      theme: evoDef.theme,
+      badge: evoDef.badge,
+      color: evoDef.color,
+      evo: true,
+    };
+  }
+
+  return { stage, floor, attempt, options };
+}
+
+function processActiveEvo(state, { won, mvp, results }) {
+  if (!state.activeEvo) return { activeEvo: null, training: state.training, evoProgress: null };
+  const { cardId, evoKey } = state.activeEvo;
+  const evo = EVO_CHIPS[evoKey];
+  if (!evo) return { activeEvo: null, training: state.training, evoProgress: null };
+
+  const playedIds = new Set(results.flatMap(round => round.squad ?? []));
+  const started = playedIds.has(cardId) || results.length > 0;
+  const isMvp = (mvp === cardId);
+
+  let activeEvo = { ...state.activeEvo };
+  let training = { ...state.training };
+  let cardTraining = { stats: {}, skills: [], ...(training[cardId] ?? {}) };
+  let evoProgress = null;
+
+  if (started) {
+    if (!activeEvo.l1Done) {
+      const req = evo.level1;
+      const countMatch = (req.type === 'play') || (req.type === 'win' && won) || (req.type === 'mvp' && won && isMvp);
+      const l1Progress = (activeEvo.l1Progress ?? 0) + (countMatch ? 1 : 0);
+      const l1Done = l1Progress >= req.count;
+      activeEvo = { ...activeEvo, l1Progress, progress: l1Progress, l1Done, level: l1Done ? 2 : 1 };
+
+      if (l1Done) {
+        const stats = { ...cardTraining.stats };
+        for (const [sKey, sVal] of Object.entries(req.stats)) {
+          stats[sKey] = (stats[sKey] ?? 0) + sVal;
+        }
+        cardTraining = {
+          ...cardTraining,
+          stats,
+          evoTheme: evo.theme,
+          evoLevel: 1,
+        };
+        evoProgress = { cardId, evoKey, level: 1, completed: true, name: evo.name, gainedStats: req.stats };
+      } else {
+        evoProgress = { cardId, evoKey, level: 1, completed: false, progress: l1Progress, total: req.count, name: evo.name };
+      }
+    } else if (!activeEvo.l2Done) {
+      const req = evo.level2;
+      const countMatch = (req.type === 'play') || (req.type === 'win' && won) || (req.type === 'mvp' && won && isMvp);
+      const l2Progress = (activeEvo.l2Progress ?? 0) + (countMatch ? 1 : 0);
+      const l2Done = l2Progress >= req.count;
+      activeEvo = { ...activeEvo, l2Progress, progress: l2Progress, l2Done };
+
+      if (l2Done) {
+        const stats = { ...cardTraining.stats };
+        for (const [sKey, sVal] of Object.entries(req.stats)) {
+          stats[sKey] = (stats[sKey] ?? 0) + sVal;
+        }
+        const skills = [...new Set([...(cardTraining.skills ?? []), req.skill])];
+        const evolutions = [...(cardTraining.evolutions ?? []), evoKey];
+        cardTraining = {
+          ...cardTraining,
+          stats,
+          skills,
+          evoTheme: evo.theme,
+          evoLevel: 2,
+          evoBadge: evo.badge,
+          evolutions,
+          activeEvoKey: null,
+        };
+        evoProgress = { cardId, evoKey, level: 2, completed: true, name: evo.name, skill: req.skill, gainedStats: req.stats };
+        activeEvo = null; // Evolution fully mastered!
+      } else {
+        evoProgress = { cardId, evoKey, level: 2, completed: false, progress: l2Progress, total: req.count, name: evo.name };
+      }
+    }
+  }
+
+  training[cardId] = cardTraining;
+  return { activeEvo, training, evoProgress };
 }
 
 function afterSeries(state, { won, results, hand }, cards, opponentId, stage) {
   const roundsWon = results.filter(round => round.winA).length;
   const { dev, xp, growth, mvp } = growSquad(state, results, cards);
+  const { activeEvo, training, evoProgress } = processActiveEvo(state, { won, mvp, results });
   return {
     ...state,
     dev,
     xp,
     hand,
+    training,
+    activeEvo,
     chipOffer: won ? rollChipOffer(state, stage) : state.chipOffer,
     packs: state.packs + (won ? 1 : 0),
     seriesWon: state.seriesWon + (won ? 1 : 0),
@@ -337,6 +521,7 @@ function afterSeries(state, { won, results, hand }, cards, opponentId, stage) {
       rounds: results.map(({ map, a, b, winA }) => ({ map, a, b, winA })),
       growth,
       mvp,
+      evoProgress,
       packs: won ? 1 : 0,
     },
   };
@@ -420,8 +605,8 @@ export function trainingOffer(state, card) {
   const today = hash(state.seed, card.id, state.year, state.week);
   const entry = state.training[card.id] ?? {};
   const stat = STAT_KEYS[today % STAT_KEYS.length];
-  const owned = SKILL_KEYS.filter(key => card.learned?.includes(key) || card.specialties?.some?.(spec => spec.key === key));
-  const open = SKILL_KEYS.filter(key => !owned.includes(key));
+  const owned = BASE_SKILL_KEYS.filter(key => card.learned?.includes(key) || card.specialties?.some?.(spec => spec.key === key));
+  const open = BASE_SKILL_KEYS.filter(key => !owned.includes(key));
   const skill = entry.learning?.key ?? (entry.skills?.length ? null : open[today % Math.max(open.length, 1)] ?? null);
   return {
     stat,
@@ -429,6 +614,59 @@ export function trainingOffer(state, card) {
     skill,
     sessions: entry.learning?.sessions ?? 0,
     fatigue: state.dev[card.id]?.f ?? 0,
+  };
+}
+
+export function isEligibleForEvo(card, evoKey) {
+  const evo = EVO_CHIPS[evoKey];
+  if (!evo || !card) return { eligible: false, reason: 'Invalid' };
+  if (evo.requirements.maxRating && card.rating > evo.requirements.maxRating) {
+    return { eligible: false, reason: `Max Rating ${evo.requirements.maxRating}` };
+  }
+  if (evo.requirements.roles && !evo.requirements.roles.includes(card.role)) {
+    return { eligible: false, reason: `Requires ${evo.requirements.roles.join('/')}` };
+  }
+  if (card.learned?.includes(evo.level2.skill)) {
+    return { eligible: false, reason: `Already has ${evo.name}` };
+  }
+  return { eligible: true, reason: 'Eligible' };
+}
+
+export function commitEvolution(state, cardId, evoKey) {
+  if (!state.trainSlot || state.trainSlot <= 0) return state;
+  if (!state.evoInventory?.includes(evoKey)) return state;
+  if (state.activeEvo) return state; // Only 1 active evo at a time across the club
+
+  const nextInventory = [...state.evoInventory];
+  const index = nextInventory.indexOf(evoKey);
+  nextInventory.splice(index, 1);
+
+  const activeEvo = {
+    cardId,
+    evoKey,
+    level: 1,
+    progress: 0,
+    l1Progress: 0,
+    l2Progress: 0,
+    l1Done: false,
+    l2Done: false,
+  };
+
+  const currentTraining = state.training[cardId] ?? { stats: {}, skills: [] };
+  const nextTraining = {
+    ...state.training,
+    [cardId]: {
+      ...currentTraining,
+      activeEvoKey: evoKey,
+    },
+  };
+
+  return {
+    ...state,
+    trainSlot: Math.max(0, state.trainSlot - 1),
+    evoInventory: nextInventory,
+    activeEvo,
+    training: nextTraining,
   };
 }
 

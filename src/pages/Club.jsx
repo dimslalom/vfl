@@ -2,13 +2,17 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import allCards from '../../shared/src/data/cards.json';
-import { STAT_LABELS } from '../../shared/src/data/statFields';
+import { STAT_KEYS, STAT_LABELS } from '../../shared/src/data/statFields';
 import PlayerCard from '../../shared/src/components/PlayerCard';
 import { playUiSound } from '../../shared/src/lib/gameAudio';
 import { assetPath } from '../../shared/src/lib/utils';
 import useReducedMotion from '../../shared/src/lib/useReducedMotion';
 import BoardSeries from '../components/BoardSeries';
 import PackTear from '../pack3d/Pack3DTear';
+import EvoShowcase from '../evo3d/EvoShowcase';
+import SpecialtyIcon from '../../shared/src/components/SpecialtyIcon';
+import { SPECIALTIES } from '../../shared/src/data/specialties';
+import { EVO_ART } from '../../shared/src/components/evoArt';
 import {
   GOLD_PITY, NAME_MAX, PACK_KEYS, PACK_VALUE, RENAME_PRICE, REROLL_PRICE, SESSION_PRICE, TAPE_MAX, TITLES_PER_ICON, TRAIN_SLOTS_MAX, clubFatigueExtra, packValue,
   squadMax, stock,
@@ -19,12 +23,13 @@ import {
 import { ROLES, chipInfo } from '../chip3d/chipData';
 import Chip3D from '../chip3d/Chip3D';
 import { ChipBrief, ChipGuideButton, ChipLadder, ChipNoteButton } from '../chip3d/ChipHelp';
+import { EvoChip, EvoFacts, EvoFits, EvoNoteButton } from '../chip3d/EvoChip';
 import { TACTIC_HAND_MAX } from '../engine/endless/seriesCards';
 import { fatiguePenalty } from '../../shared/src/engine/endless/career';
 import { BOARD_SKILLS } from '../engine/board/board';
 import {
-  CONTRACT_MAX, DRAFT_PACKS, SKILL_SESSIONS, STARTERS, STAT_CAP, STAT_STEP, WEEKS, XP_PER_POINT, clubById, clubCard, clubRoster,
-  clubScore, closeWindow, draftPack, finishSeries, isValidClub, moveSquad, newClub, nextMatch, squadCards, standings,
+  CONTRACT_MAX, DRAFT_PACKS, EVO_CHIPS, SKILL_SESSIONS, STARTERS, STAT_CAP, STAT_STEP, WEEKS, XP_PER_POINT, clubById, clubCard, clubRoster,
+  clubScore, closeWindow, commitEvolution, draftPack, finishSeries, isEligibleForEvo, isValidClub, moveSquad, newClub, nextMatch, squadCards, standings,
   train, trainingOffer, windowOffers, windowTotals,
 } from '../engine/club/season';
 import { TIER_META } from '../engine/endless/ladder';
@@ -818,14 +823,16 @@ function ChipDisc({ chipKey, size = 'm', phase = 0 }) {
   return <Chip3D chipKey={chipKey} size={size === 's' ? 52 : size === 'm' ? 72 : 150} phase={phase} className={styles.chipDisc} />;
 }
 
-function ChipPick({ state, squad, onTake, onPass, onReroll, onBack }) {
+export function ChipPick({ state, squad, onTake, onPass, onReroll, onBack }) {
   useEscape(onBack);
   const offer = state.chipOffer;
   const hand = state.hand ?? [];
   const [picked, setPicked] = useState(null);
   const [drop, setDrop] = useState(null);
-  const full = hand.length >= TACTIC_HAND_MAX;
-  const ready = picked && (!full || drop);
+  const pickedOption = offer?.options.find(o => o.uid === picked);
+  const isEvoPicked = pickedOption?.kind === 'evo' || pickedOption?.evo;
+  const full = !isEvoPicked && (hand.length >= TACTIC_HAND_MAX);
+  const ready = picked && (!full || drop || isEvoPicked);
   return (
     <div className={styles.stage}>
       <Hud title={offer ? 'Pick a chip' : 'Chips'} back={<BackButton onClick={onBack} />} tags={offer ? [[offer.stage]] : []}>
@@ -835,6 +842,21 @@ function ChipPick({ state, squad, onTake, onPass, onReroll, onBack }) {
         {offer ? (
           <div className={styles.chipOffer} style={{ viewTransitionName: 'chips-panel' }}>
             {offer.options.map((option, index) => {
+              if (option.kind === 'evo' || option.evo) {
+                const evo = EVO_CHIPS[option.key];
+                return (
+                  <div key={option.uid} className={styles.chipSlot}>
+                    <button type="button" className={styles.chipOption} style={{ '--deal': index }} data-on={picked === option.uid || undefined} aria-pressed={picked === option.uid} onClick={() => { playUiSound('chip_lift'); setPicked(option.uid); }}>
+                      <EvoChip evoKey={option.key} size={140} />
+                      <span className={styles.chipTier} data-evo={evo.tier}>{evo.tier} evo</span>
+                      <b>{evo.name}</b>
+                      <EvoFacts evoKey={option.key} />
+                      <EvoFits evoKey={option.key} roster={squad} />
+                    </button>
+                    <EvoNoteButton evoKey={option.key} className={styles.chipQ} />
+                  </div>
+                );
+              }
               const info = chipInfo(option.key);
               return (
                 <div key={option.uid} className={styles.chipSlot}>
@@ -912,11 +934,43 @@ const FOCUS_TONES = {
   done: { body: '#1a1f2e', spot: '#121622', face: '#161b29', ink: '#00c8a0', next: '#00c8a0', off: '#3a4052' },
 };
 
-function Train({ state, onTrain, onTape, onBuy, canBuy, onBack, size }) {
+function previewEvoCard(baseCard, evoDef, targetLevel = 2) {
+  if (!evoDef) return baseCard;
+  const l1Stats = evoDef.level1?.stats ?? {};
+  const l2Stats = targetLevel === 2 ? (evoDef.level2?.stats ?? {}) : {};
+  const addStats = {};
+  for (const [k, v] of Object.entries(l1Stats)) {
+    addStats[k] = (addStats[k] ?? 0) + v;
+  }
+  for (const [k, v] of Object.entries(l2Stats)) {
+    addStats[k] = (addStats[k] ?? 0) + v;
+  }
+  const stats = { ...(baseCard.stats ?? {}) };
+  for (const [k, v] of Object.entries(addStats)) {
+    stats[k] = (stats[k] ?? baseCard[k] ?? 0) + v;
+  }
+  const evoOvrGain = Math.round(Object.values(addStats).reduce((a, b) => a + b, 0) / STAT_KEYS.length);
+  const learned = targetLevel === 2 && evoDef.level2?.skill
+    ? [...new Set([...(baseCard.learned ?? []), evoDef.level2.skill])]
+    : (baseCard.learned ?? []);
+  return {
+    ...baseCard,
+    ...stats,
+    stats,
+    rating: (baseCard.rating ?? 0) + evoOvrGain,
+    learned,
+    evoTheme: evoDef.theme,
+    evoLevel: targetLevel,
+    evoBadge: targetLevel === 2 ? evoDef.badge : 'EVO I',
+  };
+}
+
+export function Train({ state, onTrain, onTape, onEvo, onBuy, canBuy, onBack, size, initialFocus = 'stat' }) {
   const { scale } = size;
   const squad = squadCards(state, allCards);
   const [who, setWho] = useState(0);
-  const [picked, setPicked] = useState('stat');
+  const [picked, setPicked] = useState(initialFocus);
+  const [selectedEvoKey, setSelectedEvoKey] = useState(null);
   // Pressing Train plays the session out on the cards before the club moves on.
   const [drilling, setDrilling] = useState(false);
   const drillTimer = useRef(null);
@@ -929,6 +983,30 @@ function Train({ state, onTrain, onTape, onBuy, canBuy, onBack, size }) {
   const learned = entry.skills?.[0] && BOARD_SKILLS[entry.skills[0]];
   const statSteps = STAT_CAP / STAT_STEP;
   const skillMeter = { on: skillDone ? SKILL_SESSIONS : offer.sessions, of: SKILL_SESSIONS };
+
+  const inventory = state.evoInventory ?? [];
+  const activeEvo = state.activeEvo;
+  const activeEvoForCard = activeEvo?.cardId === card.id ? activeEvo : null;
+  const activeEvoDef = activeEvo ? EVO_CHIPS[activeEvo.evoKey] : null;
+  const hasActiveEvoAnywhere = Boolean(activeEvo);
+  const hasEvoOptions = Boolean(activeEvoForCard || inventory.length > 0 || hasActiveEvoAnywhere);
+
+  const currentEvoKey = activeEvoForCard?.evoKey ?? (inventory.includes(selectedEvoKey) ? selectedEvoKey : inventory[0] ?? null);
+  const currentEvoDef = currentEvoKey ? EVO_CHIPS[currentEvoKey] : null;
+  const eligibility = currentEvoKey ? isEligibleForEvo(card, currentEvoKey) : { eligible: false, reason: 'No chip selected' };
+
+  let evoMeter = null;
+  let evoMark = 'EVO';
+  if (activeEvoForCard && activeEvoDef) {
+    const isL1 = !activeEvoForCard.l1Done;
+    const currentCount = isL1 ? (activeEvoForCard.l1Progress ?? 0) : (activeEvoForCard.l2Progress ?? 0);
+    const targetCount = isL1 ? activeEvoDef.level1.count : activeEvoDef.level2.count;
+    evoMeter = { on: currentCount, of: targetCount };
+    evoMark = `L${activeEvoForCard.level}`;
+  } else if (inventory.length > 0) {
+    evoMark = `×${inventory.length}`;
+  }
+
   // Every choice stays on the table. A finished one is ticked and dim, so the reason it
   // can't be taken is its own shape: a full meter, a tick, nothing left.
   const focuses = [
@@ -937,11 +1015,31 @@ function Train({ state, onTrain, onTape, onBuy, canBuy, onBack, size }) {
     { id: 'rest', title: 'Rest', done: restDone, mark: offer.fatigue, meter: { on: Math.ceil(offer.fatigue / 25), of: 4 } },
     // A skill tape moves the skill on without spending the week's session.
     state.tapes > 0 && { id: 'tape', title: 'Tape', done: skillDone, mark: `×${state.tapes}`, meter: skillMeter },
+    hasEvoOptions && {
+      id: 'evo',
+      title: activeEvoForCard ? (activeEvoDef?.name ?? 'Evolution') : 'Evolution',
+      done: false,
+      mark: evoMark,
+      meter: evoMeter,
+    },
   ].filter(Boolean);
   const open = focuses.filter(item => !item.done);
   const chosen = open.find(item => item.id === picked) ?? open[0];
   const focus = chosen?.id;
-  const after = chosen ? clubCard(train(state, card, focus === 'tape' ? 'skill' : focus), cardById.get(card.id)) : card;
+
+  let after;
+  if (focus === 'evo') {
+    if (activeEvoForCard) {
+      after = previewEvoCard(card, activeEvoDef, activeEvoForCard.l1Done ? 2 : 1);
+    } else if (currentEvoDef) {
+      after = previewEvoCard(card, currentEvoDef, 2);
+    } else {
+      after = card;
+    }
+  } else {
+    after = chosen ? clubCard(train(state, card, focus === 'tape' ? 'skill' : focus), cardById.get(card.id)) : card;
+  }
+
   const usesSession = focus !== 'tape';
   const before = card.stats?.[offer.stat] ?? card[offer.stat];
   const afterValue = after.stats?.[offer.stat] ?? after[offer.stat];
@@ -957,6 +1055,20 @@ function Train({ state, onTrain, onTape, onBuy, canBuy, onBack, size }) {
     playUiSound(focus === 'tape' ? 'tape' : 'train_start');
     setDrilling(true);
     drillTimer.current = setTimeout(finish, 1150);
+  };
+  const commitEvoNow = () => {
+    if (!currentEvoKey || !eligibility.eligible || state.trainSlot <= 0 || activeEvoForCard || hasActiveEvoAnywhere) return;
+    if (reducedMotion) {
+      playUiSound('train_done');
+      onEvo?.(card.id, currentEvoKey);
+      return;
+    }
+    playUiSound('train_start');
+    setDrilling(true);
+    drillTimer.current = setTimeout(() => {
+      playUiSound('train_done');
+      onEvo?.(card.id, currentEvoKey);
+    }, 1150);
   };
   return (
     <div className={styles.stage}>
@@ -975,12 +1087,19 @@ function Train({ state, onTrain, onTape, onBuy, canBuy, onBack, size }) {
           <div className={styles.trainStage} data-drill={drilling || undefined}>
             <div className={styles.beforeCard}><Card card={card} scale={scale * 1.2} dim highlight={focus === 'stat' ? offer.stat : null} /></div>
             <svg className={styles.arrow} width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6" /></svg>
-            <div className={styles.raised}><Card card={after} scale={scale * 1.2} highlight={focus === 'stat' ? offer.stat : null} /></div>
+            <div className={styles.raised}>
+              {/* An evolved card is the point of this screen, so it runs its evo in full. */}
+              {after.evoTheme
+                ? <div className={styles.card}><EvoShowcase card={after} displayScale={scale * 1.2} tilt={false} highlightStat={focus === 'stat' ? offer.stat : null} /></div>
+                : <Card card={after} scale={scale * 1.2} highlight={focus === 'stat' ? offer.stat : null} />}
+            </div>
           </div>
           {/* One readout, the same shape for every focus: what changes, then from and to. */}
           {chosen && (
             <div className={styles.gain} data-drill={drilling || undefined}>
-              <span className={styles.gainLabel}>{chosen.id === 'stat' ? STAT_LABELS[offer.stat] : chosen.id === 'rest' ? 'Fatigue' : chosen.id === 'tape' ? 'Skill tape' : 'Skill'}</span>
+              <span className={styles.gainLabel}>
+                {chosen.id === 'stat' ? STAT_LABELS[offer.stat] : chosen.id === 'rest' ? 'Fatigue' : chosen.id === 'tape' ? 'Skill tape' : chosen.id === 'evo' ? 'Evolution' : 'Skill'}
+              </span>
               {chosen.id === 'stat' && (
                 <span className={styles.gainRow}><span className={styles.was}>{before}</span>{arrow}<b className={styles.now}>{afterValue}</b><em className={styles.plus}>+{STAT_STEP}</em></span>
               )}
@@ -995,7 +1114,49 @@ function Train({ state, onTrain, onTape, onBuy, canBuy, onBack, size }) {
               {chosen.id === 'rest' && (
                 <span className={styles.gainRow}><span className={styles.was}>{offer.fatigue}</span>{arrow}<b className={styles.now}>0</b></span>
               )}
-              <span className={styles.gainNote}>{chosen.id === 'skill' || chosen.id === 'tape' ? skill.text : ''}</span>
+              {chosen.id === 'evo' && (() => {
+                const pips = (of, on) => Array.from({ length: of }, (_, index) => <i key={index} data-on={index < on || undefined} data-next={index === on || undefined} />);
+                if (activeEvoForCard && activeEvoDef) {
+                  const second = activeEvoForCard.l1Done;
+                  const need = second ? activeEvoDef.level2 : activeEvoDef.level1;
+                  const done = (second ? activeEvoForCard.l2Progress : activeEvoForCard.l1Progress) ?? 0;
+                  return (
+                    <>
+                      <span className={styles.gainRow}>
+                        <b className={styles.now}>{second ? 'Evo II' : 'Evo I'}</b>
+                        <span className={styles.sessions} role="img" aria-label={`${done} of ${need.count}`}>{pips(need.count, done)}</span>
+                      </span>
+                      <span className={styles.gainNote}>{need.label}</span>
+                    </>
+                  );
+                }
+                if (hasActiveEvoAnywhere) {
+                  const evolving = squad.find(item => item.id === activeEvo.cardId);
+                  return (
+                    <>
+                      <span className={styles.gainRow}><b className={styles.now}>{evolving?.player}</b></span>
+                      <span className={styles.gainNote}>Evolving now. One evo at a time.</span>
+                    </>
+                  );
+                }
+                if (!currentEvoDef) return null;
+                return (
+                  <>
+                    <span className={styles.gainRow}>
+                      {inventory.length > 1
+                        ? inventory.map((key, index) => (
+                          <button key={`${key}-${index}`} type="button" className={styles.evoPick} data-on={key === currentEvoKey || undefined} aria-pressed={key === currentEvoKey} aria-label={EVO_CHIPS[key].name} onClick={() => { playUiSound('select'); setSelectedEvoKey(key); }}>
+                            <EvoChip evoKey={key} size={40} />
+                          </button>
+                        ))
+                        : <EvoChip evoKey={currentEvoKey} size={40} />}
+                      <b className={styles.now}>{currentEvoDef.name}</b>
+                    </span>
+                    <span className={styles.gainNote} data-bad={!eligibility.eligible || undefined}>{eligibility.eligible ? currentEvoDef.level1.label : eligibility.reason}</span>
+                  </>
+                );
+              })()}
+              {chosen.id !== 'evo' && <span className={styles.gainNote}>{chosen.id === 'skill' || chosen.id === 'tape' ? skill.text : ''}</span>}
             </div>
           )}
           {!chosen && <span className={styles.allDone} role="img" aria-label="Nothing left to train"><Tick /></span>}
@@ -1032,11 +1193,22 @@ function Train({ state, onTrain, onTape, onBuy, canBuy, onBack, size }) {
         {squad.map((item, index) => {
           const status = trainStatus(state, item);
           const learning = status.entry.learning?.sessions ?? 0;
+          const isEvolving = state.activeEvo?.cardId === item.id;
           return (
             <div key={item.id} className={styles.handCard} data-on={who === index || undefined} data-done={status.done || undefined} style={{ viewTransitionName: `card-${item.id}` }}>
               <PlayerCard card={item} displayScale={scale * 0.55} tilt={false} canDrag={false} selected={who === index} onClick={drilling ? undefined : () => setWho(index)} pressScale={0.97} />
               {/* Done reads like the role labels above cards: a bare green tick over the dimmed card. */}
-              {status.done && <span className={styles.tick} role="img" aria-label="Nothing left to train"><Tick /></span>}
+              {status.done && !isEvolving && <span className={styles.tick} role="img" aria-label="Nothing left to train"><Tick /></span>}
+              {isEvolving && (() => {
+                const evo = EVO_CHIPS[state.activeEvo.evoKey];
+                const need = state.activeEvo.l1Done ? evo.level2 : evo.level1;
+                const done = (state.activeEvo.l1Done ? state.activeEvo.l2Progress : state.activeEvo.l1Progress) ?? 0;
+                return (
+                  <span className={styles.sessions} role="img" aria-label={`${evo.name}: ${done} of ${need.count}`}>
+                    {Array.from({ length: need.count }, (_, pip) => <i key={pip} data-on={pip < done || undefined} />)}
+                  </span>
+                );
+              })()}
               {learning > 0 && !status.skillDone && (
                 <span className={styles.sessions} role="img" aria-label={`Skill session ${learning} of ${SKILL_SESSIONS}`}>
                   {Array.from({ length: SKILL_SESSIONS }, (_, pip) => <i key={pip} data-on={pip < learning || undefined} />)}
@@ -1047,11 +1219,32 @@ function Train({ state, onTrain, onTape, onBuy, canBuy, onBack, size }) {
         })}
       </div>
       <footer className={`${styles.act} ${styles.actEnd}`}>
-        <button type="button" className={styles.primary} disabled={!chosen || (usesSession && !state.trainSlot) || drilling} onClick={trainNow}>
-          {/* The cost, as a pip: solid while a session is open, hollow when there is none. A tape costs nothing, so it shows none. */}
-          {usesSession && chosen && !drilling && <i className={styles.sessionCost} data-on={state.trainSlot > 0 || undefined} aria-hidden="true" />}
-          {drilling ? 'Training' : `Train ${card.player}`}
-        </button>
+        {focus === 'evo' ? (
+          <button
+            type="button"
+            className={styles.primary}
+            disabled={
+              drilling ||
+              Boolean(activeEvoForCard) ||
+              hasActiveEvoAnywhere ||
+              !currentEvoDef ||
+              !eligibility.eligible ||
+              state.trainSlot <= 0
+            }
+            onClick={commitEvoNow}
+          >
+            {state.trainSlot > 0 && !activeEvoForCard && !hasActiveEvoAnywhere && eligibility.eligible && (
+              <i className={styles.sessionCost} data-on aria-hidden="true" />
+            )}
+            {drilling ? 'Evolving' : `Evolve ${card.player}`}
+          </button>
+        ) : (
+          <button type="button" className={styles.primary} disabled={!chosen || (usesSession && !state.trainSlot) || drilling} onClick={trainNow}>
+            {/* The cost, as a pip: solid while a session is open, hollow when there is none. A tape costs nothing, so it shows none. */}
+            {usesSession && chosen && !drilling && <i className={styles.sessionCost} data-on={state.trainSlot > 0 || undefined} aria-hidden="true" />}
+            {drilling ? 'Training' : `Train ${card.player}`}
+          </button>
+        )}
       </footer>
     </div>
   );
@@ -1059,7 +1252,7 @@ function Train({ state, onTrain, onTape, onBuy, canBuy, onBack, size }) {
 
 // ── series result ───────────────────────────────────────────────────────────
 
-function Result({ state, onContinue, size }) {
+export function Result({ state, onContinue, size }) {
   const { scale } = size;
   const { last } = state;
   const opponent = clubById(state, last.opponent);
@@ -1070,12 +1263,17 @@ function Result({ state, onContinue, size }) {
   const reducedMotion = useReducedMotion();
   const [landed, setLanded] = useState(false);
   const [grown, setGrown] = useState(reducedMotion);
+  const [dismissCelebration, setDismissCelebration] = useState(false);
   useEffect(() => {
     if (reducedMotion) return undefined;
     const timer = setTimeout(() => {
       setGrown(true);
       const anyLeveled = last.growth.some(row => (row?.gain ?? 0) > (row?.pct ?? 0));
-      playUiSound(anyLeveled ? 'train_done' : 'score', 2);
+      if (last.evoProgress?.completed) {
+        playUiSound('train_done', 2);
+      } else {
+        playUiSound(anyLeveled ? 'train_done' : 'score', 2);
+      }
     }, 280);
     return () => clearTimeout(timer);
   }, [reducedMotion]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1118,10 +1316,22 @@ function Result({ state, onContinue, size }) {
           const gain = row?.gain ?? 0;
           const leveled = gain > pct;
           const fromPct = leveled ? 0 : Math.max(0, pct - gain);
+          const evoProg = last.evoProgress?.cardId === card.id ? last.evoProgress : null;
           return (
             <div key={card.id} className={styles.handCard} data-on={row?.mvp || undefined} data-leveled={leveled || undefined} style={{ '--deal': index, viewTransitionName: `card-${card.id}` }}>
-              {row?.mvp && <em className={styles.mvp}>MVP</em>}
-              {leveled && <em className={styles.levelUp}>+1 OVR</em>}
+              {/* The card's labels share one row. An evo stage reads like +1 OVR; a stage still running shows its match pips. */}
+              {(row?.mvp || leveled || evoProg?.completed) && (
+                <span className={styles.handTags}>
+                  {row?.mvp && <em className={styles.mvp}>MVP</em>}
+                  {leveled && <em className={styles.levelUp}>+1 OVR</em>}
+                  {evoProg?.completed && <em className={styles.levelUp}>{evoProg.level === 2 ? 'Evo II' : 'Evo I'}</em>}
+                </span>
+              )}
+              {evoProg && !evoProg.completed && (
+                <span className={styles.sessions} role="img" aria-label={`${evoProg.name}: ${evoProg.progress} of ${evoProg.total}`}>
+                  {Array.from({ length: evoProg.total }, (_, pip) => <i key={pip} data-on={pip < evoProg.progress || undefined} />)}
+                </span>
+              )}
               <PlayerCard card={card} displayScale={row?.mvp ? scale * 0.86 : scale * 0.72} tilt={false} canDrag={false} />
               <span className={styles.bar} role="img" aria-label={`Growth: ${pct} percent to the next rating point`}><i style={{ width: `${grown ? pct : fromPct}%` }} /></span>
               <b className={styles.pct}>{pct}%</b>
@@ -1129,6 +1339,36 @@ function Result({ state, onContinue, size }) {
           );
         })}
       </div>
+      {/* An evo stage finished: its own moment, in the same voice as the series verdict. */}
+      {last.evoProgress?.completed && !dismissCelebration && (() => {
+        const done = last.evoProgress;
+        const evo = EVO_CHIPS[done.evoKey];
+        const art = EVO_ART[evo.theme];
+        const evolved = squadCards(state, allCards).find(item => item.id === done.cardId);
+        const skill = done.skill && SPECIALTIES[done.skill];
+        const stage = done.level === 2 ? 'Evo II' : 'Evo I';
+        return (
+          <div className={styles.evoMoment} role="dialog" aria-modal="true" aria-label={`${evo.name}, ${stage}`}>
+            <span className={styles.evoStage} style={{ color: art.metal[1] }}>{stage}</span>
+            <h2 className={styles.evoName}>{evo.name}</h2>
+            {evolved && <EvoShowcase card={evolved} displayScale={scale * 1.25} tilt={false} />}
+            <div className={styles.evoGains}>
+              {Object.entries(done.gainedStats ?? {}).map(([key, value]) => (
+                <span key={key} className={styles.evoGain}><b>{STAT_LABELS[key]}</b><em className={styles.plus}>+{value}</em></span>
+              ))}
+            </div>
+            {skill && (
+              <div className={styles.evoSkill} style={{ color: art.metal[1] }}>
+                <SpecialtyIcon spec={skill.key} size={28} />
+                <b>{skill.code}</b>
+                <span>{skill.name}</span>
+                <small>{skill.board}</small>
+              </div>
+            )}
+            <button type="button" className={styles.primary} autoFocus onClick={() => { playUiSound('select'); setDismissCelebration(true); }}>Claim</button>
+          </div>
+        );
+      })()}
       <footer className={styles.act}>
         <span className={styles.label}>Growth to the next rating point</span>
         <button type="button" className={styles.primary} autoFocus onClick={onContinue}>Continue</button>
@@ -1772,6 +2012,14 @@ export default function Club() {
     });
   }
 
+  function commitEvoPlayer(cardId, evoKey) {
+    morph(() => {
+      setState(current => commitEvolution(current, cardId, evoKey));
+      setNotice(`${cardById.get(cardId)?.player ?? 'Player'} started ${EVO_CHIPS[evoKey]?.name ?? 'Evolution'}`);
+      setScreen('home');
+    });
+  }
+
   function openThePack(kind) {
     morph(() => {
       setState(current => openPack(current, kind, allCards));
@@ -1858,7 +2106,7 @@ export default function Club() {
   }
   if (screen === 'start' || !state) return <Start onStart={start} onExit={() => show('landing')} exitLabel={t('Back')} scale={size.scale} />;
   if (screen === 'train') {
-    return withHint(<Train state={state} size={size} onBack={() => show('home')} onTrain={trainPlayer} onTape={tapePlayer} onBuy={() => setState(buySession(state))} canBuy={canBuySession(state)} />, 'train');
+    return withHint(<Train state={state} size={size} onBack={() => show('home')} onTrain={trainPlayer} onTape={tapePlayer} onEvo={commitEvoPlayer} onBuy={() => setState(buySession(state))} canBuy={canBuySession(state)} />, 'train');
   }
   if (screen === 'open' && state.opening) return <OpenPack key={state.opens} state={state} size={size} onChoose={pickFromPack} />;
   if (screen === 'vault') return withHint(<Vault state={state} onBack={() => show('home')} onOpenPack={openThePack} onWindow={state.phase === 'review' ? () => show('window') : null} />, 'vault');
