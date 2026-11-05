@@ -27,7 +27,7 @@ import { assetPath } from '../../shared/src/lib/utils.js';
 import { playUiSound } from '../../shared/src/lib/gameAudio';
 import { playGlassShatter, playLaneWin } from '../lib/sfx';
 import { STAT_LABELS_FULL } from '../../shared/src/data/statFields.js';
-import { disposeChip, makeChip, printChip } from '../chip3d/ChipStack.js';
+import { disposeChip, makeChip, printChip, THICK } from '../chip3d/ChipStack.js';
 import { createChipView } from '../chip3d/chipRenderer.js';
 import { attack, chipFire, lightning, lockShatter, slash } from './chipFx.js';
 import { attachLaneVerdictFx, disposeLaneVerdictFx } from './LaneVerdictFx.js';
@@ -364,7 +364,7 @@ export default class TableStage {
       this.cards.push(entry);
     });
 
-    // Tactic chips: the real chips, sized for the board, lying in a row beside the hand.
+    // Tactic chips: one stack per exact type beside the hand, each copy playable.
     this.chips = game.tactics.map((instance, index) => {
       const chip = makeChip(instance.key, index);
       chip.kind = 'chip';
@@ -599,6 +599,16 @@ export default class TableStage {
     return this.layout(name, Math.min(base.stretch, 1 + spare / base.len));
   }
 
+  handChipStacks() {
+    const stacks = new Map();
+    for (const chip of this.chips) {
+      if (this.tacticLane[chip.index] != null) continue;
+      if (!stacks.has(chip.key)) stacks.set(chip.key, []);
+      stacks.get(chip.key).push(chip);
+    }
+    return [...stacks.values()];
+  }
+
   spot(entry) {
     const L = this.L;
     const lane = this.laneOf(entry);
@@ -615,8 +625,14 @@ export default class TableStage {
         return { x, y: 0.12 + k * 0.09, z: L.chipZ + (L.tall ? 3.2 : 2.2), rx: CHIP_TILT, rz: 0, s: L.chipR * 0.85 };
       }
       // Left of the hand; on a phone, in the bottom row beside the lock-in button.
-      const x = -(LANE_X[2] + LANE_W / 2) + L.chipR + 0.1 + k * (L.chipR * (L.tall ? 1.45 : 2) + 0.15);
-      return { x, y: 0.2 + k * (L.tall ? 0.06 : 0) + (picked ? 0.2 : 0), z: L.chipZ, rx: picked ? CHIP_TILT * 0.5 : CHIP_TILT, rz: picked ? -0.2 : 0, s: L.chipR * (picked ? 1.15 : 1) };
+      const stacks = this.handChipStacks();
+      const column = stacks.findIndex(stack => stack.includes(entry));
+      const level = stacks[column].indexOf(entry);
+      // Stack along the tilted face's normal, toward the camera: the rims show
+      // each copy while the uppermost chip keeps its whole face visible.
+      const lift = level * (THICK + 0.012) * L.chipR;
+      const x = -(LANE_X[2] + LANE_W / 2) + L.chipR + 0.1 + column * (L.chipR * (L.tall ? 1.45 : 2) + 0.15);
+      return { x, y: 0.2 + column * (L.tall ? 0.06 : 0) + Math.cos(CHIP_TILT) * lift + (picked ? 0.2 : 0), z: L.chipZ + Math.sin(CHIP_TILT) * lift, rx: picked ? CHIP_TILT * 0.5 : CHIP_TILT, rz: picked ? -0.2 : 0, s: L.chipR * (picked ? 1.15 : 1) };
     }
     if (lane != null) {
       const row = this.cards.filter(c => c.side === entry.side && this.laneOf(c) === lane);
@@ -664,7 +680,7 @@ export default class TableStage {
     const n = Math.max(count, 1);
     const sizeFor = room => Math.max(0.5, Math.min(L.handCard, (room / n - 0.12) / CARD_W));
     if (L.tall) return { s: sizeFor(10.4), centre: 0 };
-    const chips = this.chips.filter(c => this.tacticLane[c.index] == null).length;
+    const chips = this.handChipStacks().length;
     const left = -(LANE_X[2] + LANE_W / 2) + 0.1 + (chips ? chips * (L.chipR * 2 + 0.15) + 0.15 : 0);
     // The button's left edge, from page pixels back onto the board at the hand's depth.
     const [x0] = this.toScreen(0, 0.22, L.hand);
