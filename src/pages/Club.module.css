@@ -817,7 +817,7 @@ span.counter { cursor: default; }
 .home > ol { grid-area: road; }
 .homeSquad { grid-area: squad; align-self: center; display: flex; flex-direction: column; gap: var(--sp-2); }
 .groupLabel { font: 700 var(--fs-micro)/1.2 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
-.homeRow { display: flex; align-items: flex-end; gap: 14px; }
+.homeRow { display: flex; align-items: flex-end; gap: 14px; padding-inline-start: var(--sp-6); }
 .tileRow { grid-area: tiles; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--sp-2); }
 .tileRow .tile { position: relative; min-width: 0; min-height: 96px; padding: var(--sp-3); display: flex; flex-direction: column; justify-content: space-between; gap: var(--sp-2); border: 0; background: var(--plate); color: var(--ink); font: inherit; text-align: left; cursor: pointer; clip-path: var(--notch); }
 /* Nothing to do there yet: the tile steps back to an outline. */
@@ -920,7 +920,7 @@ button.handSlot:not(:disabled) { cursor: pointer; }
 
 @media (max-width: 759px) {
   .home { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto auto minmax(0, 1fr); grid-template-areas: "road" "squad" "tiles" "news" "hero"; gap: var(--sp-3); }
-  .homeRow { gap: 4px; }
+  .homeRow { gap: 4px; padding-inline-start: var(--sp-4); }
   .hero { align-self: end; padding: var(--sp-3); }
   .playBig { min-height: 56px; font-size: var(--fs-title); }
   .tileRow { gap: var(--sp-1); }
@@ -1498,6 +1498,8 @@ img.tapeCard { object-fit: contain; filter: var(--shadow-rest); }
   .inventorySpotlightArt { min-height: 76px; }
 }
 
+.managementGround .squadStarters { padding-inline-start: 30px; }
+
 /* ── Club menus ─────────────────────────────────────────────────────────────
    One header on every menu: the five menus as tabs, the active one underlined. */
 .sections { display: flex; align-items: baseline; gap: var(--sp-4); }
@@ -1559,3 +1561,35 @@ button.handSlot[data-droppable] { box-shadow: inset 0 0 0 1px var(--accent); }
 
 /* Inventory: one grid of everything, sorted by the tabs above it. */
 .itemGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(146px, 1fr)); justify-items: center; align-items: start; gap: var(--sp-4) var(--sp-3); padding: 14px 8px 12px; }
+
+/* ── Global Leaderboard table ─────────────────────────────────────────────── */
+.globalTable { width: 100%; max-width: 820px; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0; }
+.globalTable li { position: relative; min-height: 52px; padding: 0 var(--sp-3); display: grid; grid-template-columns: 32px 32px minmax(0, 1fr) 56px 64px 72px; gap: var(--sp-3); align-items: center; border-bottom: 1px solid var(--line-bracket); background: none; color: var(--ink); cursor: pointer; text-align: left; box-sizing: border-box; }
+.globalTable li:hover:not(.tableHead) { background: var(--surface-hi); }
+.globalTable li[data-you] { background: var(--win-soft); color: var(--ink); }
+.globalTable li[data-you] .pos { color: var(--win); }
+.globalTable li[data-top="1"] .pos { color: var(--gold); }
+.globalTable li[data-cut] { margin-bottom: calc(var(--sp-2) + 18px); }
+.globalTable li[data-cut]::after { content: attr(data-cut); position: absolute; left: 0; right: 0; top: calc(100% + var(--sp-1)); display: flex; justify-content: center; font: 800 var(--fs-micro)/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); border-top: 2px dashed var(--line-bracket); padding-top: 3px; }
+.globalScore { font-size: var(--fs-lead); font-weight: 800; font-variant-numeric: tabular-nums; text-align: right; }
+.globalPower { font-size: var(--fs-body); color: var(--muted); font-variant-numeric: tabular-nums; }
+.youBadge { display: inline-block; padding: 2px 6px; background: var(--win); color: var(--win-ink); font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: var(--track-mono); text-transform: uppercase; margin-left: var(--sp-2); }
+.globalTable .brackets {
+  inset: 0;
+  z-index: 2;
+  animation: tableBracketLock .18s cubic-bezier(.22, 1, .36, 1) both;
+}
+@keyframes tableBracketLock {
+  from { opacity: 0; transform: scale(1.01); }
+  to { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .globalTable .brackets {
+    animation: none;
+  }
+}
+@media (max-width: 759px) {
+  .globalTable li { grid-template-columns: 28px 32px minmax(0, 1fr) 54px 64px; }
+  .globalTable .globalPower { display: none; }
+}
+

@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import useReducedMotion from '../../shared/src/lib/useReducedMotion';
 import Chip3D from '../chip3d/Chip3D';
-import ChipPayout from '../chip3d/ChipPayout';
 import { CHIP_FLOOR, CHIP_KEYS, CODES, ROLES, SKILLS, chainMultFor, chipInfo, chipMultFor } from '../chip3d/chipData';
 import { chipCopy, chipRules } from '../chip3d/chipCopy';
 import { ChipGuideButton, ChipLadder, ChipLegend, Token } from '../chip3d/ChipHelp';
-import { FACES, HINTS, setChipStyle, useChipStyle } from '../chip3d/chipStyle';
+import { FACES, setChipStyle, useChipStyle } from '../chip3d/chipStyle';
 import { t } from '../lib/i18n';
 import styles from './ChipLab.module.css';
 
@@ -18,7 +17,6 @@ const LANES = ['A', 'B', 'C'];
 
 
 const FACE_LABELS = { code: 'A: role codes', glyph: 'B: icons' };
-const HINT_LABELS = { tag: 'A: tag on the chip', coach: 'B: line on top' };
 const LANE_SIZE = 3;
 
 // The chip codex: every chip in 3D with what it does, a lane to try them on, and
@@ -40,10 +38,6 @@ export default function ChipLab() {
         <div className={styles.switch} role="group" aria-label="Chip face">
           <span>Chip face</span>
           {FACES.map(face => <button key={face} type="button" aria-pressed={style.face === face} data-on={style.face === face || undefined} onClick={() => setChipStyle({ face })}>{FACE_LABELS[face]}</button>)}
-        </div>
-        <div className={styles.switch} role="group" aria-label="Board hint">
-          <span>Board hint</span>
-          {HINTS.map(hint => <button key={hint} type="button" aria-pressed={style.hint === hint} data-on={style.hint === hint || undefined} onClick={() => setChipStyle({ hint })}>{HINT_LABELS[hint]}</button>)}
         </div>
       </section>
 
@@ -207,7 +201,6 @@ function StackTest() {
           ))}
         </div>
         <div className={styles.host} ref={hostRef} />
-        <ChipPayout chipKey={view.selected} at={view.anchor} />
         {state === 'loading' && <p className={styles.notice} role="status">Loading the chips</p>}
         {state === 'failed' && <p className={styles.notice} role="alert">3D isn't available here, so the game would use flat chips.</p>}
       </div>

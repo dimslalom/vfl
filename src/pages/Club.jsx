@@ -48,19 +48,17 @@ import { attention } from '../engine/club/attention';
 import SeasonIntro from '../components/club/SeasonIntro';
 import { stageLabel } from '../components/club/clubSummary';
 import useClubSync from '../lib/useClubSync';
+import { fetchGlobalClubs, syncClubScore } from '../lib/globalLeaderboard';
 import { preloadMusic } from '../lib/music';
 import MusicControls from '../components/MusicControls';
 import { hintFor, loadOnboarding, markHintSeen, primerDue, saveOnboarding } from '../lib/clubOnboarding';
 import { t } from '../lib/i18n';
+import { titleCase } from '../lib/titleCase';
 import entry from '../components/club/ClubEntry.module.css';
 import styles from './Club.module.css';
 
 const cardById = new Map(allCards.map(card => [card.id, card]));
 const ordinal = n => `${n}${['th', 'st', 'nd', 'rd'][n % 10 > 3 || Math.floor(n / 10) === 1 ? 0 : n % 10]}`;
-// Chip names are stored in capitals for the match board; lists here use title case,
-// like tape and evo names ("POCKET STRAT" -> "Pocket Strat", "HIT THE SITE" -> "Hit the Site").
-const SMALL_WORDS = new Set(['a', 'an', 'and', 'at', 'by', 'for', 'in', 'of', 'on', 'or', 'the', 'to']);
-const titleCase = text => text.toLowerCase().split(' ').map((word, index) => (index > 0 && SMALL_WORDS.has(word) ? word : word.charAt(0).toUpperCase() + word.slice(1))).join(' ');
 const tapeName = key => STAT_LABELS_FULL[key] ?? BOARD_SKILLS[key]?.label ?? 'Any skill';
 const tierName = tier => TIER_META[tier].label;
 const initials = name => name.replace(/[^A-Za-z0-9 ]/g, '').split(' ').map(word => word[0]).join('').slice(0, 2).toUpperCase();
@@ -192,7 +190,7 @@ function Ground({ map, className = '', style, children }) {
 
 // A card in its place, with nothing behind it to compete: the role (or IGL) as a
 // label above, and the contract's years left as bars below.
-function Slot({ card, scale, tab, lit, years, note, noteLit, held, onClick, label }) {
+function Slot({ card, scale, tab, lit, years, note, noteLit, held, onClick, label, isIgl }) {
   return (
     <div className={styles.slot} data-held={held || undefined}>
       <span className={styles.slotTop}>
@@ -200,7 +198,7 @@ function Slot({ card, scale, tab, lit, years, note, noteLit, held, onClick, labe
         {note && <em data-lit={noteLit || undefined}>{note}</em>}
       </span>
       <div className={styles.slotCard}>
-        <PlayerCard card={card} displayScale={scale} tilt={false} canDrag={false} onClick={onClick} pressScale={onClick ? 0.97 : 1} />
+        <PlayerCard card={card} displayScale={scale} tilt={isIgl} isIgl={isIgl} canDrag={false} onClick={onClick} pressScale={onClick ? 0.97 : 1} />
         {held && <span className={styles.brackets} aria-hidden="true"><i /><i /><i /><i /></span>}
       </div>
       {years != null && (
@@ -524,7 +522,7 @@ function Home({ state, go, onAbandon, onSettings, onPrimer, size }) {
           <div className={styles.homeRow}>
             {squad.slice(0, STARTERS).map((card, index) => {
               const last = state.contracts[card.id] === 1;
-              return <Slot key={card.id} card={card} scale={size.homeSlot} tab={index === 0 ? 'IGL' : null} lit years={last ? 1 : null} note={last ? 'Last year' : ''} noteLit onClick={() => go('squad')} />;
+              return <Slot key={card.id} card={card} scale={size.homeSlot} isIgl={index === 0} years={last ? 1 : null} note={last ? 'Last year' : ''} noteLit onClick={() => go('squad')} />;
             })}
           </div>
         </section>
@@ -707,8 +705,14 @@ function Squad({ state, go, onMove, onBack, onVault, size }) {
   const slot = (card, position) => (
     <div key={card.id} className={styles.windowSlot} data-moving={moving && position !== index ? true : undefined}>
       <div className={styles.slotCard}>
-        {position === 0 && <span className={styles.cardBadge} data-kind="igl">IGL</span>}
-        <PlayerCard card={card} displayScale={cardScale} tilt={false} canDrag={false} onClick={() => tap(position)} />
+        <PlayerCard
+          card={card}
+          displayScale={cardScale}
+          isIgl={position === 0}
+          tilt={position === 0}
+          canDrag={false}
+          onClick={() => tap(position)}
+        />
         {position === index && <SelectionCorners />}
       </div>
     </div>
@@ -742,7 +746,7 @@ function Squad({ state, go, onMove, onBack, onVault, size }) {
     }>
       <section className={styles.eafcStageRow}>
         <h2 className={styles.eafcRowHead}>Starting five</h2>
-        <div className={styles.eafcCardsRow}>{squad.slice(0, STARTERS).map(slot)}</div>
+        <div className={`${styles.eafcCardsRow} ${styles.squadStarters}`}>{squad.slice(0, STARTERS).map(slot)}</div>
       </section>
     </ManagementScreen>
   );
@@ -1456,38 +1460,141 @@ function Bracket({ state, table }) {
   );
 }
 
-function League({ state, go, onBack }) {
+function League({ state, go, onBack, onChallenge, size }) {
   useEscape(onBack);
+  const [tab, setTab] = useState('season');
+  const [globalRows, setGlobalRows] = useState([]);
+  const [selectedId, setSelectedId] = useState(null);
+
   const table = standings(state, allCards);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchGlobalClubs(state, allCards).then(rows => {
+      if (!cancelled) {
+        setGlobalRows(rows);
+        if (rows.length > 0) setSelectedId(curr => curr ?? rows[0].id);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [state]);
+
+  const selectedClub = useMemo(
+    () => globalRows.find(c => c.id === selectedId) ?? globalRows[0],
+    [globalRows, selectedId],
+  );
+
   return (
     <div className={styles.stage}>
-      <ScreenHeader state={state} at="league" go={go} onBack={onBack} />
-      <Ground className={styles.leagueGround}>
-        <Road state={state} />
-        <div className={styles.leagueBody}>
-          <section className={styles.leagueTable} aria-label={tierName(state.tier)}>
-            <div className={styles.bracketHead}>
-              <h2 className={styles.sectionHead}>{tierName(state.tier)}</h2>
-              <span className={styles.tierBars} role="img" aria-label={`Tier ${state.tier + 1} of 3`}>
-                {[0, 1, 2].map(index => <i key={index} data-on={index === state.tier || undefined} />)}
-              </span>
-            </div>
-            <ol className={styles.table}>
-              <li className={styles.tableHead} aria-hidden="true"><span /><span /><span /><span>W–L</span><span>RD</span></li>
-              {table.map(row => (
-                <li key={row.id} data-you={row.you || undefined} data-cut={row.pos === 4 ? 'Playoff line' : row.pos === 5 ? 'Drop zone' : undefined}>
-                  <b className={styles.pos}>{row.pos}</b>
-                  {row.you ? <OwnMark state={state} size={32} /> : <Crest club={clubById(state, row.id)} />}
-                  <b className={styles.clubName}>{row.name}</b>
-                  <b className={styles.record}>{row.w}–{row.l}</b>
-                  <span className={styles.rd} data-sign={Math.sign(row.rd)}>{row.rd > 0 ? `+${row.rd}` : row.rd}</span>
-                </li>
-              ))}
+      <ScreenHeader
+        state={state}
+        at="league"
+        go={go}
+        onBack={onBack}
+        tabs={[['season', t('Season')], ['global', t('Global')]]}
+        selected={tab}
+        onTab={setTab}
+      />
+      {tab === 'season' ? (
+        <Ground className={styles.leagueGround}>
+          <Road state={state} />
+          <div className={styles.leagueBody}>
+            <section className={styles.leagueTable} aria-label={tierName(state.tier)}>
+              <div className={styles.bracketHead}>
+                <h2 className={styles.sectionHead}>{tierName(state.tier)}</h2>
+                <span className={styles.tierBars} role="img" aria-label={`Tier ${state.tier + 1} of 3`}>
+                  {[0, 1, 2].map(index => <i key={index} data-on={index === state.tier || undefined} />)}
+                </span>
+              </div>
+              <ol className={styles.table}>
+                <li className={styles.tableHead} aria-hidden="true"><span /><span /><span /><span>W–L</span><span>RD</span></li>
+                {table.map(row => (
+                  <li key={row.id} data-you={row.you || undefined} data-cut={row.pos === 4 ? 'Playoff line' : row.pos === 5 ? 'Drop zone' : undefined}>
+                    <b className={styles.pos}>{row.pos}</b>
+                    {row.you ? <OwnMark state={state} size={32} /> : <Crest club={clubById(state, row.id)} />}
+                    <b className={styles.clubName}>{row.name}</b>
+                    <b className={styles.record}>{row.w}–{row.l}</b>
+                    <span className={styles.rd} data-sign={Math.sign(row.rd)}>{row.rd > 0 ? `+${row.rd}` : row.rd}</span>
+                  </li>
+                ))}
+              </ol>
+            </section>
+            <Bracket state={state} table={table} />
+          </div>
+        </Ground>
+      ) : (
+        <Ground className={styles.managementGround}>
+          {selectedClub && (
+            <aside className={styles.managementInspector} aria-label={selectedClub.name}>
+              <div className={styles.managementDetails}>
+                <span className={styles.inspectorTag}>
+                  {selectedClub.you ? `${t('Rank')} #${selectedClub.pos} (${t('You')})` : `${t('Rank')} #${selectedClub.pos}`}
+                </span>
+                <h2 className={styles.inspectorName}>{selectedClub.name}</h2>
+                {!size?.phone && (
+                  <div className={styles.inventorySpotlightArt}>
+                    <PlayerCard card={selectedClub.starCard} displayScale={SPOTLIGHT_SCALE} tilt={false} canDrag={false} />
+                  </div>
+                )}
+                <div className={styles.ledger}>
+                  <LedgerRow label={t('Score')}>{selectedClub.score}</LedgerRow>
+                  <LedgerRow label={t('Record')}>{`${selectedClub.w}-${selectedClub.l}`}</LedgerRow>
+                  <LedgerRow label={t('Roster power')}>{`${selectedClub.power} OVR`}</LedgerRow>
+                  <LedgerRow label={t('Star player')}>{selectedClub.starCard.player}</LedgerRow>
+                </div>
+              </div>
+              <div className={styles.managementActions}>
+                {!selectedClub.you && (
+                  <button
+                    type="button"
+                    className={styles.primary}
+                    onClick={() => onChallenge(selectedClub)}
+                  >
+                    {t('Challenge club')}
+                  </button>
+                )}
+              </div>
+            </aside>
+          )}
+          <div className={styles.managementMain}>
+            <ol className={styles.globalTable}>
+              <li className={styles.tableHead} aria-hidden="true">
+                <span>{t('Rank')}</span>
+                <span />
+                <span>{t('Club')}</span>
+                <span className={styles.globalPower}>{t('Power')}</span>
+                <span>{t('Record')}</span>
+                <span style={{ textAlign: 'right' }}>{t('Score')}</span>
+              </li>
+              {globalRows.map(row => {
+                const isSelected = row.id === selectedId;
+                return (
+                  <li
+                    key={row.id}
+                    data-you={row.you || undefined}
+                    data-top={row.pos === 1 ? '1' : undefined}
+                    data-cut={row.pos === 4 ? t('Top 10') : undefined}
+                    onClick={() => setSelectedId(row.id)}
+                  >
+                    {isSelected && <SelectionCorners />}
+                    <b className={styles.pos}>{row.pos}</b>
+                    <span className={styles.crestDisc}>
+                      <ClubLogo name={row.name} style={row.style} tone={row.tone} size={28} />
+                    </span>
+                    <div className={styles.clubName}>
+                      {row.name}
+                      {row.you && <span className={styles.youBadge}>{t('You')}</span>}
+                    </div>
+                    <span className={styles.globalPower}>{row.power}</span>
+                    <b className={styles.record}>{row.w}-{row.l}</b>
+                    <b className={styles.globalScore}>{row.score}</b>
+                  </li>
+                );
+              })}
             </ol>
-          </section>
-          <Bracket state={state} table={table} />
-        </div>
-      </Ground>
+          </div>
+        </Ground>
+      )}
     </div>
   );
 }
@@ -1912,6 +2019,8 @@ export default function Club() {
   // returning one sees their club and Continue.
   const [screen, setScreen] = useState('landing');
   const [trainingItem, setTrainingItem] = useState(null);
+  const [exhibition, setExhibition] = useState(null);
+  const [exhibitionResult, setExhibitionResult] = useState(null);
   // With a chip pick waiting, the Inventory menu opens on the pick; its tab flips to the rest.
   const [chipView, setChipView] = useState('pick');
   // The menus' own tabs: a fresh visit, nothing carried over from the last one.
@@ -2015,9 +2124,16 @@ export default function Club() {
     setState(current => {
       if (!current || current.year !== state.year || current.week !== state.week || current.phase !== state.phase
         || nextMatch(current)?.id !== nextMatch(state)?.id) return current;
-      return finishSeries(current, outcome, allCards);
+      const next = finishSeries(current, outcome, allCards);
+      syncClubScore(next, allCards);
+      return next;
     });
     setScreen('result');
+  }
+
+  function startChallenge(club) {
+    setExhibition(club);
+    setScreen('exhibition');
   }
 
   function commitEvoPlayer(cardId, evoKey) {
@@ -2167,11 +2283,80 @@ export default function Club() {
       />
     );
   }
+  if (screen === 'exhibition' && exhibition) {
+    const yours = squadCards(state, allCards).slice(0, STARTERS);
+    const theirs = exhibition.cards;
+    return (
+      <BoardSeries
+        key={`exhibition:${exhibition.id}`}
+        squad={yours}
+        opponent={theirs}
+        intro={{
+          you: { club: { name: state.name, mark: { style: state.crest, tone: state.tone } }, cards: yours },
+          them: { club: { name: exhibition.name, logo: null }, cards: theirs },
+          stage: t('Exhibition'),
+        }}
+        opponentName={exhibition.name}
+        bestOf={3}
+        seed={(state.seed ^ 9973) >>> 0}
+        hand={state.hand}
+        onDone={(outcome) => {
+          const wonRounds = outcome.results.filter(r => r.winA).length;
+          const won = wonRounds > outcome.results.length / 2;
+          setExhibitionResult({
+            opponent: exhibition,
+            won,
+            rounds: outcome.results,
+          });
+          setExhibition(null);
+          show('exhibitionResult');
+        }}
+        onLeave={() => { setExhibition(null); show('league'); }}
+        fixed="full"
+        three
+        settings={<MusicControls />}
+      />
+    );
+  }
+  if (screen === 'exhibitionResult' && exhibitionResult) {
+    const syntheticClub = {
+      id: exhibitionResult.opponent.id,
+      name: exhibitionResult.opponent.name,
+      logo: null,
+      crest: exhibitionResult.opponent.style,
+      tone: exhibitionResult.opponent.tone,
+    };
+    const syntheticState = {
+      ...state,
+      clubs: [...(state.clubs || []), syntheticClub],
+      last: {
+        opponent: syntheticClub.id,
+        won: exhibitionResult.won,
+        rounds: exhibitionResult.rounds,
+        stage: t('Exhibition'),
+        packs: 0,
+        tapes: [],
+        growth: [],
+        tactic: null,
+        evoReward: null,
+      },
+    };
+    return (
+      <Result
+        state={syntheticState}
+        size={size}
+        onContinue={() => {
+          setExhibitionResult(null);
+          show('league');
+        }}
+      />
+    );
+  }
   if (screen === 'result') return <Result state={state} size={size} onContinue={() => show(screenFor(state))} />;
-  if (screen === 'league') return withHint(<League state={state} go={goTab} onBack={() => show('home')} />, 'league');
+  if (screen === 'league') return withHint(<League state={state} go={goTab} onBack={() => show('home')} onChallenge={startChallenge} size={size} />, 'league');
   if (screen === 'over' || state.phase === 'over') return <Over state={state} onAgain={fresh} />;
   if (screen === 'window') return <Window state={state} size={size} onClose={closeTheWindow} />;
-  if (screen === 'review' || !match) return <Review state={state} size={size} onNext={() => show('window')} />;
+  if (screen === 'review' || !match) return <Review state={state} size={size} onNext={() => { syncClubScore(state, allCards); show('window'); }} />;
   return withHint(
     <>
       <Home

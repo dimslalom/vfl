@@ -16,6 +16,7 @@ const FxLab = lazy(() => import('./pages/FxLab'));
 const ArenaLab = lazy(() => import('./pages/ArenaLab'));
 const LandingLab = lazy(() => import('./pages/LandingLab'));
 const EvoLab = lazy(() => import('./pages/EvoLab'));
+const LeaderboardLab = lazy(() => import('./pages/LeaderboardLab'));
 
 // domMax (not domAnimation) is required for layoutId and drag, both used by
 // the card-surface morphs. Loaded as its own async chunk so it doesn't sit in
@@ -62,6 +63,7 @@ export default function App() {
                   <Route path="/lab/arena" element={<ArenaLab />} />
                   <Route path="/lab/landing" element={<LandingLab />} />
                   <Route path="/lab/evo" element={<EvoLab />} />
+                  <Route path="/lab/leaderboard" element={<LeaderboardLab />} />
                   <Route path="/labs/evo" element={<Navigate to="/lab/evo" replace />} />
                   <Route path="/multiplayer" element={<Navigate to="/club" replace />} />
                   <Route path="/lobby/:code" element={<Navigate to="/club" replace />} />

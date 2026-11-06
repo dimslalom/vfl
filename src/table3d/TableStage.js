@@ -1200,6 +1200,38 @@ export default class TableStage {
     };
   }
 
+  // Where the picked hand chip is on screen, in cardAnchor's shape, so the page's
+  // tag docks onto a chip exactly as it does onto a card.
+  chipAnchor() {
+    const chip = this.selected?.kind === 'chip' ? this.selected : null;
+    if (!chip) return null;
+    const { x, y, z } = chip.group.position;
+    const s = chip.group.scale.x;
+    const points = [[x - s, y, z], [x + s, y, z], [x, y, z - s], [x, y, z + s]].map(([px, py, pz]) => this.toScreen(px, py, pz));
+    const xs = points.map(point => point[0]);
+    const ys = points.map(point => point[1]);
+    const left = Math.min(...xs);
+    const right = Math.max(...xs);
+    const top = Math.min(...ys);
+    const bottom = Math.max(...ys);
+    const cx = (left + right) / 2;
+    return {
+      x: cx,
+      y: (top + bottom) / 2,
+      top,
+      bottom,
+      left,
+      right,
+      topPeak: { x: cx, y: top },
+      bottomPeak: { x: cx, y: bottom },
+      angle: 0,
+      rx: 10,
+      ry: 0,
+      width: this.host.clientWidth,
+      height: this.host.clientHeight,
+    };
+  }
+
   // ── input ────────────────────────────────────────────────────────────────
 
   ray(event) {

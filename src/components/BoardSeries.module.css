@@ -35,7 +35,6 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 9px 100%, 0 calc(100% - 9px));
 }
 .secondary {
   min-height: var(--tap-min);
@@ -46,7 +45,6 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 9px 100%, 0 calc(100% - 9px));
 }
 .primary:disabled { background: var(--surface-alt); color: var(--muted); }
 .hint { margin: 0; font-size: 12px; color: var(--muted); }
@@ -54,7 +52,7 @@
   position: absolute;
   left: 50%;
   bottom: var(--sp-3);
-  transform: translateX(-50%);
+  translate: -50% 0;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -63,7 +61,6 @@
   width: min(640px, calc(100% - var(--sp-4)));
   padding: var(--sp-3) var(--sp-5);
   background: var(--surface-flyout);
-  box-shadow: var(--shadow-overlay);
 }
 .result h2 { margin: 0; font-size: 28px; line-height: 1; color: var(--accent); }
 .result h2[data-won='true'] { color: var(--win); }
@@ -95,7 +92,7 @@
 .tool[aria-expanded='true'] { background: var(--ink); color: var(--bg); }
 .leave { min-height: var(--tap-min); padding: 0 var(--sp-3); border: 0; background: var(--surface); color: var(--ink); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
 /* The in-match settings: a flat panel hung under the tools. */
-.settingsPanel { position: absolute; top: calc(100% + var(--sp-1)); right: 0; width: min(380px, calc(100vw - 2 * var(--sp-3))); padding: var(--sp-3) var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); box-sizing: border-box; background: var(--surface-flyout); color: var(--ink); box-shadow: var(--shadow-overlay); }
+.settingsPanel { position: absolute; top: calc(100% + var(--sp-1)); right: 0; width: min(380px, calc(100vw - 2 * var(--sp-3))); padding: var(--sp-3) var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); box-sizing: border-box; background: var(--surface-flyout); color: var(--ink); }
 @media (hover: hover) { .tool:hover:not([aria-expanded='true']), .leave:hover:not([data-armed]) { background: var(--surface-hi); } }
 .leave[data-armed] { background: var(--accent); color: var(--accent-ink); }
 .pips { display: inline-flex; gap: 3px; }
@@ -145,14 +142,12 @@
   left: 50%;
   bottom: calc(var(--sp-3) + var(--safe-b, 0px));
   z-index: 4;
-  transform: translateX(-50%);
+  translate: -50% 0;
   display: flex;
   align-items: stretch;
   width: min(472px, calc(100% - var(--sp-4)));
   box-sizing: border-box;
   background: var(--surface-flyout);
-  clip-path: polygon(0 0, calc(100% - 11px) 0, 100% 11px, 100% 100%, 11px 100%, 0 calc(100% - 11px));
-  filter: drop-shadow(5px 5px 0 rgba(0, 0, 0, 0.55));
   animation: settle 0.25s ease-out 0.6s both;
 }
 /* On the 2.5D board, dock the verdict bottom-right on wide screens; on tall (phone) screens
@@ -160,7 +155,7 @@
 .series[data-layout='wide'] .outcome {
   left: auto;
   right: var(--sp-5);
-  transform: none;
+  translate: none;
   animation-name: settleRight;
 }
 .series[data-layout='tall'] .outcome {
@@ -251,12 +246,12 @@
   color: var(--muted);
 }
 @keyframes settle {
-  from { opacity: 0; transform: translate(-50%, 12px); visibility: hidden; }
-  to { opacity: 1; transform: translate(-50%, 0); visibility: visible; }
+  from { opacity: 0; translate: -50% 12px; visibility: hidden; }
+  to { opacity: 1; translate: -50% 0; visibility: visible; }
 }
 @keyframes settleRight {
-  from { opacity: 0; transform: translateY(12px); visibility: hidden; }
-  to { opacity: 1; transform: translateY(0); visibility: visible; }
+  from { opacity: 0; translate: 0 12px; visibility: hidden; }
+  to { opacity: 1; translate: 0 0; visibility: visible; }
 }
 @media (prefers-reduced-motion: reduce) {
   .outcome, .series[data-layout] .outcome, .series[data-layout='tall'] .outcome { animation: none; }
@@ -273,7 +268,7 @@
     left: 50%;
     right: auto;
     bottom: calc(var(--sp-2) + var(--safe-b, 0px));
-    transform: translateX(-50%);
+    translate: -50% 0;
     width: calc(100% - var(--sp-3));
     animation-name: settle;
   }
@@ -522,3 +517,60 @@
   background: var(--tag-ink);
   color: var(--tag-bg);
 }
+
+/* ── Slabs ─────────────────────────────────────────────────────────────────
+   Everything on the match screen is a physical piece on the table, made like the
+   card tag: a face, a two-step extruded edge (--slab-edge, then --slab-base), the
+   objects' rest shadow, and the board's own tilt (--slab-tilt), so it lies on the
+   same table as the cards instead of floating over it as a flat button. A press
+   pushes the slab down onto its edge. Light slabs (the tags) carry information;
+   dark slabs are chrome; the one red slab is the main action. */
+.series {
+  --slab-tilt: perspective(620px) rotateX(10deg);
+  --slab-edge: var(--bg-deep);
+  --slab-base: rgba(0, 0, 0, 0.55);
+  --slab-red-edge: #a3202c;
+  --slab-light-edge: #b8b3aa;
+  --slab-light-base: #2a2e39;
+}
+.head, .tool, .leave, .settingsPanel, .primary, .secondary, .result, .outcome {
+  box-shadow: 0 4px 0 var(--slab-edge), 0 7px 0 var(--slab-base);
+  transition: translate 90ms ease-out, box-shadow 90ms ease-out, background-color 120ms ease;
+}
+.head, .tools, .primary, .secondary, .result, .outcome { transform: var(--slab-tilt); transform-origin: 50% 100%; }
+.head, .tools, .bar, .result, .outcome { filter: var(--shadow-rest); }
+.head { background: var(--surface); }
+.primary { --slab-edge: var(--slab-red-edge); }
+.primary:disabled { --slab-edge: var(--bg-deep); }
+.leave[data-armed] { --slab-edge: var(--slab-red-edge); }
+/* The notch, carried down over the edge so the cut reads as a cut block. */
+.primary, .secondary {
+  clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% calc(100% + 7px), 9px calc(100% + 7px), 0 calc(100% - 2px));
+}
+.outcome {
+  clip-path: polygon(0 0, calc(100% - 11px) 0, 100% 11px, 100% calc(100% + 7px), 11px calc(100% + 7px), 0 calc(100% - 4px));
+}
+/* A press sinks the slab onto its edge. */
+.tool:active, .leave:active, .primary:active:not(:disabled), .secondary:active, .back:active {
+  translate: 0 3px;
+  box-shadow: 0 1px 0 var(--slab-edge), 0 4px 0 var(--slab-base);
+}
+/* A button on a slab is already on the table: it does not tilt again. */
+.outcome .primary, .result .primary, .result .secondary { transform: none; }
+/* Inside a light tag the slab inverts: an ink face on the tag's paper. */
+.tag .back { box-shadow: 0 4px 0 #000, 0 7px 0 var(--slab-base); --slab-edge: #000; }
+@media (prefers-reduced-motion: reduce) {
+  .head, .tool, .leave, .settingsPanel, .primary, .secondary, .result, .outcome { transition: none; }
+}
+
+/* A picked chip on the same tag as a card: tier, ladder, effect, plan. */
+.tagHead em[data-tier] { text-transform: capitalize; background: var(--tag-cell); color: var(--tag-ink); }
+.tagHead em[data-tier='uncommon'] { background: #3f6fd8; color: #fff; }
+.tagHead em[data-tier='rare'] { background: var(--gold); color: var(--gold-ink); }
+.tag [data-code] { background: var(--tag-ink); color: var(--tag-bg); }
+.tagLine { margin: 0; font-size: var(--fs-label); line-height: 1.35; }
+.tagPlan { margin: 0; font-size: var(--fs-label); line-height: 1.35; color: var(--tag-muted); }
+.tagPlan[data-fits] { color: #007a62; font-weight: 700; }
+.tagGuide { align-self: flex-start; min-height: 24px; padding: 0; gap: var(--sp-1); color: var(--tag-muted); letter-spacing: 0.1em; }
+.tagGuide > span { width: 14px; height: 14px; background: none; color: inherit; box-shadow: inset 0 0 0 1px currentColor; }
+@media (hover: hover) { .tagGuide:hover { color: var(--tag-ink); } .tagGuide:hover > span { background: none; color: inherit; } }

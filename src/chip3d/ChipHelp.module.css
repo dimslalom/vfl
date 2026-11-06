@@ -47,19 +47,3 @@
 .note:popover-open { display: grid; }
 .note::backdrop { background: var(--veil); }
 .note .guideHead h2 { font-size: var(--fs-title); }
-
-/* Hint B: a single readout line in the gap between the board's map pill and Leave. */
-.coach { position: absolute; z-index: 4; left: 50%; top: 14px; transform: translateX(-50%); width: min(600px, calc(100% - 760px)); display: flex; align-items: center; flex-wrap: wrap; gap: 2px var(--sp-3); padding: var(--sp-1) var(--sp-1) var(--sp-1) var(--sp-3); background: var(--bg-deep); color: var(--ink); pointer-events: none; }
-.coachName { font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .14em; }
-.coach[data-tier='rare'] .coachName { padding: 3px 6px; background: var(--gold); color: var(--gold-ink); }
-.coach[data-tier='uncommon'] .coachName { padding: 3px 6px; background: #3f6fd8; color: #fff; }
-.coachText { flex: 1 1 200px; font-size: 12px; line-height: 1.35; }
-.coachPlan { flex: 1 1 100%; order: 3; padding-bottom: 2px; font-size: 12px; line-height: 1.35; color: var(--muted); }
-.coachPlan[data-fits] { color: var(--win); }
-.coach .guideButton { min-height: 36px; }
-/* Narrower: under the header row, name and plan only, clear of the lane titles. */
-@media (max-width: 1099px) {
-  .coach { top: 62px; width: calc(100% - 24px); }
-  .coach[data-tier] .coachText { display: none; }
-  .coachPlan { flex: 1 1 0; order: 0; }
-}

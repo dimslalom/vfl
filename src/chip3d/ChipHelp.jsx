@@ -145,29 +145,3 @@ export function ChipGuideButton({ className = '', label }) {
     </>
   );
 }
-
-/**
- * Hint B for the board: one line across the top while placing. With a chip
- * picked it says what that chip does for your five; with none, what a chip is for.
- */
-export function ChipCoach({ chipKey, roster }) {
-  if (!chipKey) {
-    return (
-      <div className={styles.coach} role="status">
-        <span className={styles.coachText}>{t('Drop up to one chip on each lane: it multiplies that lane. Best on the lanes you could win or lose.')}</span>
-        <ChipGuideButton label={t('Chips')} />
-      </div>
-    );
-  }
-  const info = chipInfo(chipKey);
-  const copy = chipCopy(info.key);
-  const plan = chipPlan(chipKey, roster ?? []);
-  return (
-    <div className={styles.coach} role="status" data-tier={info.tier}>
-      <b className={styles.coachName}>{info.name}</b>
-      <span className={styles.coachText}>{copy.effect}</span>
-      <span className={styles.coachPlan} data-fits={plan.fits || undefined}>{planLine(plan)}</span>
-      <ChipGuideButton label={t('Chips')} />
-    </div>
-  );
-}

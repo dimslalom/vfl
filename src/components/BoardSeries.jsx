@@ -5,36 +5,36 @@ import { BOARD_SKILLS, hasSkill } from '../engine/board/board';
 import { seriesWinner, winsNeeded } from '../engine/board/mapLanes';
 import { refillTacticHand, settleTactic } from '../engine/endless/seriesCards';
 import { namedSeriesMaps, pickSeriesMaps, roundBoard, roundResult } from '../prototype/boardSetup';
-import ChipPayout from '../chip3d/ChipPayout';
+import { chipInfo, chipPlan } from '../chip3d/chipData';
+import { chipCopy, planLine } from '../chip3d/chipCopy';
+import { titleCase } from '../lib/titleCase';
 import MatchIntro from './MatchIntro';
 import { settleMatchMusic, stopMatchMusic } from '../lib/music';
-import { useChipStyle } from '../chip3d/chipStyle';
-import { ChipCoach } from '../chip3d/ChipHelp';
+import { ChipGuideButton, ChipLadder } from '../chip3d/ChipHelp';
 import { STAT_LABELS, STAT_LABELS_FULL } from '../../shared/src/data/statFields';
 import styles from './BoardSeries.module.css';
 
-// The picked card, in detail: a light tag hung off the card itself, saying what it
-// scores on each lane and what its skills do, the live one lit. It never dims the
-// board, so the lanes stay tappable and the card goes on one exactly as when the
-// tag is closed. Every card does this the same way, in the hand or on a lane,
-// yours or theirs. The tag follows the card every frame, above it when there is
-// room, below it when the card sits near the top, beside it when neither fits.
+// The picked piece, in detail: a light tag hung off the piece itself, in the board's
+// perspective. Cards and chips use the same tag, so everything you can pick explains
+// itself the same way. It never dims the board, so the lanes stay tappable. The tag
+// follows the piece every frame: above it when there is room, below it when the piece
+// sits near the top, beside it when neither fits.
 const TAG_GAP = 4;
 const TAG_TOP = 64;
 const TAG_EDGE = 8;
 
-function CardView({ view, stageRef, hostRef, onPlaceLane, onBack }) {
-  const { card, lane, lanes, live, canMove, canReturn, igl } = view;
-  const skills = Object.keys(BOARD_SKILLS).filter(key => hasSkill(card, key));
-  const bestScore = Math.max(...lanes.map(info => card.stats[info.stat] ?? 0));
+// `anchor()` returns where the piece is on screen (TableStage.cardAnchor / chipAnchor).
+function BoardTag({ anchor, hostRef, label, children }) {
   const tagRef = useRef(null);
+  const anchorRef = useRef(anchor);
+  useEffect(() => { anchorRef.current = anchor; });
 
   useEffect(() => {
     let frame = 0;
     const follow = () => {
       frame = requestAnimationFrame(follow);
       const tag = tagRef.current;
-      const at = stageRef.current?.cardAnchor?.();
+      const at = anchorRef.current?.();
       const host = hostRef.current;
       if (!tag || !at || !host) return;
       const w = tag.offsetWidth;
@@ -43,7 +43,7 @@ function CardView({ view, stageRef, hostRef, onPlaceLane, onBack }) {
       const oy = host.offsetTop;
       const topAnchor = at.topPeak ?? { x: at.x, y: at.top };
       const botAnchor = at.bottomPeak ?? { x: at.x, y: at.bottom };
-      // Above the card's peak, else below it, else beside it on whichever side has more room.
+      // Above the piece's peak, else below it, else beside it on whichever side has more room.
       let side = 'above';
       if (topAnchor.y - TAG_GAP - h < TAG_TOP) {
         side = botAnchor.y + TAG_GAP + h <= at.height - TAG_EDGE
@@ -77,10 +77,17 @@ function CardView({ view, stageRef, hostRef, onPlaceLane, onBack }) {
     };
     follow();
     return () => cancelAnimationFrame(frame);
-  }, [stageRef, hostRef]);
+  }, [hostRef]);
 
+  return <aside ref={tagRef} className={styles.tag} aria-label={label}>{children}</aside>;
+}
+
+function CardView({ view, stageRef, hostRef, onPlaceLane, onBack }) {
+  const { card, lane, lanes, live, canMove, canReturn, igl } = view;
+  const skills = Object.keys(BOARD_SKILLS).filter(key => hasSkill(card, key));
+  const bestScore = Math.max(...lanes.map(info => card.stats[info.stat] ?? 0));
   return (
-    <aside ref={tagRef} className={styles.tag} aria-label={`${card.player} details`}>
+    <BoardTag anchor={() => stageRef.current?.cardAnchor?.()} hostRef={hostRef} label={`${card.player} details`}>
       <div className={styles.tagHead}>
         <b>{card.player}</b>
         <span>{igl && <em>IGL</em>}{card.role}</span>
@@ -115,7 +122,32 @@ function CardView({ view, stageRef, hostRef, onPlaceLane, onBack }) {
         </ul>
       )}
       {canReturn && <button type="button" className={styles.back} onClick={onBack}>Back to hand</button>}
-    </aside>
+    </BoardTag>
+  );
+}
+
+// A picked hand chip, on the same tag as a card: its name and tier, what goes on the
+// lane and what it pays, the effect in a line, and what it does for this squad.
+// The flat lab board has no chip anchor, so it pins the tag to the point it reports.
+function ChipView({ view, roster, stageRef, hostRef }) {
+  const info = chipInfo(view.selected);
+  const copy = chipCopy(info.key);
+  const plan = chipPlan(view.selected, roster);
+  const anchor = () => stageRef.current?.chipAnchor?.() ?? (view.anchor && hostRef.current && {
+    ...view.anchor, top: view.anchor.y, bottom: view.anchor.y, left: view.anchor.x, right: view.anchor.x,
+    width: hostRef.current.clientWidth, height: hostRef.current.clientHeight,
+  });
+  return (
+    <BoardTag key={view.selected} anchor={anchor} hostRef={hostRef} label={`${titleCase(info.name)} details`}>
+      <div className={styles.tagHead}>
+        <b>{titleCase(info.name)}</b>
+        <span><em data-tier={info.tier}>{info.tier}</em></span>
+      </div>
+      <ChipLadder chipKey={view.selected} />
+      <p className={styles.tagLine}>{copy.effect}</p>
+      <p className={styles.tagPlan} data-fits={plan.fits || undefined}>{planLine(plan)}</p>
+      <ChipGuideButton className={styles.tagGuide} />
+    </BoardTag>
   );
 }
 
@@ -172,7 +204,6 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
   const [attempt, setAttempt] = useState(0);
   const [leaving, setLeaving] = useState(false);
   const [chipView, setChipView] = useState(null);
-  const chipStyleNow = useChipStyle();
   const [cardView, setCardView] = useState(null);
   const runRef = useRef({ you: 0, them: 0, hand, results: [] });
   const finishedRef = useRef(false);
@@ -361,17 +392,13 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
 
   const skills = Object.keys(BOARD_SKILLS).filter(key => squad.some(card => hasSkill(card, key)));
   const { phase, legal, placed, moves, rotated, layout } = state;
-  const chipHint = chipStyleNow.hint;
   // The finished round stays on screen until the next one is dealt.
   const shownRound = Math.min(score.you + score.them - (outcome ? 1 : 0), bestOf - 1);
   return (
     <div className={styles.series} data-fixed={fixed === true ? 'true' : fixed || undefined} data-layout={layout}>
       <div className={styles.board} key={attempt} ref={hostRef} onClick={() => phase === 'resolve' && stageRef.current?.skip()} />
       <div className={styles.chips} key={`chips${attempt}`} ref={chipHostRef} aria-hidden="true" />
-      {/* Med-fi: two chip hints to compare (chipStyle.js). A is the tag on the chip, B a line across the top. */}
-      {chipHint === 'coach'
-        ? phase === 'place' && <ChipCoach chipKey={chipView?.selected} roster={squad} />
-        : <ChipPayout chipKey={chipView?.selected} at={chipView?.anchor} roster={squad} />}
+      {chipView?.selected && <ChipView view={chipView} roster={squad} stageRef={stageRef} hostRef={hostRef} />}
       {cardView && <CardView view={cardView} stageRef={stageRef} hostRef={hostRef} onPlaceLane={lane => stageRef.current?.placePicked(lane)} onBack={() => stageRef.current?.unplace()} />}
       {phase === 'loading' && !failed && !introOn && <p className={styles.notice} role="status">Dealing the board</p>}
       {failed && (
