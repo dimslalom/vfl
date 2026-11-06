@@ -288,10 +288,12 @@ export function printChip(chip, headline) {
 // Geometry is shared by every chip; only the printed materials are its own.
 export function disposeChip(chip) {
   chip.ring.material.dispose();
-  for (const material of new Set(chip.meshes.map(mesh => mesh.material))) {
-    material.map?.dispose();
-    material.bumpMap?.dispose();
-    material.roughnessMap?.dispose();
+  for (const material of new Set(chip.meshes.flatMap(mesh => mesh.material))) {
+    if (!chip.info.evo) {
+      material.map?.dispose();
+      material.bumpMap?.dispose();
+      material.roughnessMap?.dispose();
+    }
     material.dispose();
   }
   chip.dispose?.();

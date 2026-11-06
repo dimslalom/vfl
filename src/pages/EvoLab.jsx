@@ -25,7 +25,7 @@ function mockClub(card, evoKey, stage) {
   const evo = EVO_CHIPS[evoKey];
   const rest = allCards.filter(other => other.id !== card.id && other.league === 'vct' && other.rating <= 82).slice(0, 6).map(other => other.id);
   let state = newClub({ seed: 4242, name: 'Lab Club', picks: [card.id, ...rest], cards: allCards, crest: 'shield', tone: 'red' });
-  state = { ...state, trainSlot: 2, evoInventory: [evoKey], activeEvo: null };
+  state = { ...state, trainingTapes: { positioning: 1 }, evoInventory: [evoKey], activeEvo: null };
   if (stage === 0) return state;
   // Stage 1 is mid-evo: level one done, level two one match short.
   const stats = { ...evo.level1.stats };
@@ -214,12 +214,9 @@ function LabTrain({ player, evoKey, stage }) {
     <Train
       state={state}
       size={{ scale: 0.36 }}
-      initialFocus={stage === 2 ? 'stat' : 'evo'}
+      initialFocus={stage === 2 ? 'tape:positioning' : 'evo'}
       onBack={noop}
-      onTrain={noop}
       onTape={noop}
-      onBuy={noop}
-      canBuy={false}
       onEvo={(cardId, key) => setState(s => commitEvolution(s, cardId, key))}
     />
   );

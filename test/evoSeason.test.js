@@ -54,19 +54,18 @@ test('isEligibleForEvo validates rating caps and role restrictions', () => {
   assert.equal(isEligibleForEvo(sentinel85, 'glacier').eligible, false); // Rating too high
 });
 
-test('commitEvolution consumes 1 session slot and starts Level 1 active evolution', () => {
+test('commitEvolution consumes an Evo and starts Level 1 without a training slot', () => {
   const club = freshClub();
   const targetId = club.squad[0];
 
   const clubWithChip = {
     ...club,
-    trainSlot: 2,
     evoInventory: ['glacier'],
     activeEvo: null,
   };
 
   const committed = commitEvolution(clubWithChip, targetId, 'glacier');
-  assert.equal(committed.trainSlot, 1);
+  assert.equal(Object.hasOwn(committed, 'trainSlot'), false);
   assert.deepEqual(committed.evoInventory, []);
   assert.ok(committed.activeEvo);
   assert.equal(committed.activeEvo.cardId, targetId);
@@ -75,8 +74,8 @@ test('commitEvolution consumes 1 session slot and starts Level 1 active evolutio
   assert.equal(committed.activeEvo.l1Done, false);
 
   // Committing another while one is active is refused (1 active evo rule)
-  const second = commitEvolution({ ...committed, evoInventory: ['glacier'] }, club.squad[1], 'glacier');
-  assert.equal(second.trainSlot, 1);
+  const withExtraEvo = { ...committed, evoInventory: ['glacier'] };
+  assert.equal(commitEvolution(withExtraEvo, club.squad[1], 'glacier'), withExtraEvo);
 });
 
 test('Multi-level evolution match tracking: Level 1 and Level 2 progression and stat/skill unlocks', () => {

@@ -13,7 +13,6 @@ export const PACK_KEYS = ['silver', 'gold', 'icons'];
 export const PACK_FIELD = { silver: 'packs', gold: 'gold', icons: 'icons' };
 
 export const SQUAD_BASE = 7;
-export const TRAIN_SLOTS_MAX = 2;
 export const TAPE_MAX = 3;
 export const GOLD_PITY = 6;
 export const TITLES_PER_ICON = 2;
@@ -21,7 +20,6 @@ export const BENCH_XP = 0.4;
 export const GOLD_RATING = 80;
 // A tired starter should feel it: club fatigue costs 2.5 times what it does elsewhere.
 export const CLUB_FATIGUE_X = 2.5;
-export const SESSION_PRICE = 1;
 export const REROLL_PRICE = 1;
 // The founding name is free; changing it later is a pack sink.
 export const RENAME_PRICE = 3;
@@ -78,7 +76,7 @@ export function clubFatigueExtra(dev) {
 
 /** Fields a save from before this system lacks. */
 export function rewardDefaults() {
-  return { gold: 0, icons: 0, pity: { gold: 0 }, tapes: 0, opens: 0, opening: null, chipOffer: null, evoInventory: [], activeEvo: null };
+  return { gold: 0, icons: 0, pity: { gold: 0 }, tapes: 0, trainingTapes: {}, tacticReserve: [], opens: 0, opening: null, chipOffer: null, evoInventory: [], activeEvo: null };
 }
 
 const NEWS_KEPT = 8;

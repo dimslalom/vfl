@@ -172,7 +172,13 @@ export function makeEvoChip(info, index, { THICK, grain }) {
     specularIntensity: 0.5, clearcoat: 0.35, clearcoatRoughness: 0.12, envMapIntensity: 0.35,
   });
   const maps = {};
+  let disposed = false;
+  const disposeMaps = () => Object.values(maps).forEach(map => map.dispose());
   const ready = paintFace(info, art, maps, grain).then(() => {
+    if (disposed) {
+      disposeMaps();
+      return;
+    }
     Object.assign(faceMat, { map: maps.color, bumpMap: maps.relief, roughnessMap: maps.rough });
     faceMat.needsUpdate = true;
   });
@@ -252,8 +258,9 @@ export function makeEvoChip(info, index, { THICK, grain }) {
       m.position.z = -y;
     })),
     dispose() {
+      disposed = true;
       geos.forEach(geo => geo.dispose());
-      Object.values(maps).forEach(map => map.dispose());
+      disposeMaps();
       comet?.forEach(m => m.material.dispose());
     },
   };

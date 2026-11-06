@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import allCards from '../shared/src/data/cards.json' with { type: 'json' };
+import { useTape as spendTape } from '../src/engine/club/rewards.js';
 import { hasSkill } from '../src/engine/board/board.js';
 import { CLUB_SAVE_KEY, loadClub, saveClub } from '../src/lib/clubSave.js';
 import {
   CONTRACT_MAX, LEAGUE_SIZE, SKILL_SESSIONS, STARTERS, WEEKS, clubCard, clubRoster, closeWindow, contractYears,
-  draftPack, finishSeries, isValidClub, moveSquad, newClub, nextMatch, squadCards, standings, train, trainingOffer,
+  draftPack, finishSeries, isValidClub, moveSquad, newClub, nextMatch, squadCards, standings, trainingOffer,
   windowOffers, windowTotals,
 } from '../src/engine/club/season.js';
 
@@ -166,36 +167,30 @@ test('the signing limit locks a rival you cannot reach', () => {
   assert.ok(offers.free.every(item => item.card.rating < average));
 });
 
-test('a stat lands at once, uses the slot and shows on the card', () => {
-  const state = fresh();
+test('a stat tape changes the card and is consumed once', () => {
+  const state = { ...fresh(), trainingTapes: { aim: 1 } };
   const raw = allCards.find(card => card.id === state.squad[0]);
   const card = clubCard(state, raw);
-  const offer = trainingOffer(state, card);
-  const next = train(state, card, 'stat');
-  assert.equal(next.trainSlot, 0);
-  assert.equal(clubCard(next, raw).stats[offer.stat], card.stats[offer.stat] + 2);
-  assert.equal(train(next, card, 'stat'), next);
+  const next = spendTape(state, card, 'aim');
+  assert.equal(next.trainingTapes.aim, 0);
+  assert.equal(clubCard(next, raw).stats.aim, card.stats.aim + 2);
+  assert.equal(spendTape(next, card, 'aim'), next);
 });
 
-test('a skill takes three sessions and then plays on the board', () => {
+test('three matching skill tapes unlock the skill on the board', () => {
   let state = fresh();
   const raw = allCards.find(card => card.id === state.squad[0]);
   const { skill } = trainingOffer(state, clubCard(state, raw));
   assert.ok(skill);
-  for (let session = 0; session < SKILL_SESSIONS; session += 1) {
-    assert.equal(hasSkill(clubCard(state, raw), skill), Boolean(raw.specialties?.some?.(spec => spec.key === skill)));
-    state = train({ ...state, trainSlot: 1 }, clubCard(state, raw), 'skill');
+  state = { ...state, trainingTapes: { [skill]: SKILL_SESSIONS } };
+  for (let i = 0; i < SKILL_SESSIONS; i += 1) {
+    const card = clubCard(state, raw);
+    assert.equal(hasSkill(card, skill), false);
+    state = spendTape(state, card, skill);
   }
   assert.equal(hasSkill(clubCard(state, raw), skill), true);
   assert.equal(trainingOffer(state, clubCard(state, raw)).skill, null);
-});
-
-test('rest clears fatigue', () => {
-  let state = fresh();
-  state = finishSeries(state, series(true), allCards);
-  const raw = allCards.find(card => card.id === state.squad[0]);
-  assert.ok(state.dev[raw.id].f > 0);
-  assert.equal(train(state, clubCard(state, raw), 'rest').dev[raw.id].f, 0);
+  assert.equal(state.trainingTapes[skill], 0);
 });
 
 test('series give starters growth, and a full bar raises the rating', () => {

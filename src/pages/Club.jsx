@@ -1,8 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { flushSync } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import allCards from '../../shared/src/data/cards.json';
-import { STAT_KEYS, STAT_LABELS } from '../../shared/src/data/statFields';
+import { STAT_KEYS, STAT_LABELS, STAT_LABELS_FULL } from '../../shared/src/data/statFields';
 import PlayerCard from '../../shared/src/components/PlayerCard';
 import { playUiSound } from '../../shared/src/lib/gameAudio';
 import { assetPath } from '../../shared/src/lib/utils';
@@ -14,23 +13,24 @@ import SpecialtyIcon from '../../shared/src/components/SpecialtyIcon';
 import { SPECIALTIES } from '../../shared/src/data/specialties';
 import { EVO_ART } from '../../shared/src/components/evoArt';
 import {
-  GOLD_PITY, NAME_MAX, PACK_KEYS, PACK_VALUE, RENAME_PRICE, REROLL_PRICE, SESSION_PRICE, TAPE_MAX, TITLES_PER_ICON, TRAIN_SLOTS_MAX, clubFatigueExtra, packValue,
+  GOLD_PITY, GOLD_RATING, NAME_MAX, PACK_KEYS, PACK_VALUE, RENAME_PRICE, REROLL_PRICE, TAPE_MAX, TITLES_PER_ICON, clubFatigueExtra, packValue,
   squadMax, stock,
 } from '../engine/club/economy';
 import {
-  buySession, canBuySession, canReroll, cleanName, renameClub, setClubCrest, chooseChip, choosePick, goldDue, openBlocker, openPack, rerollChips, useTape as spendTape,
+  canReroll, cleanName, renameClub, setClubCrest, chooseChip, choosePick, goldDue, openBlocker, openPack, rerollChips, setTacticEquipped, useTape as spendTape,
 } from '../engine/club/rewards';
-import { ROLES, chipInfo } from '../chip3d/chipData';
+import { tapeCount } from '../engine/club/tapes';
+import { chipInfo } from '../chip3d/chipData';
 import Chip3D from '../chip3d/Chip3D';
 import { ChipBrief, ChipGuideButton, ChipLadder, ChipNoteButton } from '../chip3d/ChipHelp';
 import { EvoChip, EvoFacts, EvoFits, EvoNoteButton } from '../chip3d/EvoChip';
 import { TACTIC_HAND_MAX } from '../engine/endless/seriesCards';
-import { fatiguePenalty } from '../../shared/src/engine/endless/career';
+import { FATIGUE_PENALTY_FROM, fatiguePenalty } from '../../shared/src/engine/endless/career';
 import { BOARD_SKILLS } from '../engine/board/board';
 import {
-  CONTRACT_MAX, DRAFT_PACKS, EVO_CHIPS, SKILL_SESSIONS, STARTERS, STAT_CAP, STAT_STEP, WEEKS, XP_PER_POINT, clubById, clubCard, clubRoster,
+  CONTRACT_MAX, DRAFT_PACKS, EVO_CHIPS, SKILL_SESSIONS, STARTERS, STAT_STEP, XP_PER_POINT, clubById, clubCard, clubRoster,
   clubScore, closeWindow, commitEvolution, draftPack, finishSeries, isEligibleForEvo, isValidClub, moveSquad, newClub, nextMatch, squadCards, standings,
-  train, trainingOffer, windowOffers, windowTotals,
+  trainingOffer, windowOffers, windowTotals,
 } from '../engine/club/season';
 import { TIER_META } from '../engine/endless/ladder';
 import { pickSeriesMaps } from '../prototype/boardSetup';
@@ -43,7 +43,8 @@ import ClubSettings from '../components/club/ClubSettings';
 import ClubHint from '../components/club/ClubHint';
 import ClubSyncChoice from '../components/club/ClubSyncChoice';
 import ClubRename from '../components/club/ClubRename';
-import HubFeed from '../components/club/HubFeed';
+import { LatestMove, Scout } from '../components/club/HubFeed';
+import { attention } from '../engine/club/attention';
 import SeasonIntro from '../components/club/SeasonIntro';
 import { stageLabel } from '../components/club/clubSummary';
 import useClubSync from '../lib/useClubSync';
@@ -56,6 +57,11 @@ import styles from './Club.module.css';
 
 const cardById = new Map(allCards.map(card => [card.id, card]));
 const ordinal = n => `${n}${['th', 'st', 'nd', 'rd'][n % 10 > 3 || Math.floor(n / 10) === 1 ? 0 : n % 10]}`;
+// Chip names are stored in capitals for the match board; lists here use title case,
+// like tape and evo names ("POCKET STRAT" -> "Pocket Strat", "HIT THE SITE" -> "Hit the Site").
+const SMALL_WORDS = new Set(['a', 'an', 'and', 'at', 'by', 'for', 'in', 'of', 'on', 'or', 'the', 'to']);
+const titleCase = text => text.toLowerCase().split(' ').map((word, index) => (index > 0 && SMALL_WORDS.has(word) ? word : word.charAt(0).toUpperCase() + word.slice(1))).join(' ');
+const tapeName = key => STAT_LABELS_FULL[key] ?? BOARD_SKILLS[key]?.label ?? 'Any skill';
 const tierName = tier => TIER_META[tier].label;
 const initials = name => name.replace(/[^A-Za-z0-9 ]/g, '').split(' ').map(word => word[0]).join('').slice(0, 2).toUpperCase();
 const mapArt = name => assetPath(`/assets/maps/${name.toLowerCase()}.webp`);
@@ -74,7 +80,7 @@ const seriesSeed = (state, match) => (state.seed ^ (state.year * 977 + state.wee
 // and `squadSlot` fits a 3 + 2 grid on phones so cards on the Squad screen can be bigger.
 function useCardScale() {
   const read = () => {
-    if (typeof window === 'undefined') return { scale: 0.4, slot: 0.27, homeSlot: 0.27, feed: false, stripFeed: false, feedWidth: 300, squadSlot: 0.27, phone: false };
+    if (typeof window === 'undefined') return { scale: 0.4, slot: 0.27, homeSlot: 0.27, heroWidth: 300, heroCard: 0.2, squadSlot: 0.27, phone: false };
     const { innerWidth: w, innerHeight: h } = window;
     const phone = w < 760;
     const scale = phone ? Math.min(0.22, (h - 240) / 2200) : h < 560 ? 0.24 : h < 760 ? 0.32 : 0.4;
@@ -85,21 +91,19 @@ function useCardScale() {
     const maxSlotH = phone ? (h - 330) / 960 : (h - 280) / 1100;
     const slot = Math.max(0.12, Math.min(0.5, slotWidth / 400, maxSlotH));
     // The hub shows the starting five only (the bench lives on the Squad screen).
-    // The feed sits above the Play button, so on desktop the cards give up some height for it.
-    // The feed floats above the Play button, in the width the cards leave on the right,
-    // so it costs the cards width but no height.
-    const feed = !phone && w >= 1100 && h >= 640;
-    // On a phone the same feed is a swipe strip in the gap under the squad.
-    const stripFeed = phone && h >= 640;
-    const feedWidth = w < 1500 ? 280 : 360;
-    const homeWidth = phone ? slotWidth : Math.min(240, (room - (feed ? feedWidth + 32 : 0)) / 5) - 4;
+    // The next match is a full-height column on the right, so it costs the cards width, not height.
+    const heroWidth = w < 1500 ? 300 : 360;
+    const homeWidth = phone ? slotWidth : Math.min(240, (room - heroWidth - 32) / 5) - 4;
+    // The rival's best three fit the hero's width; on phones and short screens they become faces (0).
+    const heroFit = Math.min(0.26, (heroWidth - 48) / 3.3 / 400, (h - 640) / 650);
+    const heroCard = phone || heroFit < 0.12 ? 0 : heroFit;
     const homeSlot = phone ? slot : Math.max(0.12, Math.min(0.5, homeWidth / 400, maxSlotH));
     // On the Squad screen on phones, starters wrap 3 on top + 2 below so each card is ~30% larger.
     // Subtract stage padding (24), ground padding (16), and 2 column gaps (16) = 56px.
     const squadWidth = phone ? (w - 56) / 3 : slotWidth;
     const maxSquadH = phone ? (h - 340) / 1500 : maxSlotH;
     const squadSlot = phone ? Math.max(0.14, Math.min(0.3, squadWidth / 400, maxSquadH)) : slot;
-    return { scale: Math.max(0.14, scale), slot, homeSlot, feed, stripFeed, feedWidth, squadSlot, phone };
+    return { scale: Math.max(0.14, scale), slot, homeSlot, heroWidth, heroCard, squadSlot, phone };
   };
   const [size, setSize] = useState(read);
   useEffect(() => {
@@ -178,9 +182,9 @@ function Hud({ title, tags = [], logo, mark, back, chips = [], children }) {
 
 // The club's screens rest flat and top-down. Each one lands tilted and settles,
 // so the 2.5D lives in the arrival; the match board is the one tilted view.
-function Ground({ map, className = '', children }) {
+function Ground({ map, className = '', style, children }) {
   return (
-    <main className={`${styles.ground} ${className}`} style={map ? { '--map': `url(${map})` } : undefined}>
+    <main className={`${styles.ground} ${className}`} style={map || style ? { ...style, ...(map && { '--map': `url(${map})` }) } : undefined}>
       {children}
     </main>
   );
@@ -188,14 +192,14 @@ function Ground({ map, className = '', children }) {
 
 // A card in its place, with nothing behind it to compete: the role (or IGL) as a
 // label above, and the contract's years left as bars below.
-function Slot({ card, scale, tab, lit, years, note, noteLit, held, onClick, label, vt }) {
+function Slot({ card, scale, tab, lit, years, note, noteLit, held, onClick, label }) {
   return (
     <div className={styles.slot} data-held={held || undefined}>
       <span className={styles.slotTop}>
         {tab && <b data-lit={lit || undefined}>{tab}</b>}
         {note && <em data-lit={noteLit || undefined}>{note}</em>}
       </span>
-      <div className={styles.slotCard} style={vt ? { viewTransitionName: vt } : undefined}>
+      <div className={styles.slotCard}>
         <PlayerCard card={card} displayScale={scale} tilt={false} canDrag={false} onClick={onClick} pressScale={onClick ? 0.97 : 1} />
         {held && <span className={styles.brackets} aria-hidden="true"><i /><i /><i /><i /></span>}
       </div>
@@ -236,7 +240,7 @@ function Road({ state }) {
   return (
     <ol className={styles.road} aria-label="Season calendar">
       {cells.map(cell => (
-        <li key={cell.key} data-status={cell.status} style={{ viewTransitionName: `road-${cell.key}` }} aria-label={cell.aria ? `${cell.when}, ${cell.name}, ${cell.aria}` : undefined} aria-current={cell.status === 'now' ? 'step' : undefined}>
+        <li key={cell.key} data-status={cell.status} aria-label={cell.aria ? `${cell.when}, ${cell.name}, ${cell.aria}` : undefined} aria-current={cell.status === 'now' ? 'step' : undefined}>
           <span className={styles.when}><span className={styles.long}>{cell.when}</span><span className={styles.short} aria-hidden="true">{cell.short}</span></span>
           <span className={styles.who}>
             {cell.club && <Crest club={cell.club} size={22} />}
@@ -404,10 +408,10 @@ function ClubMenu({ onAbandon, onSettings, onPrimer, onRename, onCrest }) {
 
 // The pack counter: one pack and the club's total pack value, then its skill tapes.
 // The tier split lives in the vault; tapping the counter goes there.
-function PackCounter({ state, onOpen, bump, flyTarget }) {
-  const value = packValue(state);
-  const tapes = state.tapes ?? 0;
-  const label = `${value} pack value, ${tapes} skill ${tapes === 1 ? 'tape' : 'tapes'}`;
+function PackCounter({ state, onOpen, bump, flyTarget, value: shown }) {
+  const value = shown ?? packValue(state);
+  const tapes = tapeCount(state);
+  const label = `${value} pack value, ${tapes} training ${tapes === 1 ? 'tape' : 'tapes'}`;
   const inner = (
     <>
       <span className={styles.counterPart}>
@@ -453,11 +457,23 @@ function PackArt({ kind, size = 'm' }) {
   return <img className={styles.packArt} data-kind={kind} data-size={size} src={assetPath(PACK_STILL[kind])} alt="" aria-hidden="true" draggable={false} />;
 }
 
-// A skill tape: a still of the 3D cassette (tools/tape3d), stood upright at card
-// proportions so it sits beside packs and players as one more thing the club owns.
-function TapeCard({ scale = 0.3 }) {
+// One size for a tape in a list, so it stays put moving between Inventory and Train.
+const tapeItemScale = size => (size.phone ? 0.16 : size.scale * 0.75);
+// The same for a chip or an evo in a list.
+const itemArtSize = size => (size.phone ? 72 : Math.round(320 * size.scale));
+
+// The cassette still carries the original skill label. Targeted tapes have their own label.
+function TapeCard({ scale = 0.3, target }) {
+  const size = { width: 400 * scale, height: 580 * scale };
+  const art = <img className={styles.tapeCard} src={assetPath('/assets/tape3d/tape-icon.webp')} alt="" aria-hidden="true" draggable={false} style={size} />;
+  if (!target) return art;
   return (
-    <img className={styles.tapeCard} src={assetPath('/assets/tape3d/tape-icon.webp')} alt="" aria-hidden="true" draggable={false} style={{ width: 400 * scale, height: 580 * scale }} />
+    <span className={styles.tapeToken} aria-hidden="true" style={size}>
+      {art}
+      <span data-stat={STAT_KEYS.includes(target) || undefined} style={{ fontSize: 46 * scale }}>
+        {STAT_LABELS[target] ?? SPECIALTIES[target]?.code ?? 'TRAINING'}
+      </span>
+    </span>
   );
 }
 
@@ -484,98 +500,47 @@ function Home({ state, go, onAbandon, onSettings, onPrimer, size }) {
   const started = state.results.length > 0;
   const max = squadMax(state);
   const hand = state.hand ?? [];
-  // The feed fills the hub's empty right side: from under the season road to
-  // above the Play block, and from beside the starting five to the edge.
-  const squadRef = useRef(null);
-  const footRef = useRef(null);
-  const [dock, setDock] = useState(null);
-  useLayoutEffect(() => {
-    if (!size.feed) return undefined;
-    const ground = squadRef.current?.parentElement;
-    const measure = () => {
-      const road = ground?.querySelector('ol');
-      const row = squadRef.current?.querySelector(`.${styles.homeRow}`);
-      const play = footRef.current?.querySelector(`.${styles.homePlay}`);
-      if (!ground || !road || !row || !play) return;
-      const g = ground.getBoundingClientRect();
-      const top = road.getBoundingClientRect().bottom - g.top + 24;
-      const bottom = g.bottom - play.getBoundingClientRect().top + 24;
-      const left = row.getBoundingClientRect().right - g.left + 40;
-      const width = Math.min(560, g.width - left - 16);
-      const height = g.height - top - bottom;
-      setDock(width >= 260 && height >= 260 ? { top, width, height } : null);
-    };
-    measure();
-    // Cards and fonts settle after the first layout, so follow the row too.
-    const observer = new ResizeObserver(measure);
-    observer.observe(ground);
-    const row = squadRef.current?.querySelector(`.${styles.homeRow}`);
-    if (row) observer.observe(row);
-    return () => observer.disconnect();
-  }, [size.feed, size.homeSlot]);
+  const reserve = state.tacticReserve?.length ?? 0;
+  const tapes = tapeCount(state);
+  // Whatever wants a look marks its tile; the tile's own value says how much.
+  const due = new Set(attention(state, 99).map(item => item.go));
+  const tile = (screen, label, value, idle) => (
+    <button type="button" className={styles.tile} data-idle={idle || undefined} onClick={() => go(screen)}>
+      {due.has(screen) && <span className={styles.pip} role="img" aria-label={t('Needs a look')} />}
+      <span className={styles.tileLabel}>{label}</span>
+      <span className={styles.tileValue}>{value}</span>
+    </button>
+  );
   return (
     <div className={styles.stage}>
       <Hud title={state.name} tags={[[tierName(state.tier), true], [`Year ${state.year}`], ...(started ? [[`${ordinal(pos)} in table`]] : [])]} mark={<OwnMark state={state} size={50} />}>
         <PackCounter state={state} onOpen={() => go('vault')} />
         <ClubMenu onAbandon={onAbandon} onSettings={onSettings} onPrimer={onPrimer} onRename={() => go('rename')} onCrest={() => go('crest')} />
       </Hud>
-      <Ground map={firstMap?.image && assetPath(firstMap.image)} className={styles.home}>
+      <Ground map={firstMap?.image && assetPath(firstMap.image)} className={styles.home} style={{ '--hero-w': `${size.heroWidth}px` }}>
         <Road state={state} />
-        <section className={styles.homeSquad} ref={squadRef} aria-label="Your squad">
-          <div className={styles.homeGroup}>
-            <span className={styles.groupLabel}>Starting five</span>
-            <div className={styles.homeRow}>
-              {squad.slice(0, STARTERS).map((card, index) => (
-                <Slot key={card.id} vt={`card-${card.id}`} card={card} scale={size.homeSlot} tab={index === 0 ? 'IGL' : card.role?.slice(0, 3).toUpperCase()} lit={index === 0} years={state.contracts[card.id]} note={state.contracts[card.id] === 1 ? 'Last year' : ''} noteLit onClick={() => go('squad')} />
-              ))}
-            </div>
+        <section className={styles.homeSquad} aria-label="Your squad">
+          <span className={styles.groupLabel}>Starting five</span>
+          <div className={styles.homeRow}>
+            {squad.slice(0, STARTERS).map((card, index) => {
+              const last = state.contracts[card.id] === 1;
+              return <Slot key={card.id} card={card} scale={size.homeSlot} tab={index === 0 ? 'IGL' : null} lit years={last ? 1 : null} note={last ? 'Last year' : ''} noteLit onClick={() => go('squad')} />;
+            })}
           </div>
         </section>
-        {size.stripFeed && <HubFeed compact state={state} cards={allCards} height={150} onGo={go} />}
-        <div className={styles.homeFoot} ref={footRef}>
-          {/* The week's business, as tiles: each shows the number that matters. */}
-          <div className={styles.tileRow}>
-            <button type="button" className={styles.tile} style={{ viewTransitionName: 'train-panel' }} onClick={() => go('train')}>
-              <span className={styles.tileLabel}>Train</span>
-              <span className={styles.sessions} role="img" aria-label={`${state.trainSlot} of ${TRAIN_SLOTS_MAX} sessions`}>
-                {Array.from({ length: TRAIN_SLOTS_MAX }, (_, index) => <i key={index} data-on={index < state.trainSlot || undefined} />)}
-              </span>
-            </button>
-            <button type="button" className={styles.tile} style={{ viewTransitionName: 'vault-panel' }} onClick={() => go('vault')}>
-              <span className={styles.tileLabel}>Vault</span>
-              <span className={styles.tileValue}><PackArt kind="silver" size="s" /><b>{packValue(state)}</b></span>
-            </button>
-            <button type="button" className={styles.tile} style={{ viewTransitionName: 'chips-panel' }} onClick={() => go('chips')}>
-              <span className={styles.tileLabel}>Chips</span>
-              <span className={styles.tileValue}><b>{hand.length}</b><small>/ {TACTIC_HAND_MAX}</small>{state.chipOffer && <em className={styles.newBadge}>Pick 1</em>}</span>
-            </button>
-            <button type="button" className={styles.tile} style={{ viewTransitionName: 'squad-panel' }} onClick={() => go('squad')}>
-              <span className={styles.tileLabel}>Squad</span>
-              <span className={styles.tileValue}><b>{squad.length}</b><small>/ {max}</small></span>
-            </button>
-            <button type="button" className={styles.tile} style={{ viewTransitionName: 'league-panel' }} onClick={() => go('league')}>
-              <span className={styles.tileLabel}>League</span>
-              <span className={styles.tileValue}><b>{started ? ordinal(pos) : '6'}</b><small>{started ? 'of 6' : 'clubs'}</small></span>
-            </button>
-          </div>
-          <div className={styles.homePlay}>
-            <div className={styles.homeRival}>
-              <span className={styles.homeRivalText}>
-                <span className={styles.meta}><span>{match.stage}</span><span>Best of {match.bestOf}</span></span>
-                <b>{opponent.name}</b>
-              </span>
-              <span className={styles.homeCrest} style={{ viewTransitionName: 'rival-crest' }}>
-                {opponent.logo ? <img src={assetPath(opponent.logo)} alt="" /> : initials(opponent.name)}
-              </span>
-            </div>
-            <button type="button" className={`${styles.primary} ${styles.playBig}`} style={{ viewTransitionName: 'primary-action' }} autoFocus onClick={() => go('match')} aria-label={`Play ${opponent.name}, best of ${match.bestOf}`}>Play</button>
-          </div>
-        </div>
-        {size.feed && dock && (
-          <div className={styles.feedDock} style={{ top: dock.top }}>
-            <HubFeed state={state} cards={allCards} width={dock.width} height={dock.height} onGo={go} />
-          </div>
-        )}
+        <nav className={styles.tileRow} aria-label="Club">
+          {tile('squad', 'Squad', <><b>{squad.length}</b><small>/ {max}</small></>)}
+          {tile('vault', 'Vault', <PackArt kind="silver" size="m" />)}
+          {tile('chips', 'Inventory', <><b>{hand.length}</b><small>/ {TACTIC_HAND_MAX}</small>{reserve > 0 && <em className={styles.newBadge}>{reserve} in reserve</em>}</>, hand.length === 0 && reserve === 0 && !state.chipOffer)}
+          {tile('train', 'Train', <TapeCard scale={0.07} />, tapes === 0)}
+          {tile('league', 'League', started ? <><b>{ordinal(pos)}</b><small>of 6</small></> : <b>–</b>)}
+        </nav>
+        <aside className={styles.hero}>
+          <Scout state={state} cards={allCards} cardScale={size.heroCard}>
+            <button type="button" className={`${styles.primary} ${styles.playBig}`} autoFocus onClick={() => go('match')} aria-label={`Play ${opponent.name}, best of ${match.bestOf}`}>Play</button>
+          </Scout>
+        </aside>
+        <LatestMove state={state} cards={allCards} />
       </Ground>
     </div>
   );
@@ -585,85 +550,214 @@ function Home({ state, go, onAbandon, onSettings, onPrimer, size }) {
 
 // Who starts is decided here, before kickoff: tap two to swap. Fatigue costs a
 // starter rating; the bench learns at a share of the rate. Roles matter to chips.
-function Squad({ state, onMove, onBack, size }) {
-  const [held, setHeld] = useState(null);
-  useEscape(() => (held === null ? onBack() : setHeld(null)));
-  const squad = squadCards(state, allCards);
-  const max = squadMax(state);
-  const tap = (index) => {
-    if (held === null) { playUiSound('lift'); setHeld(index); return; }
-    if (held !== index) {
-      playUiSound(index === 0 || held === 0 ? 'igl' : 'drop');
-      onMove(held, index);
-    } else {
-      playUiSound('drop');
-    }
-    setHeld(null);
-  };
-  const roles = new Set(squad.slice(0, STARTERS).map(card => card.role));
-  const fatigueOf = id => state.dev?.[id]?.f ?? 0;
-  const costOf = id => fatiguePenalty(state.dev?.[id]) + clubFatigueExtra(state.dev?.[id]);
-  const s = size.squadSlot ?? size.slot;
-  const slot = (card, index) => {
-    const bench = index >= STARTERS;
-    const years = state.contracts[card.id];
-    const fatigue = fatigueOf(card.id);
-    const cost = costOf(card.id);
-    const xp = state.xp?.[card.id] ?? 0;
-    return (
-      <div key={card.id} className={styles.squadSlot}>
-        <Slot vt={`card-${card.id}`} card={card} scale={bench ? s * 0.8 : s} tab={index === 0 ? 'IGL' : bench ? '' : card.role?.slice(0, 3).toUpperCase()} lit={index === 0} years={years} note={years === 1 ? 'Last year' : ''} noteLit held={held === index} onClick={() => tap(index)} />
-        {bench ? (
-          <span className={styles.meterRow} aria-label={`Growth ${Math.round((xp / XP_PER_POINT) * 100)} percent`}>
-            <span className={styles.meterLabel}>XP</span>
-            <span className={styles.meter}><i style={{ width: `${(xp / XP_PER_POINT) * 100}%` }} /></span>
-            <b>{Math.round((xp / XP_PER_POINT) * 100)}%</b>
-          </span>
-        ) : (
-          <span className={styles.meterRow} aria-label={`Fatigue ${fatigue}, costs ${cost.toFixed(1)} rating`}>
-            <span className={styles.meterLabel}>Fatigue</span>
-            <span className={styles.meter} data-bad={cost > 0 || undefined}><i style={{ width: `${Math.min(100, fatigue)}%` }} /></span>
-            <b data-bad={cost > 0 || undefined}>{cost > 0 ? `−${cost.toFixed(1)}` : '0'}</b>
-          </span>
+// The selected player's card in a menu's side panel (Squad, transfer window).
+const SPOTLIGHT_SCALE = 0.38;
+
+// The hub's five menus, in the hub's tile order.
+const SECTIONS = [['squad', 'Squad'], ['vault', 'Vault'], ['chips', 'Inventory'], ['train', 'Train'], ['league', 'League']];
+
+// Every club screen wears one header: back, the club, the five menus as tabs (Q and
+// E step through them, like a pad's bumpers), the screen's own tabs, then counters.
+// Without `go` (the transfer window), the title stands in for the menus.
+function ScreenHeader({ state, at, go, title, onBack, tabs, selected, onTab, stats = [], packs }) {
+  const current = useRef(null);
+  // Centre the active menu in its strip when the strip scrolls (phones). Only the strip
+  // moves: scrollIntoView would also scroll the fixed stage sideways.
+  useEffect(() => {
+    const tab = current.current;
+    const strip = tab?.parentElement;
+    if (!strip) return;
+    const a = tab.getBoundingClientRect();
+    const b = strip.getBoundingClientRect();
+    strip.scrollLeft += a.left - b.left - (b.width - a.width) / 2;
+  }, [at]);
+  useEffect(() => {
+    if (!go) return undefined;
+    const onKey = (event) => {
+      if (event.metaKey || event.ctrlKey || event.altKey || event.target.closest?.('input, textarea')) return;
+      const step = { q: -1, e: 1 }[event.key.toLowerCase()];
+      if (!step) return;
+      const index = SECTIONS.findIndex(([key]) => key === at);
+      go(SECTIONS[(index + step + SECTIONS.length) % SECTIONS.length][0]);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [at, go]);
+  return (
+    <header className={styles.eafcTopNav}>
+      <div className={styles.eafcNavLeft}>
+        {onBack && <BackButton onClick={onBack} />}
+        <span className={styles.eafcCrumb}>{state.name}</span>
+        {go ? (
+          <nav className={styles.sections} aria-label="Club">
+            {SECTIONS.map(([key, label]) => (
+              <button key={key} type="button" ref={key === at ? current : undefined} data-on={key === at || undefined} aria-current={key === at ? 'page' : undefined} onClick={() => key !== at && go(key)}>{label}</button>
+            ))}
+          </nav>
+        ) : <b className={styles.eafcTitle}>{title}</b>}
+        {tabs && (
+          <>
+            <span className={styles.eafcDivider} aria-hidden="true" />
+            <nav className={styles.eafcTabs} aria-label={`${title ?? SECTIONS.find(([key]) => key === at)?.[1]} categories`}>
+              {tabs.map(([key, label, due]) => (
+                <button key={key} type="button" data-on={selected === key || undefined} aria-pressed={selected === key} onClick={() => onTab(key)}>
+                  {label}{due && <span className={styles.tabPip} role="img" aria-label={t('Needs a look')} />}
+                </button>
+              ))}
+            </nav>
+          </>
         )}
       </div>
-    );
-  };
+      <div className={styles.chips}>
+        {stats.map(([label, value]) => <div key={label} className={styles.chip}><b>{value}</b><span>{label}</span></div>)}
+        <PackCounter state={state} value={packs} onOpen={go && at !== 'vault' ? () => go('vault') : undefined} />
+      </div>
+    </header>
+  );
+}
+
+function ManagementScreen({ state, at, go, title, onBack, tabs, selected, onTab, stats, packs, inspector, action, bottom, footer, packed, children }) {
   return (
     <div className={styles.stage}>
-      <Hud title="Squad" back={<BackButton onClick={onBack} />} tags={[[`${squad.length} / ${max}`]]}>
-        <span className={styles.roleBar} role="img" aria-label={`Roles on the board: ${[...roles].join(', ')}`}>
-          {ROLES.map(role => <i key={role} data-on={roles.has(role) || undefined}>{role[0]}</i>)}
-        </span>
-      </Hud>
-      <Ground className={styles.squadGround}>
-        <div className={styles.squadPanel} style={{ viewTransitionName: 'squad-panel' }}>
-          <div className={styles.homeGroup}>
-            <span className={styles.groupLabel}>Starting five</span>
-            <div className={styles.homeRow}>{squad.slice(0, STARTERS).map(slot)}</div>
-          </div>
-          <div className={styles.homeGroup}>
-            <span className={styles.groupLabel}>Bench {Math.max(0, squad.length - STARTERS)} / {max - STARTERS}</span>
-            <div className={styles.homeRow}>
-              {squad.slice(STARTERS).map((card, index) => slot(card, STARTERS + index))}
-              {Array.from({ length: Math.max(0, max - squad.length) }, (_, index) => <BenchOpen key={index} scale={s * 0.8} />)}
-            </div>
+      <ScreenHeader state={state} at={at} go={go} title={title} onBack={onBack} tabs={tabs} selected={selected} onTab={onTab} stats={stats} packs={packs} />
+      <Ground className={`${styles.managementGround} ${packed ? styles.packed : ''}`}>
+        <aside className={styles.managementInspector} aria-label={`${title} selection`}>
+          <div className={styles.managementDetails}>{inspector}</div>
+          <div className={styles.managementActions}>{action}</div>
+        </aside>
+        <div className={styles.managementMain}>{children}</div>
+        <div className={styles.managementBottom}>{bottom}</div>
+      </Ground>
+      {footer}
+    </div>
+  );
+}
+
+function LedgerRow({ label, children }) {
+  return <div className={styles.eafcLedgerRow}><span>{label}</span><b>{children}</b></div>;
+}
+
+function SelectionCorners() {
+  return <span className={styles.brackets} aria-hidden="true"><i /><i /><i /><i /></span>;
+}
+
+function ItemChoice({ selected, children, ...props }) {
+  return (
+    <button type="button" aria-pressed={selected} {...props}>
+      {selected && <SelectionCorners />}
+      {children}
+    </button>
+  );
+}
+
+// A bar that fills to `value` of `max`, scaled rather than resized so it animates on
+// the compositor. `bad` turns it red: fatigue past the point where it costs rating.
+function Meter({ value, max, bad, label }) {
+  return (
+    <span className={styles.meterBar} data-bad={bad || undefined} role="meter" aria-valuemin={0} aria-valuemax={max} aria-valuenow={value} aria-label={label}>
+      <i style={{ transform: `scaleX(${Math.min(1, Math.max(0, value / max))})` }} />
+    </span>
+  );
+}
+
+// Contract years as pips, the last one red.
+function YearPips({ years }) {
+  return (
+    <span className={styles.yearPips} role="img" aria-label={`${years} contract ${years === 1 ? 'year' : 'years'} left`}>
+      {Array.from({ length: CONTRACT_MAX }, (_, index) => <i key={index} data-on={index < years || undefined} data-last={years === 1 || undefined} />)}
+    </span>
+  );
+}
+
+// A player's state as readouts: fatigue (red once it costs rating) and growth to the next point.
+function PlayerReadout({ state, card }) {
+  const dev = state.dev?.[card.id];
+  const fatigue = dev?.f ?? 0;
+  const penalty = fatiguePenalty(dev) + clubFatigueExtra(dev);
+  const xp = Math.round(((state.xp?.[card.id] ?? 0) / XP_PER_POINT) * 100);
+  return (
+    <>
+      <LedgerRow label="Fatigue"><span className={styles.readout}>{penalty > 0 && <em>−{penalty.toFixed(1)}</em>}<Meter value={fatigue} max={100} bad={fatigue > FATIGUE_PENALTY_FROM} label={`Fatigue ${fatigue} of 100`} /></span></LedgerRow>
+      <LedgerRow label="Growth"><span className={styles.readout}><Meter value={xp} max={100} label={`Growth ${xp}%`} /></span></LedgerRow>
+    </>
+  );
+}
+
+function Squad({ state, go, onMove, onBack, onVault, size }) {
+  const squad = squadCards(state, allCards);
+  const max = squadMax(state);
+  const [selected, setSelected] = useState(squad[0].id);
+  const [moving, setMoving] = useState(false);
+  useEscape(() => (moving ? setMoving(false) : onBack()));
+  const index = Math.max(0, squad.findIndex(card => card.id === selected));
+  const player = squad[index];
+  const cardScale = size.phone ? 0.23 : Math.min(0.42, Math.max(0.3, size.scale * 1.12));
+  const tap = (nextIndex) => {
+    if (moving) {
+      if (nextIndex !== index) {
+        playUiSound(nextIndex === 0 || index === 0 ? 'igl' : 'drop');
+        onMove(index, nextIndex);
+      }
+      setMoving(false);
+      return;
+    }
+    playUiSound('select');
+    setSelected(squad[nextIndex].id);
+  };
+  const slot = (card, position) => (
+    <div key={card.id} className={styles.windowSlot} data-moving={moving && position !== index ? true : undefined}>
+      <div className={styles.slotCard}>
+        {position === 0 && <span className={styles.cardBadge} data-kind="igl">IGL</span>}
+        <PlayerCard card={card} displayScale={cardScale} tilt={false} canDrag={false} onClick={() => tap(position)} />
+        {position === index && <SelectionCorners />}
+      </div>
+    </div>
+  );
+  return (
+    <ManagementScreen state={state} at="squad" go={go} packed onBack={onBack} stats={[[ 'Squad', `${squad.length}/${max}` ]]} inspector={
+      <>
+        <div className={styles.eafcSpotlight}>
+          <span className={styles.eafcSpotlightTag}>{index === 0 ? 'IGL' : index < STARTERS ? 'Starter' : 'Bench'}</span>
+          {!size.phone && <PlayerCard card={player} displayScale={SPOTLIGHT_SCALE} tilt={false} canDrag={false} />}
+          <b className={styles.eafcSpotlightName}>{player.player}</b>
+        </div>
+        <div className={styles.eafcLedgerWrap}>
+          <div className={styles.eafcLedger}>
+            <LedgerRow label="Role">{player.role}</LedgerRow>
+            <LedgerRow label="Contract"><YearPips years={state.contracts[player.id]} /></LedgerRow>
+            <PlayerReadout state={state} card={player} />
           </div>
         </div>
-        <p className={styles.swapHint} role="status">{held === null ? 'Tap two players to swap them. The lineup locks at kickoff.' : `Now tap who swaps with ${squad[held].player}`}</p>
-      </Ground>
-    </div>
+      </>
+    } action={
+      <button type="button" className={styles.eafcSignBtn} onClick={() => setMoving(!moving)}>{moving ? 'Cancel swap' : `Swap ${player.player}`}</button>
+    } bottom={
+      <section className={styles.eafcStageRow}>
+        <h2 className={styles.eafcRowHead}>Bench {squad.length - STARTERS} / {max - STARTERS}</h2>
+        <div className={styles.eafcCardsRow}>
+          {squad.slice(STARTERS).map((card, i) => slot(card, STARTERS + i))}
+          {Array.from({ length: max - squad.length }, (_, i) => <BenchOpen key={i} scale={cardScale * 0.6} onClick={onVault} />)}
+        </div>
+      </section>
+    }>
+      <section className={styles.eafcStageRow}>
+        <h2 className={styles.eafcRowHead}>Starting five</h2>
+        <div className={styles.eafcCardsRow}>{squad.slice(0, STARTERS).map(slot)}</div>
+      </section>
+    </ManagementScreen>
   );
 }
 
 // ── vault ───────────────────────────────────────────────────────────────────
 
-function Vault({ state, onOpenPack, onBack, onWindow }) {
+// Packs only: tapes live in Inventory and are spent in Train. A kind you have none
+// of dims and loses its button; its pips still show how close the next one is.
+function Vault({ state, go, onOpenPack, onBack, onWindow }) {
   useEscape(onBack);
   const dry = state.pity?.gold ?? 0;
   const titles = state.titles ?? 0;
   const toIcon = TITLES_PER_ICON - (titles % TITLES_PER_ICON);
-  const blockLabel = { empty: 'None left', open: 'Pack open', over: 'Closed' };
+  const blockLabel = { open: 'Pack open', over: 'Closed' };
   const column = (kind) => {
     const count = stock(state, kind);
     const blocker = openBlocker(state, kind);
@@ -682,7 +776,6 @@ function Vault({ state, onOpenPack, onBack, onWindow }) {
               <small>{goldDue(state) ? 'Next one holds a gold' : `Gold within ${GOLD_PITY - dry}`}</small>
             </>
           )}
-          {kind === 'gold' && <small>Gold players only</small>}
           {kind === 'icons' && (
             <>
               <span className={styles.sessions} role="img" aria-label={`${titles % TITLES_PER_ICON} of ${TITLES_PER_ICON} titles towards an icon pack`}>
@@ -692,31 +785,23 @@ function Vault({ state, onOpenPack, onBack, onWindow }) {
             </>
           )}
         </div>
-        <button type="button" className={styles.ghost} disabled={Boolean(blocker)} onClick={() => onOpenPack(kind)}>{blocker ? blockLabel[blocker] : 'Open'}</button>
+        {count > 0
+          ? <button type="button" className={styles.ghost} disabled={Boolean(blocker)} onClick={() => onOpenPack(kind)}>{blocker ? blockLabel[blocker] : 'Open'}</button>
+          : <span className={styles.vaultUse} aria-hidden="true" />}
       </section>
     );
   };
   return (
     <div className={styles.stage}>
-      <Hud title="Vault" back={<BackButton onClick={onBack} />}>
-        <PackCounter state={state} />
-      </Hud>
+      <ScreenHeader state={state} at="vault" go={go} onBack={onBack} />
       <Ground className={styles.vaultGround}>
-        <div className={styles.vaultRow} style={{ viewTransitionName: 'vault-panel' }}>
-          {PACK_KEYS.map(column)}
-          {/* Tapes sit with the packs: card-sized, used from Training. */}
-          <section className={styles.vaultKind} data-empty={!(state.tapes > 0) || undefined}>
-            <div className={styles.vaultStack}><TapeCard scale={0.29} /></div>
-            <div className={styles.vaultCount}><b>{state.tapes ?? 0}</b><span><strong>Skill tapes</strong><small>Max {TAPE_MAX}</small></span></div>
-            <div className={styles.vaultNote}><small>Pass on a pack to earn one</small></div>
-            <span className={styles.vaultUse}>Use in Training</span>
-          </section>
-        </div>
+        <div className={styles.vaultRow}>{PACK_KEYS.map(column)}</div>
       </Ground>
-      <footer className={styles.act}>
-        <span className={styles.plain}>Open a pack to pick 1 of 3, or spend its value at the transfer window.</span>
-        {onWindow && <button type="button" className={styles.ghost} onClick={onWindow}>Transfer window</button>}
-      </footer>
+      {onWindow && (
+        <footer className={`${styles.act} ${styles.actEnd}`}>
+          <button type="button" className={styles.ghost} onClick={onWindow}>Transfer window</button>
+        </footer>
+      )}
     </div>
   );
 }
@@ -742,7 +827,7 @@ function OpenPack({ state, onChoose, size }) {
   const squadScale = size.scale * 0.55;
   useEffect(() => {
     if (!torn) return undefined;
-    if (cards.some(card => card.rating > 80 || card.league === 'icon')) playUiSound('jackpot');
+    if (cards.some(card => card.rating >= GOLD_RATING || card.league === 'icon')) playUiSound('jackpot');
     else playUiSound('reveal', 1);
     return undefined;
   }, [torn]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -767,7 +852,7 @@ function OpenPack({ state, onChoose, size }) {
           <div className={styles.offers} data-passing={passing || undefined}>
             {cards.map((card, index) => (
               <div key={card.id} className={`${styles.dealt} ${styles.pickCard}`} data-on={picked === card.id || undefined} style={{ '--deal': index }}>
-                <span className={styles.guarantee}>{opening.guaranteed && card.rating > 80 ? 'Guaranteed gold' : ''}</span>
+                <span className={styles.guarantee}>{opening.guaranteed && cardById.get(card.id).rating >= GOLD_RATING ? 'Guaranteed gold' : ''}</span>
                 <div className={styles.slotCard}>
                   <PlayerCard card={card} displayScale={offerScale} tilt={false} canDrag={false} onClick={() => !passing && setPicked(card.id)} />
                   {picked === card.id && <span className={styles.brackets} aria-hidden="true"><i /><i /><i /><i /></span>}
@@ -820,10 +905,119 @@ function OpenPack({ state, onChoose, size }) {
 
 // A chip as a lit 3D object (flat print without WebGL); see src/chip3d/Chip3D.jsx.
 function ChipDisc({ chipKey, size = 'm', phase = 0 }) {
-  return <Chip3D chipKey={chipKey} size={size === 's' ? 52 : size === 'm' ? 72 : 150} phase={phase} className={styles.chipDisc} />;
+  const pixels = typeof size === 'number' ? size : size === 's' ? 52 : size === 'm' ? 72 : 150;
+  return <Chip3D chipKey={chipKey} size={pixels} phase={phase} className={styles.chipDisc} />;
 }
 
-export function ChipPick({ state, squad, onTake, onPass, onReroll, onBack }) {
+function Inventory({ state, go, onPick, onEquip, onTraining, onBack, size }) {
+  useEscape(onBack);
+  const [tab, setTab] = useState('all');
+  const [selected, setSelected] = useState(null);
+  const hand = state.hand ?? [];
+  const reserve = state.tacticReserve ?? [];
+  const tactics = new Map();
+  for (const chip of [...hand, ...reserve]) {
+    if (!tactics.has(chip.key)) tactics.set(chip.key, { id: `tactic:${chip.key}`, key: chip.key, name: titleCase(chipInfo(chip.key).name), kind: 'tactic' });
+  }
+  const tacticItems = [...tactics.values()];
+  const tapes = Object.entries(state.trainingTapes ?? {}).filter(([, n]) => n > 0);
+  if (state.tapes > 0) tapes.unshift([null, state.tapes]);
+  const tapeItems = tapes.map(([key, count]) => ({ id: `tape:${key}`, key, name: `${tapeName(key)} tape`, kind: 'tape', count }));
+  const evos = new Map();
+  for (const key of state.evoInventory ?? []) evos.set(key, (evos.get(key) ?? 0) + 1);
+  const evoItems = [...evos].map(([key, count]) => ({ id: `evo:${key}`, key, name: EVO_CHIPS[key].name, kind: 'evo', count }));
+  const sections = [
+    ['tactics', 'Tactic reserve', tacticItems.filter(item => reserve.some(chip => chip.key === item.key))],
+    ['tapes', 'Training tapes', tapeItems],
+    ['evos', 'Evos', evoItems],
+  ];
+  const gridItems = sections.filter(([key]) => tab === 'all' || tab === key).flatMap(([, , items]) => items);
+  const available = tab === 'all' ? [...tacticItems, ...tapeItems, ...evoItems] : tab === 'tactics' ? tacticItems : gridItems;
+  const item = (selected?.uid ? tacticItems : available).find(entry => entry.id === selected?.id) ?? available[0];
+  const equipped = item?.kind === 'tactic' ? hand.filter(chip => chip.key === item.key) : [];
+  const copies = item?.kind === 'tactic' ? reserve.filter(chip => chip.key === item.key) : [];
+  const remove = equipped.find(chip => chip.uid === selected?.uid) ?? equipped[0];
+  const fromHand = selected?.id === item?.id && equipped.some(chip => chip.uid === selected?.uid);
+  const action = item?.kind === 'tactic' && (fromHand || !copies.length) ? 'unequip' : 'equip';
+  const itemSize = itemArtSize(size);
+  const loadoutSize = size.phone ? 52 : 68;
+  const art = (entry, large = false) => {
+    if (entry.kind === 'tactic') return <ChipDisc chipKey={entry.key} size={large ? 'l' : itemSize} />;
+    if (entry.kind === 'tape') return <TapeCard scale={large ? 0.23 : tapeItemScale(size)} target={entry.key} />;
+    return <EvoChip evoKey={entry.key} size={large ? 135 : itemSize} />;
+  };
+  const select = (entry, uid) => {
+    playUiSound('select');
+    setSelected({ id: entry.id, uid });
+  };
+  return (
+    <ManagementScreen state={state} at="chips" go={go} onBack={onBack} selected={tab} onTab={(key) => { if (key === 'pick') { onPick(); return; } setTab(key); setSelected(null); }} tabs={[
+      ...(state.chipOffer ? [['pick', 'Pick a chip', true]] : []), ['all', 'All'], ['tactics', `Tactics (${hand.length + reserve.length})`], ['tapes', `Tapes (${tapeCount(state)})`], ['evos', `Evos (${state.evoInventory?.length ?? 0})`],
+    ]} stats={[[ 'Equipped', `${hand.length}/${TACTIC_HAND_MAX}` ]]} inspector={
+      item ? (
+        <>
+          <div className={styles.eafcSpotlight}>
+            <span className={styles.eafcSpotlightTag}>{item.kind === 'evo' ? 'Evolution' : item.kind === 'tape' ? 'Training tape' : 'Match tactic'}</span>
+            <div className={styles.inventorySpotlightArt}>{art(item, true)}</div>
+            <b className={styles.eafcSpotlightName}>{item.name}</b>
+          </div>
+          <div className={styles.eafcLedgerWrap}>
+            <div className={styles.eafcLedger}>
+              {item.kind === 'tactic' ? (
+                <>
+                  <LedgerRow label="Equipped">{equipped.length}</LedgerRow>
+                  <LedgerRow label="Reserve">{copies.length}</LedgerRow>
+                  <ChipLadder chipKey={item.key} />
+                </>
+              ) : (
+                <>
+                  <LedgerRow label="Owned">{item.count}</LedgerRow>
+                  {item.kind === 'tape' ? <LedgerRow label="Training">{STAT_KEYS.includes(item.key) ? `+${STAT_STEP} ${tapeName(item.key)}` : '+1 skill session'}</LedgerRow> : <EvoFacts evoKey={item.key} />}
+                </>
+              )}
+            </div>
+            {item.kind === 'tactic' && <ChipNoteButton chipKey={item.key} />}
+          </div>
+        </>
+      ) : null
+    } action={item && (item.kind === 'tactic' ? (
+      <button type="button" className={styles.eafcSignBtn} disabled={action === 'equip' && hand.length >= TACTIC_HAND_MAX} onClick={() => onEquip(action === 'equip' ? copies[0].uid : remove.uid, action === 'equip')}>
+        {action === 'unequip' ? 'Unequip' : hand.length >= TACTIC_HAND_MAX ? 'Loadout full' : 'Equip tactic'}
+      </button>
+    ) : <button type="button" className={styles.eafcSignBtn} onClick={() => onTraining(item)}>Open Training</button>)} bottom={
+      <section className={styles.eafcStageRow} aria-label="Match loadout">
+        <h2 className={styles.eafcRowHead}>Match loadout</h2>
+        <div className={`${styles.eafcCardsRow} ${styles.inventoryLoadout}`} style={{ '--tactic-slot-size': `${loadoutSize}px` }}>
+          {Array.from({ length: TACTIC_HAND_MAX }, (_, index) => {
+            const chip = hand[index];
+            if (!chip) return <span key={index} className={styles.emptyTactic} aria-label="Empty slot" />;
+            const entry = tactics.get(chip.key);
+            return (
+              <ItemChoice key={chip.uid} className={styles.inventoryItem} aria-label={`Equipped ${entry.name}`} selected={selected?.uid === chip.uid} onClick={() => select(entry, chip.uid)}>
+                <ChipDisc chipKey={chip.key} size={loadoutSize} />
+              </ItemChoice>
+            );
+          })}
+        </div>
+      </section>
+    }>
+      {/* One grid of everything; the tabs above do the sorting. */}
+      {gridItems.length ? (
+        <div className={styles.itemGrid} aria-label="Items">
+          {gridItems.map(entry => (
+            <ItemChoice key={entry.id} className={styles.inventoryItem} data-item selected={item?.id === entry.id && !fromHand} onClick={() => select(entry)}>
+              <span className={styles.inventoryArt}>{art(entry)}</span>
+              <b>{entry.name}</b>
+              <span>×{entry.count ?? reserve.filter(chip => chip.key === entry.key).length}</span>
+            </ItemChoice>
+          ))}
+        </div>
+      ) : <p className={styles.managementEmpty}>Nothing here yet.</p>}
+    </ManagementScreen>
+  );
+}
+
+export function ChipPick({ state, go, squad, onTake, onPass, onReroll, onBack, onInventory }) {
   useEscape(onBack);
   const offer = state.chipOffer;
   const hand = state.hand ?? [];
@@ -833,20 +1027,21 @@ export function ChipPick({ state, squad, onTake, onPass, onReroll, onBack }) {
   const isEvoPicked = pickedOption?.kind === 'evo' || pickedOption?.evo;
   const full = !isEvoPicked && (hand.length >= TACTIC_HAND_MAX);
   const ready = picked && (!full || drop || isEvoPicked);
+  const take = () => { playUiSound('chip_drop'); onTake(picked, drop); };
+  // A second tap on the picked chip takes it, once nothing else is needed first.
+  const choose = uid => { if (uid === picked && ready) { take(); return; } playUiSound('chip_lift'); setPicked(uid); };
   return (
     <div className={styles.stage}>
-      <Hud title={offer ? 'Pick a chip' : 'Chips'} back={<BackButton onClick={onBack} />} tags={offer ? [[offer.stage]] : []}>
-        <PackCounter state={state} />
-      </Hud>
+      <ScreenHeader state={state} at="chips" go={go} title="Pick a chip" onBack={onBack} selected="pick" onTab={key => key === 'all' && onInventory?.()} tabs={[['pick', 'Pick a chip', true], ['all', 'All']]} />
       <Ground className={styles.chipGround}>
         {offer ? (
-          <div className={styles.chipOffer} style={{ viewTransitionName: 'chips-panel' }}>
+          <div className={styles.chipOffer}>
             {offer.options.map((option, index) => {
               if (option.kind === 'evo' || option.evo) {
                 const evo = EVO_CHIPS[option.key];
                 return (
                   <div key={option.uid} className={styles.chipSlot}>
-                    <button type="button" className={styles.chipOption} style={{ '--deal': index }} data-on={picked === option.uid || undefined} aria-pressed={picked === option.uid} onClick={() => { playUiSound('chip_lift'); setPicked(option.uid); }}>
+                    <button type="button" className={styles.chipOption} style={{ '--deal': index }} data-on={picked === option.uid || undefined} aria-pressed={picked === option.uid} onClick={() => choose(option.uid)}>
                       <EvoChip evoKey={option.key} size={140} />
                       <span className={styles.chipTier} data-evo={evo.tier}>{evo.tier} evo</span>
                       <b>{evo.name}</b>
@@ -860,7 +1055,7 @@ export function ChipPick({ state, squad, onTake, onPass, onReroll, onBack }) {
               const info = chipInfo(option.key);
               return (
                 <div key={option.uid} className={styles.chipSlot}>
-                  <button type="button" className={styles.chipOption} style={{ '--deal': index }} data-on={picked === option.uid || undefined} aria-pressed={picked === option.uid} onClick={() => { playUiSound('chip_lift'); setPicked(option.uid); }}>
+                  <button type="button" className={styles.chipOption} style={{ '--deal': index }} data-on={picked === option.uid || undefined} aria-pressed={picked === option.uid} onClick={() => choose(option.uid)}>
                     <ChipDisc chipKey={option.key} size="l" phase={index * 1.7} />
                     <span className={styles.chipTier}>{info.tier}</span>
                     <b>{info.name}</b>
@@ -876,7 +1071,7 @@ export function ChipPick({ state, squad, onTake, onPass, onReroll, onBack }) {
           <p className={styles.plain}>Win a series to pick a new chip.</p>
         )}
         <section className={styles.chipHand} aria-label={`Hand, ${hand.length} of ${TACTIC_HAND_MAX}`}>
-          <span className={styles.groupLabel}>Hand {hand.length} / {TACTIC_HAND_MAX}{offer && full ? ': tap one to drop' : ''}</span>
+          <span className={styles.groupLabel}>Hand {hand.length} / {TACTIC_HAND_MAX}</span>
           <ChipGuideButton />
           <div className={styles.handSlots}>
             {Array.from({ length: TACTIC_HAND_MAX }, (_, index) => {
@@ -884,7 +1079,7 @@ export function ChipPick({ state, squad, onTake, onPass, onReroll, onBack }) {
               if (!chip) return <span key={index} className={styles.handSlot} />;
               const droppable = offer && full;
               return (
-                <button key={chip.uid} type="button" className={styles.handSlot} data-drop={drop === chip.uid || undefined} disabled={!droppable} aria-label={`${chipInfo(chip.key).name}${droppable ? ', drop' : ''}`} onClick={() => { playUiSound('chip_lift'); setDrop(drop === chip.uid ? null : chip.uid); }}>
+                <button key={chip.uid} type="button" className={styles.handSlot} data-droppable={droppable || undefined} data-drop={drop === chip.uid || undefined} disabled={!droppable} aria-label={`${chipInfo(chip.key).name}${droppable ? ', drop' : ''}`} onClick={() => { playUiSound('chip_lift'); setDrop(drop === chip.uid ? null : chip.uid); }}>
                   <ChipDisc chipKey={chip.key} size="s" phase={index} />
                 </button>
               );
@@ -900,7 +1095,7 @@ export function ChipPick({ state, squad, onTake, onPass, onReroll, onBack }) {
             <button type="button" className={`${styles.ghost} ${styles.even}`} disabled={!canReroll(state)} onClick={() => { playUiSound('chip_reroll'); setPicked(null); onReroll(); }}>
               Reroll<span className={styles.cost}><PackArt kind="silver" size="s" />{REROLL_PRICE}</span>
             </button>
-            <button type="button" className={`${styles.primary} ${styles.even}`} disabled={!ready} onClick={() => { playUiSound('chip_drop'); onTake(picked, drop); }}>Take</button>
+            <button type="button" className={`${styles.primary} ${styles.even}`} disabled={!ready} onClick={take}>Take</button>
           </div>
         </footer>
       )}
@@ -910,29 +1105,6 @@ export function ChipPick({ state, squad, onTake, onPass, onReroll, onBack }) {
 
 // ── train ───────────────────────────────────────────────────────────────────
 
-const Tick = () => <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="square" aria-hidden="true"><path d="M5 12.5l5 5L19 7" /></svg>;
-
-// What a player can still take this week, so the strip and the chips can show it as
-// form: finished choices stay on the table, ticked, instead of vanishing.
-function trainStatus(state, card) {
-  const offer = trainingOffer(state, card);
-  const entry = state.training[card.id] ?? {};
-  return {
-    offer,
-    entry,
-    statDone: offer.statCapped,
-    skillDone: !offer.skill,
-    restDone: offer.fatigue <= 0,
-    done: offer.statCapped && !offer.skill && offer.fatigue <= 0,
-  };
-}
-
-// The training focus chips, printed as clay chips: dark at rest, green when picked.
-const FOCUS_TONES = {
-  idle: { body: '#23293a', spot: '#121622', face: '#1a1f2e', ink: '#ece8e1', next: '#00c8a0', off: '#4a5064' },
-  on: { body: '#006e57', spot: '#0d0f17', face: '#007d63', ink: '#0d0f17', next: '#0d0f17', off: '#004a3a' },
-  done: { body: '#1a1f2e', spot: '#121622', face: '#161b29', ink: '#00c8a0', next: '#00c8a0', off: '#3a4052' },
-};
 
 function previewEvoCard(baseCard, evoDef, targetLevel = 2) {
   if (!evoDef) return baseCard;
@@ -965,288 +1137,178 @@ function previewEvoCard(baseCard, evoDef, targetLevel = 2) {
   };
 }
 
-export function Train({ state, onTrain, onTape, onEvo, onBuy, canBuy, onBack, size, initialFocus = 'stat' }) {
-  const { scale } = size;
+export function Train({ state, go, onTape, onEvo, onBack, size, initialFocus = null, initialEvoKey = null }) {
   const squad = squadCards(state, allCards);
   const [who, setWho] = useState(0);
-  const [picked, setPicked] = useState(initialFocus);
-  const [selectedEvoKey, setSelectedEvoKey] = useState(null);
-  // Pressing Train plays the session out on the cards before the club moves on.
+  const [picked, setPicked] = useState(initialFocus === 'evo' && initialEvoKey ? `evo:${initialEvoKey}` : initialFocus);
   const [drilling, setDrilling] = useState(false);
   const drillTimer = useRef(null);
   const reducedMotion = useReducedMotion();
   useEffect(() => () => clearTimeout(drillTimer.current), []);
-  useEscape(() => { if (!drilling) onBack(); });
+  const back = () => { if (!drilling) onBack(); };
+  useEscape(back);
   const card = squad[who];
-  const { offer, entry, statDone, skillDone, restDone } = trainStatus(state, card);
-  const skill = offer.skill && BOARD_SKILLS[offer.skill];
-  const learned = entry.skills?.[0] && BOARD_SKILLS[entry.skills[0]];
-  const statSteps = STAT_CAP / STAT_STEP;
-  const skillMeter = { on: skillDone ? SKILL_SESSIONS : offer.sessions, of: SKILL_SESSIONS };
 
-  const inventory = state.evoInventory ?? [];
+  const tapes = [
+    ...(state.tapes > 0 ? [{ id: 'tape', key: null, count: state.tapes }] : []),
+    ...Object.entries(state.trainingTapes ?? {}).filter(([, count]) => count > 0)
+      .map(([key, count]) => ({ id: `tape:${key}`, key, count })),
+  ];
+  const evoInventory = new Map();
+  for (const key of state.evoInventory ?? []) evoInventory.set(key, (evoInventory.get(key) ?? 0) + 1);
   const activeEvo = state.activeEvo;
-  const activeEvoForCard = activeEvo?.cardId === card.id ? activeEvo : null;
-  const activeEvoDef = activeEvo ? EVO_CHIPS[activeEvo.evoKey] : null;
-  const hasActiveEvoAnywhere = Boolean(activeEvo);
-  const hasEvoOptions = Boolean(activeEvoForCard || inventory.length > 0 || hasActiveEvoAnywhere);
+  const evos = [...evoInventory].map(([key, count]) => ({ id: `evo:${key}`, key, count, evo: true }));
+  const active = activeEvo && { id: 'active-evo', key: activeEvo.evoKey, evo: true };
+  const options = [...tapes, ...(active ? [active] : []), ...evos];
+  const chosen = options.find(item => item.id === picked)
+    ?? (picked === 'evo' ? active ?? evos[0] : null)
+    ?? options[0];
+  const evo = chosen?.evo ? EVO_CHIPS[chosen.key] : null;
+  const isActive = chosen?.id === active?.id && Boolean(active);
+  const evolving = isActive ? squad.find(item => item.id === activeEvo.cardId) : null;
+  const subject = evolving ?? card;
+  const target = chosen && !evo ? trainingOffer(state, card, chosen.key) : null;
+  const isStat = Boolean(target && STAT_KEYS.includes(chosen.key));
+  const preview = target ? spendTape(state, card, chosen.key) : state;
+  const eligible = evo ? isEligibleForEvo(subject, chosen.key) : null;
+  const canEvolve = Boolean(evo && !activeEvo && eligible.eligible);
+  const canApply = canEvolve || preview !== state;
+  const highlight = isStat ? target.stat : null;
+  const nextLevel = isActive && !activeEvo.l1Done ? 1 : 2;
+  const after = evo
+    ? previewEvoCard(subject, evo, nextLevel)
+    : preview !== state ? clubCard(preview, cardById.get(card.id)) : card;
 
-  const currentEvoKey = activeEvoForCard?.evoKey ?? (inventory.includes(selectedEvoKey) ? selectedEvoKey : inventory[0] ?? null);
-  const currentEvoDef = currentEvoKey ? EVO_CHIPS[currentEvoKey] : null;
-  const eligibility = currentEvoKey ? isEligibleForEvo(card, currentEvoKey) : { eligible: false, reason: 'No chip selected' };
-
-  let evoMeter = null;
-  let evoMark = 'EVO';
-  if (activeEvoForCard && activeEvoDef) {
-    const isL1 = !activeEvoForCard.l1Done;
-    const currentCount = isL1 ? (activeEvoForCard.l1Progress ?? 0) : (activeEvoForCard.l2Progress ?? 0);
-    const targetCount = isL1 ? activeEvoDef.level1.count : activeEvoDef.level2.count;
-    evoMeter = { on: currentCount, of: targetCount };
-    evoMark = `L${activeEvoForCard.level}`;
-  } else if (inventory.length > 0) {
-    evoMark = `×${inventory.length}`;
-  }
-
-  // Every choice stays on the table. A finished one is ticked and dim, so the reason it
-  // can't be taken is its own shape: a full meter, a tick, nothing left.
-  const focuses = [
-    { id: 'stat', title: STAT_LABELS[offer.stat], done: statDone, mark: `+${STAT_STEP}`, meter: { on: Math.round((entry.stats?.[offer.stat] ?? 0) / STAT_STEP), of: statSteps } },
-    { id: 'skill', title: skill?.label ?? learned?.label ?? 'Skill', done: skillDone, mark: `${offer.sessions + 1}/${SKILL_SESSIONS}`, meter: skillMeter },
-    { id: 'rest', title: 'Rest', done: restDone, mark: offer.fatigue, meter: { on: Math.ceil(offer.fatigue / 25), of: 4 } },
-    // A skill tape moves the skill on without spending the week's session.
-    state.tapes > 0 && { id: 'tape', title: 'Tape', done: skillDone, mark: `×${state.tapes}`, meter: skillMeter },
-    hasEvoOptions && {
-      id: 'evo',
-      title: activeEvoForCard ? (activeEvoDef?.name ?? 'Evolution') : 'Evolution',
-      done: false,
-      mark: evoMark,
-      meter: evoMeter,
-    },
-  ].filter(Boolean);
-  const open = focuses.filter(item => !item.done);
-  const chosen = open.find(item => item.id === picked) ?? open[0];
-  const focus = chosen?.id;
-
-  let after;
-  if (focus === 'evo') {
-    if (activeEvoForCard) {
-      after = previewEvoCard(card, activeEvoDef, activeEvoForCard.l1Done ? 2 : 1);
-    } else if (currentEvoDef) {
-      after = previewEvoCard(card, currentEvoDef, 2);
-    } else {
-      after = card;
-    }
-  } else {
-    after = chosen ? clubCard(train(state, card, focus === 'tape' ? 'skill' : focus), cardById.get(card.id)) : card;
-  }
-
-  const usesSession = focus !== 'tape';
-  const before = card.stats?.[offer.stat] ?? card[offer.stat];
-  const afterValue = after.stats?.[offer.stat] ?? after[offer.stat];
-  const arrow = <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6" /></svg>;
-  const finish = () => {
-    const unlocksSkill = (focus === 'skill' || focus === 'tape') && offer.skill && offer.sessions + 1 >= SKILL_SESSIONS;
-    if (unlocksSkill) playUiSound(`skill_${offer.skill}`);
-    else playUiSound('train_done');
-    return focus === 'tape' ? onTape(card) : onTrain(card, focus);
-  };
-  const trainNow = () => {
-    if (reducedMotion) { finish(); return; }
-    playUiSound(focus === 'tape' ? 'tape' : 'train_start');
-    setDrilling(true);
-    drillTimer.current = setTimeout(finish, 1150);
-  };
-  const commitEvoNow = () => {
-    if (!currentEvoKey || !eligibility.eligible || state.trainSlot <= 0 || activeEvoForCard || hasActiveEvoAnywhere) return;
+  const choose = (id) => { playUiSound('select'); setPicked(id); };
+  const apply = () => {
+    if (!canApply || drilling) return;
+    const finish = () => {
+      setDrilling(false);
+      if (evo) {
+        playUiSound('train_done');
+        onEvo(card.id, chosen.key);
+        return;
+      }
+      const learned = !isStat && target.sessions + 1 >= SKILL_SESSIONS;
+      playUiSound(learned ? `skill_${target.skill}` : 'train_done');
+      onTape(card, chosen.key);
+    };
     if (reducedMotion) {
-      playUiSound('train_done');
-      onEvo?.(card.id, currentEvoKey);
-      return;
+      finish();
+    } else {
+      playUiSound(evo ? 'train_start' : 'tape');
+      setDrilling(true);
+      drillTimer.current = setTimeout(finish, 750);
     }
-    playUiSound('train_start');
-    setDrilling(true);
-    drillTimer.current = setTimeout(() => {
-      playUiSound('train_done');
-      onEvo?.(card.id, currentEvoKey);
-    }, 1150);
   };
+
+  const skill = target && BOARD_SKILLS[target.skill];
+  const statName = highlight && STAT_LABELS_FULL[highlight];
+  const nextGoal = isActive && (activeEvo.l1Done ? evo.level2 : evo.level1);
+  const progress = isActive && ((activeEvo.l1Done ? activeEvo.l2Progress : activeEvo.l1Progress) ?? 0);
+  const playerScale = size.phone ? 0.22 : Math.max(0.27, size.scale * 0.85);
   return (
-    <div className={styles.stage}>
-      <Hud title="Training" back={<BackButton onClick={onBack} />} tags={[[`Week ${Math.min(state.week + 1, WEEKS)}`]]}>
-        <span className={styles.sessions} data-empty={state.trainSlot === 0 || undefined} role="img" aria-label={`${state.trainSlot} of ${TRAIN_SLOTS_MAX} sessions`}>
-          {Array.from({ length: TRAIN_SLOTS_MAX }, (_, index) => <i key={index} data-on={index < state.trainSlot || undefined} />)}
-        </span>
-        {canBuy && (
-          <button type="button" className={styles.ghost} data-need={state.trainSlot === 0 || undefined} onClick={() => { playUiSound('sign'); onBuy(); }} disabled={drilling}>
-            +1 session<span className={styles.cost}><PackArt kind="silver" size="s" />{SESSION_PRICE}</span>
-          </button>
-        )}
-      </Hud>
-      <Ground className={styles.trainGround}>
-        <section className={styles.pedestal}>
-          <div className={styles.trainStage} data-drill={drilling || undefined}>
-            <div className={styles.beforeCard}><Card card={card} scale={scale * 1.2} dim highlight={focus === 'stat' ? offer.stat : null} /></div>
-            <svg className={styles.arrow} width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6" /></svg>
-            <div className={styles.raised}>
-              {/* An evolved card is the point of this screen, so it runs its evo in full. */}
-              {after.evoTheme
-                ? <div className={styles.card}><EvoShowcase card={after} displayScale={scale * 1.2} tilt={false} highlightStat={focus === 'stat' ? offer.stat : null} /></div>
-                : <Card card={after} scale={scale * 1.2} highlight={focus === 'stat' ? offer.stat : null} />}
+    <ManagementScreen state={state} at="train" go={drilling ? () => {} : go} onBack={back} inspector={
+      <>
+        <section className={styles.trainingPreview} aria-label="Training preview">
+          {chosen ? (
+            <div className={styles.trainingCompare} data-drill={drilling || undefined}>
+              <div className={styles.trainingBefore}>
+                <span className={styles.eafcSpotlightTag}>Before</span>
+                <PlayerCard card={subject} displayScale={90 / 400} tilt={false} canDrag={false} highlightStat={highlight} />
+              </div>
+              <span className={styles.trainingArrow} aria-hidden="true">→</span>
+              <div>
+                <span className={styles.eafcSpotlightTag}>After</span>
+                {after.evoTheme
+                  ? <EvoShowcase card={after} displayScale={126 / 400} tilt={false} highlightStat={highlight} />
+                  : <PlayerCard card={after} displayScale={126 / 400} tilt={false} canDrag={false} highlightStat={highlight} />}
+              </div>
             </div>
-          </div>
-          {/* One readout, the same shape for every focus: what changes, then from and to. */}
-          {chosen && (
-            <div className={styles.gain} data-drill={drilling || undefined}>
-              <span className={styles.gainLabel}>
-                {chosen.id === 'stat' ? STAT_LABELS[offer.stat] : chosen.id === 'rest' ? 'Fatigue' : chosen.id === 'tape' ? 'Skill tape' : chosen.id === 'evo' ? 'Evolution' : 'Skill'}
-              </span>
-              {chosen.id === 'stat' && (
-                <span className={styles.gainRow}><span className={styles.was}>{before}</span>{arrow}<b className={styles.now}>{afterValue}</b><em className={styles.plus}>+{STAT_STEP}</em></span>
-              )}
-              {(chosen.id === 'skill' || chosen.id === 'tape') && (
-                <span className={styles.gainRow}>
-                  <b className={styles.now}>{skill.label}</b>
-                  <span className={styles.sessions} role="img" aria-label={`Session ${offer.sessions + 1} of ${SKILL_SESSIONS}`}>
-                    {Array.from({ length: SKILL_SESSIONS }, (_, index) => <i key={index} data-on={index < offer.sessions || undefined} data-next={index === offer.sessions || undefined} />)}
-                  </span>
-                </span>
-              )}
-              {chosen.id === 'rest' && (
-                <span className={styles.gainRow}><span className={styles.was}>{offer.fatigue}</span>{arrow}<b className={styles.now}>0</b></span>
-              )}
-              {chosen.id === 'evo' && (() => {
-                const pips = (of, on) => Array.from({ length: of }, (_, index) => <i key={index} data-on={index < on || undefined} data-next={index === on || undefined} />);
-                if (activeEvoForCard && activeEvoDef) {
-                  const second = activeEvoForCard.l1Done;
-                  const need = second ? activeEvoDef.level2 : activeEvoDef.level1;
-                  const done = (second ? activeEvoForCard.l2Progress : activeEvoForCard.l1Progress) ?? 0;
-                  return (
-                    <>
-                      <span className={styles.gainRow}>
-                        <b className={styles.now}>{second ? 'Evo II' : 'Evo I'}</b>
-                        <span className={styles.sessions} role="img" aria-label={`${done} of ${need.count}`}>{pips(need.count, done)}</span>
-                      </span>
-                      <span className={styles.gainNote}>{need.label}</span>
-                    </>
-                  );
-                }
-                if (hasActiveEvoAnywhere) {
-                  const evolving = squad.find(item => item.id === activeEvo.cardId);
-                  return (
-                    <>
-                      <span className={styles.gainRow}><b className={styles.now}>{evolving?.player}</b></span>
-                      <span className={styles.gainNote}>Evolving now. One evo at a time.</span>
-                    </>
-                  );
-                }
-                if (!currentEvoDef) return null;
-                return (
-                  <>
-                    <span className={styles.gainRow}>
-                      {inventory.length > 1
-                        ? inventory.map((key, index) => (
-                          <button key={`${key}-${index}`} type="button" className={styles.evoPick} data-on={key === currentEvoKey || undefined} aria-pressed={key === currentEvoKey} aria-label={EVO_CHIPS[key].name} onClick={() => { playUiSound('select'); setSelectedEvoKey(key); }}>
-                            <EvoChip evoKey={key} size={40} />
-                          </button>
-                        ))
-                        : <EvoChip evoKey={currentEvoKey} size={40} />}
-                      <b className={styles.now}>{currentEvoDef.name}</b>
-                    </span>
-                    <span className={styles.gainNote} data-bad={!eligibility.eligible || undefined}>{eligibility.eligible ? currentEvoDef.level1.label : eligibility.reason}</span>
-                  </>
-                );
-              })()}
-              {chosen.id !== 'evo' && <span className={styles.gainNote}>{chosen.id === 'skill' || chosen.id === 'tape' ? skill.text : ''}</span>}
+          ) : (
+            <>
+              <span className={styles.eafcSpotlightTag}>{who < STARTERS ? (who === 0 ? 'IGL' : 'Starter') : 'Bench'}</span>
+              {!size.phone && <PlayerCard card={subject} displayScale={SPOTLIGHT_SCALE} tilt={false} canDrag={false} />}
+            </>
+          )}
+          <b className={styles.eafcSpotlightName}>{subject.player}</b>
+          {isStat && (
+            <span className={styles.trainingDelta}>{STAT_LABELS[highlight]} {card.stats[highlight]} → {after.stats[highlight]}</span>
+          )}
+        </section>
+        <div className={styles.eafcLedgerWrap}>
+          {!chosen && <div className={styles.eafcLedger}><PlayerReadout state={state} card={subject} /></div>}
+          {target && (
+            <div className={styles.eafcLedger}>
+              {isStat
+                ? <LedgerRow label="Stat">{statName}</LedgerRow>
+                : <LedgerRow label={skill?.label ?? tapeName(chosen.key)}>{skill ? `${target.sessions} / ${SKILL_SESSIONS} → ${target.sessions + 1} / ${SKILL_SESSIONS}` : 'Unavailable'}</LedgerRow>}
+              {after.tier !== card.tier && <LedgerRow label="New tier">{after.developmentRating} OVR {after.tier}</LedgerRow>}
+              <LedgerRow label="Cost">1 tape</LedgerRow>
             </div>
           )}
-          {!chosen && <span className={styles.allDone} role="img" aria-label="Nothing left to train"><Tick /></span>}
-        </section>
-        <div className={styles.chipRow} role="group" aria-label="Focus">
-          {focuses.map(item => (
-            <button key={item.id} type="button" className={styles.clay} data-on={focus === item.id || undefined} data-done={item.done || undefined} aria-pressed={focus === item.id} disabled={drilling || item.done} onClick={() => { playUiSound('select'); setPicked(item.id); }}>
-              <Chip3D
-                className={styles.clay3d}
-                size={64}
-                phase={focuses.indexOf(item) * 1.3}
-                face={{
-                  tone: FOCUS_TONES[item.done ? 'done' : focus === item.id ? 'on' : 'idle'],
-                  headline: item.done ? '✓' : String(item.mark),
-                  meter: item.meter && { ...item.meter, next: !item.done && item.id !== 'stat' ? item.meter.on : -1 },
-                }}
-                fallback={(
-                  <span aria-hidden="true">
-                    {item.done ? <Tick /> : <strong className={styles.clayMark}>{item.mark}</strong>}
-                    {item.meter && (
-                      <span className={styles.clayMeter}>
-                        {Array.from({ length: item.meter.of }, (_, index) => <i key={index} data-on={index < item.meter.on || undefined} data-next={(!item.done && index === item.meter.on && item.id !== 'stat') || undefined} />)}
-                      </span>
-                    )}
-                  </span>
-                )}
-              />
-              {item.title}
-            </button>
+          {evo && (
+            <>
+              <div className={styles.eafcLedger}>
+                <LedgerRow label="Evolution">{evo.name}</LedgerRow>
+                {nextGoal && <LedgerRow label="Progress">{progress} / {nextGoal.count}</LedgerRow>}
+              </div>
+              {nextGoal && <span className={styles.plain}>{nextGoal.label}</span>}
+              {!isActive && !canEvolve && <span className={styles.plain}>{activeEvo ? 'An Evo is already active.' : eligible.reason}</span>}
+            </>
+          )}
+          {target && !canApply && <span className={styles.plain}>{isStat ? 'This stat is at its training limit.' : 'This player cannot use this skill tape.'}</span>}
+        </div>
+      </>
+    } action={chosen && !isActive && (
+      <button type="button" className={styles.eafcSignBtn} disabled={!canApply || drilling} onClick={apply}>
+        {drilling ? 'Applying' : evo ? `Evolve ${card.player}` : `Use ${tapeName(chosen.key)} tape`}
+      </button>
+    )} bottom={
+      <section className={styles.eafcStageRow} aria-label="Squad">
+        <h2 className={styles.eafcRowHead}>Squad</h2>
+        <div className={styles.eafcCardsRow}>
+          {squad.map((item, index) => (
+            <div className={styles.windowSlot} key={item.id}>
+              <PlayerCard card={item} displayScale={playerScale} tilt={false} canDrag={false} onClick={drilling ? undefined : () => {
+                if (isActive) setPicked(tapes[0]?.id ?? evos[0]?.id ?? null);
+                setWho(index);
+              }} />
+              {subject.id === item.id && <SelectionCorners />}
+              <Meter value={state.dev?.[item.id]?.f ?? 0} max={100} bad={(state.dev?.[item.id]?.f ?? 0) > FATIGUE_PENALTY_FROM} label={`${item.player} fatigue`} />
+            </div>
           ))}
         </div>
-      </Ground>
-      <div className={styles.hand}>
-        {squad.map((item, index) => {
-          const status = trainStatus(state, item);
-          const learning = status.entry.learning?.sessions ?? 0;
-          const isEvolving = state.activeEvo?.cardId === item.id;
-          return (
-            <div key={item.id} className={styles.handCard} data-on={who === index || undefined} data-done={status.done || undefined} style={{ viewTransitionName: `card-${item.id}` }}>
-              <PlayerCard card={item} displayScale={scale * 0.55} tilt={false} canDrag={false} selected={who === index} onClick={drilling ? undefined : () => setWho(index)} pressScale={0.97} />
-              {/* Done reads like the role labels above cards: a bare green tick over the dimmed card. */}
-              {status.done && !isEvolving && <span className={styles.tick} role="img" aria-label="Nothing left to train"><Tick /></span>}
-              {isEvolving && (() => {
-                const evo = EVO_CHIPS[state.activeEvo.evoKey];
-                const need = state.activeEvo.l1Done ? evo.level2 : evo.level1;
-                const done = (state.activeEvo.l1Done ? state.activeEvo.l2Progress : state.activeEvo.l1Progress) ?? 0;
-                return (
-                  <span className={styles.sessions} role="img" aria-label={`${evo.name}: ${done} of ${need.count}`}>
-                    {Array.from({ length: need.count }, (_, pip) => <i key={pip} data-on={pip < done || undefined} />)}
-                  </span>
-                );
-              })()}
-              {learning > 0 && !status.skillDone && (
-                <span className={styles.sessions} role="img" aria-label={`Skill session ${learning} of ${SKILL_SESSIONS}`}>
-                  {Array.from({ length: SKILL_SESSIONS }, (_, pip) => <i key={pip} data-on={pip < learning || undefined} />)}
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-      <footer className={`${styles.act} ${styles.actEnd}`}>
-        {focus === 'evo' ? (
-          <button
-            type="button"
-            className={styles.primary}
-            disabled={
-              drilling ||
-              Boolean(activeEvoForCard) ||
-              hasActiveEvoAnywhere ||
-              !currentEvoDef ||
-              !eligibility.eligible ||
-              state.trainSlot <= 0
-            }
-            onClick={commitEvoNow}
-          >
-            {state.trainSlot > 0 && !activeEvoForCard && !hasActiveEvoAnywhere && eligibility.eligible && (
-              <i className={styles.sessionCost} data-on aria-hidden="true" />
-            )}
-            {drilling ? 'Evolving' : `Evolve ${card.player}`}
-          </button>
-        ) : (
-          <button type="button" className={styles.primary} disabled={!chosen || (usesSession && !state.trainSlot) || drilling} onClick={trainNow}>
-            {/* The cost, as a pip: solid while a session is open, hollow when there is none. A tape costs nothing, so it shows none. */}
-            {usesSession && chosen && !drilling && <i className={styles.sessionCost} data-on={state.trainSlot > 0 || undefined} aria-hidden="true" />}
-            {drilling ? 'Training' : `Train ${card.player}`}
-          </button>
-        )}
-      </footer>
-    </div>
+      </section>
+    }>
+      <section className={styles.eafcStageRow} aria-label="Training tapes">
+        <h2 className={styles.eafcRowHead}>Training tapes</h2>
+        <div className={styles.eafcCardsRow}>
+          {/* Same item as in Inventory, so a tape looks identical on both screens. */}
+          {tapes.length ? tapes.map(item => (
+            <ItemChoice key={item.id} className={styles.inventoryItem} data-item selected={chosen?.id === item.id} disabled={drilling} aria-label={`${tapeName(item.key)} tape, ${item.count} owned`} onClick={() => choose(item.id)}>
+              <span className={styles.inventoryArt}><TapeCard scale={tapeItemScale(size)} target={item.key} /></span>
+              <b>{tapeName(item.key)} tape</b>
+              <span>×{item.count}</span>
+            </ItemChoice>
+          )) : <span className={styles.inventoryItem} data-item data-empty aria-label="No tapes"><span className={styles.inventoryArt}><TapeCard scale={tapeItemScale(size)} /></span><span>×0</span></span>}
+        </div>
+      </section>
+      {(evos.length > 0 || active) && (
+        <section className={styles.eafcStageRow} aria-label="Evolutions">
+          <h2 className={styles.eafcRowHead}>Evolutions</h2>
+          <div className={styles.eafcCardsRow}>
+            {[...(active ? [active] : []), ...evos].map(item => (
+              <ItemChoice key={item.id} className={styles.inventoryItem} data-item selected={chosen?.id === item.id} disabled={drilling} onClick={() => choose(item.id)}>
+                <span className={styles.inventoryArt}><EvoChip evoKey={item.key} size={itemArtSize(size)} /></span>
+                <b>{EVO_CHIPS[item.key].name}</b>
+                <span>{item.id === 'active-evo' ? 'In progress' : `×${item.count}`}</span>
+              </ItemChoice>
+            ))}
+          </div>
+        </section>
+      )}
+    </ManagementScreen>
   );
 }
 
@@ -1256,89 +1318,65 @@ export function Result({ state, onContinue, size }) {
   const { scale } = size;
   const { last } = state;
   const opponent = clubById(state, last.opponent);
-  const squad = squadCards(state, allCards).slice(0, STARTERS);
-  const pos = standings(state, allCards).find(row => row.you).pos;
-  const growth = new Map(last.growth.map(row => [row.id, row]));
   const won = last.rounds.filter(round => round.winA).length;
-  const reducedMotion = useReducedMotion();
-  const [landed, setLanded] = useState(false);
-  const [grown, setGrown] = useState(reducedMotion);
   const [dismissCelebration, setDismissCelebration] = useState(false);
-  useEffect(() => {
-    if (reducedMotion) return undefined;
-    const timer = setTimeout(() => {
-      setGrown(true);
-      const anyLeveled = last.growth.some(row => (row?.gain ?? 0) > (row?.pct ?? 0));
-      if (last.evoProgress?.completed) {
-        playUiSound('train_done', 2);
-      } else {
-        playUiSound(anyLeveled ? 'train_done' : 'score', 2);
-      }
-    }, 280);
-    return () => clearTimeout(timer);
-  }, [reducedMotion]); // eslint-disable-line react-hooks/exhaustive-deps
-  const sweep = last.won && last.rounds.length >= 2 && last.rounds.every(round => round.winA);
+  const tapes = new Map();
+  for (const key of last.tapes ?? []) tapes.set(key, (tapes.get(key) ?? 0) + 1);
+  const milestones = last.growth.filter(row => row.mvp || row.ovrGain > 0 || row.tier);
   return (
     <div className={styles.stage}>
-      <Hud title={opponent.name} logo={opponent.logo ?? null} tags={[[last.stage], ...(last.rounds.length > 3 ? [['Bo5', true]] : [['Bo3', true]])]}>
-        <PackCounter state={state} bump={landed} flyTarget />
-      </Hud>
+      <Hud title={opponent.name} logo={opponent.logo ?? null} tags={[[last.stage]]} />
       <Ground className={styles.resultGround}>
         <div className={styles.verdict}>
-          <div className={styles.moment} data-won={last.won}>{last.won ? 'Series won' : 'Series lost'}</div>
-          <span className={styles.verdictRow}>
-            <b className={styles.score}>{won}–{last.rounds.length - won}</b>
-            {last.packs > 0 && (
-              <FlyHome onLand={() => { playUiSound('vault_bump'); setLanded(true); }}>
-                <span className={styles.gain1}><PackArt kind="silver" size="s" /><b>+{last.packs}</b></span>
-              </FlyHome>
-            )}
-            {sweep && <span className={styles.gain1}><span className={styles.sessions}><i data-on /><i data-on /></span><b>2 sessions next week</b></span>}
-            <span className={styles.plain}>{`${ordinal(pos)} in table`}</span>
-          </span>
+          <div className={styles.moment} data-won={last.won}>{last.won ? 'Victory' : 'Defeat'}</div>
+          <b className={styles.score}>{won}–{last.rounds.length - won}</b>
         </div>
-        {/* Each map as a quiet row: where, the lanes score, and the verdict in colour. */}
-        <ol className={styles.mapRows}>
-          {last.rounds.map((round, index) => (
-            <li key={index} data-won={round.winA} style={{ '--deal': index }}>
-              <img src={mapArt(round.map)} alt="" />
-              <b>{round.map}</b>
-              <span className={styles.mapScore}>{round.a}–{round.b}</span>
-              <em>{round.winA ? 'Won' : 'Lost'}</em>
-            </li>
+        <ul className={styles.lootPile} aria-label="Series rewards">
+          {last.packs > 0 && <li><PackArt kind="silver" /><b>Silver pack ×{last.packs}</b></li>}
+          {last.tactic && <li><ChipDisc chipKey={last.tactic.key} /><b>{chipInfo(last.tactic.key).name}</b></li>}
+          {[...tapes].map(([key, count]) => (
+            <li key={key}><TapeCard scale={0.135} target={key} /><b>{tapeName(key)} tape ×{count}</b></li>
           ))}
-        </ol>
+          {last.evoReward && <li><EvoChip evoKey={last.evoReward} size={90} /><b>{EVO_CHIPS[last.evoReward].name} Evo</b></li>}
+        </ul>
+        {milestones.length > 0 && (
+          <ul className={styles.resultMilestones} aria-label="Player milestones">
+            {milestones.map(row => (
+              <li key={row.id}>
+                <b>{cardById.get(row.id)?.player}</b>
+                {row.mvp && <span>MVP</span>}
+                {row.ovrGain > 0 && <span>+{row.ovrGain} OVR</span>}
+                {row.tier && <span data-tier={row.tier}>{row.tier}</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+        <details className={styles.resultDetails}>
+          <summary>Details</summary>
+          <ol className={styles.mapRows}>
+            {last.rounds.map((round, index) => (
+              <li key={index} data-won={round.winA} style={{ '--deal': index }}>
+                <img src={mapArt(round.map)} alt="" />
+                <b>{round.map}</b>
+                <span className={styles.mapScore}>{round.a}–{round.b}</span>
+                <em>{round.winA ? 'Won' : 'Lost'}</em>
+              </li>
+            ))}
+          </ol>
+          <ul className={styles.resultGrowth} aria-label="Squad growth">
+            {last.growth.map(row => (
+              <li key={row.id}>
+                <span>{cardById.get(row.id)?.player}</span>
+                <meter min={0} max={XP_PER_POINT} value={row.pct} aria-label={`Growth to next overall for ${cardById.get(row.id)?.player}`} />
+                <b>+{row.gain} XP</b>
+              </li>
+            ))}
+          </ul>
+          {last.evoProgress && !last.evoProgress.completed && (
+            <p className={styles.plain}>{last.evoProgress.name} ({last.evoProgress.progress}/{last.evoProgress.total})</p>
+          )}
+        </details>
       </Ground>
-      <div className={styles.hand}>
-        {squad.map((card, index) => {
-          const row = growth.get(card.id);
-          const pct = row?.pct ?? 0;
-          const gain = row?.gain ?? 0;
-          const leveled = gain > pct;
-          const fromPct = leveled ? 0 : Math.max(0, pct - gain);
-          const evoProg = last.evoProgress?.cardId === card.id ? last.evoProgress : null;
-          return (
-            <div key={card.id} className={styles.handCard} data-on={row?.mvp || undefined} data-leveled={leveled || undefined} style={{ '--deal': index, viewTransitionName: `card-${card.id}` }}>
-              {/* The card's labels share one row. An evo stage reads like +1 OVR; a stage still running shows its match pips. */}
-              {(row?.mvp || leveled || evoProg?.completed) && (
-                <span className={styles.handTags}>
-                  {row?.mvp && <em className={styles.mvp}>MVP</em>}
-                  {leveled && <em className={styles.levelUp}>+1 OVR</em>}
-                  {evoProg?.completed && <em className={styles.levelUp}>{evoProg.level === 2 ? 'Evo II' : 'Evo I'}</em>}
-                </span>
-              )}
-              {evoProg && !evoProg.completed && (
-                <span className={styles.sessions} role="img" aria-label={`${evoProg.name}: ${evoProg.progress} of ${evoProg.total}`}>
-                  {Array.from({ length: evoProg.total }, (_, pip) => <i key={pip} data-on={pip < evoProg.progress || undefined} />)}
-                </span>
-              )}
-              <PlayerCard card={card} displayScale={row?.mvp ? scale * 0.86 : scale * 0.72} tilt={false} canDrag={false} />
-              <span className={styles.bar} role="img" aria-label={`Growth: ${pct} percent to the next rating point`}><i style={{ width: `${grown ? pct : fromPct}%` }} /></span>
-              <b className={styles.pct}>{pct}%</b>
-            </div>
-          );
-        })}
-      </div>
       {/* An evo stage finished: its own moment, in the same voice as the series verdict. */}
       {last.evoProgress?.completed && !dismissCelebration && (() => {
         const done = last.evoProgress;
@@ -1370,7 +1408,6 @@ export function Result({ state, onContinue, size }) {
         );
       })()}
       <footer className={styles.act}>
-        <span className={styles.label}>Growth to the next rating point</span>
         <button type="button" className={styles.primary} autoFocus onClick={onContinue}>Continue</button>
       </footer>
     </div>
@@ -1405,7 +1442,7 @@ function Bracket({ state, table }) {
     <section className={styles.bracket} aria-label="Playoffs">
       <div className={styles.bracketHead}>
         <h2 className={styles.sectionHead}>Playoffs</h2>
-        <span className={styles.plain}>{playoffs ? 'Top four' : `Top four after week ${WEEKS}. If it ended today:`}</span>
+        {!playoffs && <Tag>Projected</Tag>}
       </div>
       <div className={styles.bracketGrid} data-projected={!playoffs || undefined}>
         <div className={styles.semis}>{semi(0, 0, 3)}{semi(1, 1, 2)}</div>
@@ -1419,30 +1456,37 @@ function Bracket({ state, table }) {
   );
 }
 
-function League({ state, onBack }) {
+function League({ state, go, onBack }) {
   useEscape(onBack);
   const table = standings(state, allCards);
   return (
     <div className={styles.stage}>
-      <Hud title={tierName(state.tier)} back={<BackButton onClick={onBack} />}>
-        <span className={styles.tierBars} role="img" aria-label={`Tier ${state.tier + 1} of 3`}>
-          {[0, 1, 2].map(index => <i key={index} data-on={index === state.tier || undefined} />)}
-        </span>
-        <Tag>{`Week ${Math.min(state.week + 1, WEEKS)} / ${WEEKS}`}</Tag>
-      </Hud>
+      <ScreenHeader state={state} at="league" go={go} onBack={onBack} />
       <Ground className={styles.leagueGround}>
         <Road state={state} />
-        <ol className={styles.table}>
-          {table.map(row => (
-            <li key={row.id} data-you={row.you || undefined} data-cut={row.pos === 4 ? 'Playoff line' : row.pos === 5 ? 'Drop zone' : undefined}>
-              <b className={styles.pos}>{row.pos}</b>
-              {row.you ? <OwnMark state={state} size={32} /> : <Crest club={clubById(state, row.id)} />}
-              <b className={styles.clubName}>{row.name}</b>
-              <b className={styles.record}>{row.w}–{row.l}</b>
-            </li>
-          ))}
-        </ol>
-        <Bracket state={state} table={table} />
+        <div className={styles.leagueBody}>
+          <section className={styles.leagueTable} aria-label={tierName(state.tier)}>
+            <div className={styles.bracketHead}>
+              <h2 className={styles.sectionHead}>{tierName(state.tier)}</h2>
+              <span className={styles.tierBars} role="img" aria-label={`Tier ${state.tier + 1} of 3`}>
+                {[0, 1, 2].map(index => <i key={index} data-on={index === state.tier || undefined} />)}
+              </span>
+            </div>
+            <ol className={styles.table}>
+              <li className={styles.tableHead} aria-hidden="true"><span /><span /><span /><span>W–L</span><span>RD</span></li>
+              {table.map(row => (
+                <li key={row.id} data-you={row.you || undefined} data-cut={row.pos === 4 ? 'Playoff line' : row.pos === 5 ? 'Drop zone' : undefined}>
+                  <b className={styles.pos}>{row.pos}</b>
+                  {row.you ? <OwnMark state={state} size={32} /> : <Crest club={clubById(state, row.id)} />}
+                  <b className={styles.clubName}>{row.name}</b>
+                  <b className={styles.record}>{row.w}–{row.l}</b>
+                  <span className={styles.rd} data-sign={Math.sign(row.rd)}>{row.rd > 0 ? `+${row.rd}` : row.rd}</span>
+                </li>
+              ))}
+            </ol>
+          </section>
+          <Bracket state={state} table={table} />
+        </div>
       </Ground>
     </div>
   );
@@ -1494,7 +1538,7 @@ function Review({ state, onNext, size }) {
         {squad.map(card => {
           const delta = changes.get(card.id)?.delta ?? 0;
           return (
-            <div key={card.id} className={styles.handCard} style={{ viewTransitionName: `card-${card.id}` }}>
+            <div key={card.id} className={styles.handCard}>
               <PlayerCard card={card} displayScale={scale * 0.6} tilt={false} canDrag={false} />
               <b className={styles.delta} data-delta={delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat'}>{delta > 0 ? `+${delta}` : delta}</b>
             </div>
@@ -1586,7 +1630,7 @@ function Window({ state, onClose, size }) {
     if (buy.includes(item.card.id)) return 'Signed';
     if (item.locked) return `Rep ${item.card.rating}+`;
     if (!item.cost) return 'Free';
-    return item.cost === 1 ? '1 Pack' : `${item.cost} Packs`;
+    return item.cost === 1 ? '1 pack' : `${item.cost} packs`;
   };
   const taken = target && buy.includes(target.card.id);
   const needsSwap = !taken && totals.squad >= max;
@@ -1614,10 +1658,12 @@ function Window({ state, onClose, size }) {
     if (typeof window === 'undefined') return 0.38;
     if (phone) return 0.30;
     const h = window.innerHeight;
-    return Math.max(0.34, Math.min(0.42, ((h - 280) / 2) / 580));
-  }, [phone]);
+    // Every squad place fits across the stage beside the side panel (stage padding 80,
+    // panel and its gap 316, row padding 16, 16 between cards).
+    const fit = ((window.innerWidth - 80 - 316 - 16) / max - 16) / 400;
+    return Math.min(fit, Math.max(0.34, Math.min(0.42, ((h - 280) / 2) / 580)));
+  }, [phone, max]);
 
-  const spotlightScale = phone ? 0.32 : 0.38;
   const ghostIndex = taken ? -1 : activeSquad.length + buy.length;
   const signed = buy.map(id => all.find(item => item.card.id === id)?.card).filter(Boolean);
   const visibleOffers = tab === 'rivals' ? offers.rivals : tab === 'free' ? offers.free : [...offers.free, ...offers.rivals];
@@ -1632,199 +1678,169 @@ function Window({ state, onClose, size }) {
   };
 
   return (
-    <div className={styles.stage}>
-      <header className={styles.eafcTopNav}>
-        <div className={styles.eafcNavLeft}>
-          <span className={styles.eafcCrumb}>Year {state.year}</span>
-          <b className={styles.eafcTitle}>Transfer Market</b>
-          <span className={styles.eafcDivider} aria-hidden="true" />
-          <nav className={styles.eafcTabs} aria-label="Market filter">
-            {[
-              ...(offers.mine.length > 0 ? [['mine', `Expiring (${offers.mine.length})`]] : []),
-              ['free', `Free Agents (${offers.free.length})`],
-              ['rivals', `Rivals (${offers.rivals.length})`],
-              ['all', `All (${all.length})`],
-            ].map(([id, label]) => (
-              <button key={id} type="button" data-on={tab === id || undefined} aria-pressed={tab === id} onClick={() => switchTab(id)}>{label}</button>
-            ))}
-          </nav>
-        </div>
-        <div className={styles.chips}>
-          <div className={styles.chip}><b>{offers.limit}</b><span>Cap</span></div>
-          <div className={styles.chip}><b>{totals.squad}/{max}</b><span>Squad</span></div>
-        </div>
-      </header>
-      <Ground className={styles.eafcGround}>
-        <aside className={styles.eafcInspector}>
-          <div className={styles.eafcInspectorTop}>
-            <div className={styles.eafcCoinsRow}>
-              <span>My Packs</span>
-              <Packs n={totals.packs} label={false} />
-            </div>
-            {target && !phone && (
-              <div className={styles.eafcSpotlight}>
-                <span className={styles.eafcSpotlightTag}>{target.club ? target.club.name : target.trial ? 'Trialist' : 'Free Agent'}</span>
-                <PlayerCard card={target.card} displayScale={spotlightScale} tilt={false} canDrag={false} />
-                <b className={styles.eafcSpotlightName}>{target.card.player}</b>
-              </div>
-            )}
+    <ManagementScreen
+      state={state}
+      title="Transfer window"
+      packs={totals.packs}
+      selected={tab}
+      onTab={switchTab}
+      tabs={[
+        ...(offers.mine.length > 0 ? [['mine', `Expiring (${offers.mine.length})`]] : []),
+        ['free', `Free agents (${offers.free.length})`],
+        ['rivals', `Rivals (${offers.rivals.length})`],
+        ['all', `All (${all.length})`],
+      ]}
+      stats={[['Cap', offers.limit], ['Squad', `${totals.squad}/${max}`]]}
+      inspector={target && (
+        <>
+          <div className={styles.eafcSpotlight}>
+            <span className={styles.eafcSpotlightTag}>{target.club ? target.club.name : target.trial ? 'Trialist' : 'Free agent'}</span>
+            {!phone && <PlayerCard card={target.card} displayScale={SPOTLIGHT_SCALE} tilt={false} canDrag={false} />}
+            <b className={styles.eafcSpotlightName}>{target.card.player}</b>
           </div>
-          {target && (
-            <div className={styles.eafcLedgerWrap}>
-              <div className={styles.eafcLedger}>
-                <div className={styles.eafcLedgerRow}>
-                  <span>Club</span>
-                  <b>{target.club ? target.club.name : target.trial ? 'Trial' : 'Unsigned'}</b>
-                </div>
-                <div className={styles.eafcLedgerRow}>
-                  <span>Buy Now Price</span>
-                  <b data-win={!target.cost || undefined}>{priceText(target)}</b>
-                </div>
-                {needsSwap && activeSwapOut ? (
-                  <>
-                    <div className={styles.eafcLedgerRow}>
-                      <span>Replacing</span>
-                      <b data-out="true">{activeSwapOut.player} ({activeSwapOut.rating})</b>
-                    </div>
-                    <div className={styles.eafcLedgerRow}>
-                      <span>Rating Change</span>
-                      <b data-win={ovrDelta > 0 || undefined} data-out={ovrDelta < 0 || undefined}>
-                        {ovrDelta > 0 ? `+${ovrDelta}` : ovrDelta} OVR
-                      </b>
-                    </div>
-                  </>
-                ) : (
+          <div className={styles.eafcLedgerWrap}>
+            <div className={styles.eafcLedger}>
+              <LedgerRow label="Club">{target.club ? target.club.name : target.trial ? 'Trial' : 'Unsigned'}</LedgerRow>
+              <div className={styles.eafcLedgerRow}><span>Price</span><b data-win={!target.cost || undefined}>{priceText(target)}</b></div>
+              {needsSwap && activeSwapOut ? (
+                <>
+                  <div className={styles.eafcLedgerRow}><span>Replacing</span><b data-out="true">{activeSwapOut.player} ({activeSwapOut.rating})</b></div>
                   <div className={styles.eafcLedgerRow}>
-                    <span>Contract</span>
-                    <b>{CONTRACT_MAX} Years</b>
+                    <span>Rating change</span>
+                    <b data-win={ovrDelta > 0 || undefined} data-out={ovrDelta < 0 || undefined}>{ovrDelta > 0 ? `+${ovrDelta}` : ovrDelta} OVR</b>
                   </div>
-                )}
-              </div>
-              <button type="button" className={styles.eafcSignBtn} disabled={blocked} onClick={() => toggleBuy(target.card.id)}>
-                <span>{signLabel}</span>
-                {!taken && !blocked && target.cost > 0 && <Packs n={target.cost} label={false} />}
-              </button>
+                </>
+              ) : <LedgerRow label="Contract"><YearPips years={CONTRACT_MAX} /></LedgerRow>}
             </div>
-          )}
-        </aside>
-        <div className={styles.eafcStage}>
-          {tab === 'mine' && offers.mine.length > 0 ? (
-            <section className={styles.eafcStageRow}>
-              <div className={styles.expiring}>
-                {offers.mine.map(item => (
-                  <div className={styles.expiringRow} key={item.card.id}>
-                    <PlayerCard card={item.card} displayScale={cardScale} tilt={false} canDrag={false} />
-                    <div className={styles.decide}>
-                      {item.suitor && <span className={styles.suitor}><Crest club={clubById(state, item.suitor.id)} size={22} /><span>wants them</span></span>}
-                      <button type="button" className={styles.small} data-on={own[item.card.id] === 'keep' || undefined} disabled={own[item.card.id] !== 'keep' && item.renew > totals.packs} aria-pressed={own[item.card.id] === 'keep'} onClick={() => toggleOwn(item.card.id, 'keep')}>
-                        <span>Renew</span><Packs n={item.renew} label={false} />
-                      </button>
-                      <button type="button" className={styles.small} data-on={own[item.card.id] === 'go' || undefined} aria-pressed={own[item.card.id] === 'go'} onClick={() => toggleOwn(item.card.id, 'go')}>
-                        <span>Let go</span><Packs n={`+${item.fee}`} label={false} />
-                      </button>
-                    </div>
+          </div>
+        </>
+      )}
+      action={target && (
+        <button type="button" className={styles.eafcSignBtn} disabled={blocked} onClick={() => toggleBuy(target.card.id)}>
+          <span>{signLabel}</span>
+          {!taken && !blocked && target.cost > 0 && <Packs n={target.cost} label={false} />}
+        </button>
+      )}
+      bottom={(
+        <section className={styles.eafcStageRow}>
+          <h2 className={styles.eafcRowHead}>Your squad</h2>
+          <div className={styles.eafcCardsRow}>
+            {squad.map((card, index) => {
+              const isDropped = drop.includes(card.id) || (expiringIds.has(card.id) && own[card.id] === 'go');
+              const isSwapTarget = !isDropped && needsSwap && activeSwapOut?.id === card.id;
+              let badge = null;
+              if (isDropped) badge = { kind: 'out', text: 'OUT' };
+              else if (isSwapTarget) badge = { kind: 'swap', text: 'SWAP' };
+              else if (index === 0) badge = { kind: 'igl', text: 'IGL' };
+              const years = state.contracts[card.id] ?? 1;
+              return (
+                <div
+                  key={card.id}
+                  className={styles.windowSlot}
+                  data-dropped={isDropped || undefined}
+                  data-swap={isSwapTarget || undefined}
+                >
+                  <div className={styles.slotCard}>
+                    {badge && <span className={styles.cardBadge} data-kind={badge.kind}>{badge.text}</span>}
+                    <PlayerCard
+                      card={card}
+                      displayScale={squadScale}
+                      tilt={false}
+                      canDrag={false}
+                      pressScale={0.97}
+                      onClick={() => {
+                        if (isDropped) {
+                          toggleDrop(card.id);
+                        } else if (needsSwap) {
+                          playUiSound('select');
+                          setSwapOutId(card.id);
+                        } else {
+                          toggleDrop(card.id);
+                        }
+                      }}
+                    />
+                    {isSwapTarget && <span className={styles.brackets} data-swap="true" aria-hidden="true"><i /><i /><i /><i /></span>}
                   </div>
-                ))}
-              </div>
-            </section>
-          ) : (
-            <section className={styles.eafcStageRow}>
-              <div className={styles.eafcCardsRow}>
-                {visibleOffers.map(item => (
-                  <MarketCard key={item.card.id} item={item} scale={cardScale} taken={buy.includes(item.card.id)} picked={target?.card.id === item.card.id} badge={badgeFor(item)} onPick={() => setPickId(item.card.id)} />
-                ))}
-              </div>
-            </section>
-          )}
-          <section className={styles.eafcStageRow}>
-            <span className={styles.eafcRowHead}>Your Squad</span>
-            <div className={styles.eafcCardsRow}>
-              {squad.map((card, index) => {
-                const isDropped = drop.includes(card.id) || (expiringIds.has(card.id) && own[card.id] === 'go');
-                const isSwapTarget = !isDropped && needsSwap && activeSwapOut?.id === card.id;
-                let badge = null;
-                if (isDropped) badge = { kind: 'out', text: 'OUT' };
-                else if (isSwapTarget) badge = { kind: 'swap', text: 'SWAP' };
-                else if (index === 0) badge = { kind: 'igl', text: 'IGL' };
-                const years = state.contracts[card.id] ?? 1;
-                return (
-                  <div
-                    key={card.id}
-                    className={styles.windowSlot}
-                    data-dropped={isDropped || undefined}
-                    data-swap={isSwapTarget || undefined}
-                  >
-                    <div className={styles.slotCard} style={{ viewTransitionName: `card-${card.id}` }}>
-                      {badge && <span className={styles.cardBadge} data-kind={badge.kind}>{badge.text}</span>}
-                      <PlayerCard
-                        card={card}
-                        displayScale={squadScale}
-                        tilt={false}
-                        canDrag={false}
-                        pressScale={0.97}
-                        onClick={() => {
-                          if (isDropped) {
-                            toggleDrop(card.id);
-                          } else if (needsSwap) {
-                            playUiSound('select');
-                            setSwapOutId(card.id);
-                          } else {
-                            toggleDrop(card.id);
-                          }
-                        }}
-                      />
-                      {isSwapTarget && <span className={styles.brackets} data-swap="true" aria-hidden="true"><i /><i /><i /><i /></span>}
-                    </div>
-                    <span className={styles.years} role="img" aria-label={`${years} contract ${years === 1 ? 'year' : 'years'} left`}>
-                      {Array.from({ length: CONTRACT_MAX }, (_, y) => (
-                        <i key={y} data-on={y < years || undefined} data-last={years === 1 || undefined} />
-                      ))}
-                    </span>
-                  </div>
-                );
-              })}
-              {signed.map(card => (
-                <div key={card.id} className={styles.windowSlot} data-new="true">
-                  <div className={styles.slotCard} style={{ viewTransitionName: `card-${card.id}` }}>
-                    <span className={styles.cardBadge} data-kind="signed">SIGNED</span>
-                    <PlayerCard card={card} displayScale={squadScale} tilt={false} canDrag={false} pressScale={0.97} onClick={() => toggleBuy(card.id)} />
-                    <span className={styles.brackets} aria-hidden="true"><i /><i /><i /><i /></span>
-                  </div>
-                  <span className={styles.years}>
-                    {Array.from({ length: CONTRACT_MAX }, (_, y) => <i key={y} data-on="true" />)}
+                  <span className={styles.years} role="img" aria-label={`${years} contract ${years === 1 ? 'year' : 'years'} left`}>
+                    {Array.from({ length: CONTRACT_MAX }, (_, y) => (
+                      <i key={y} data-on={y < years || undefined} data-last={years === 1 || undefined} />
+                    ))}
                   </span>
                 </div>
-              ))}
-              {Array.from({ length: Math.max(0, max - activeSquad.length - signed.length) }, (_, index) => {
-                const isGhost = activeSquad.length + signed.length + index === ghostIndex && target && !target.locked;
-                return (
-                  <div key={`e${index}`} className={styles.windowSlot} data-ghost={isGhost || undefined}>
-                    {isGhost ? (
-                      <div className={styles.slotCard}>
-                        <span className={styles.cardBadge} data-kind="signed">NEXT</span>
-                        <PlayerCard card={target.card} displayScale={squadScale} tilt={false} canDrag={false} />
-                      </div>
-                    ) : (
-                      <BenchOpen scale={squadScale} />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        </div>
-      </Ground>
-      <footer className={styles.act}>
-        <div className={styles.notes} role="status">
-          {totals.undecided > 0 && <span data-block="true">{totals.undecided} expiring to decide</span>}
-          {drop.length > 0 && <span>{drop.length} released</span>}
-          {totals.trialists > 0 && <span>{totals.trialists} trialist{totals.trialists > 1 ? 's' : ''} will join</span>}
-        </div>
-        <div className={styles.actPair}>
-          <button type="button" className={styles.ghost} disabled={!totals.canClose} onClick={() => { playUiSound('lock_in'); onClose({ own, buy, drop }); }}>Start year {state.year + 1}</button>
-        </div>
-      </footer>
-    </div>
+              );
+            })}
+            {signed.map(card => (
+              <div key={card.id} className={styles.windowSlot} data-new="true">
+                <div className={styles.slotCard}>
+                  <span className={styles.cardBadge} data-kind="signed">SIGNED</span>
+                  <PlayerCard card={card} displayScale={squadScale} tilt={false} canDrag={false} pressScale={0.97} onClick={() => toggleBuy(card.id)} />
+                  <span className={styles.brackets} aria-hidden="true"><i /><i /><i /><i /></span>
+                </div>
+                <span className={styles.years}>
+                  {Array.from({ length: CONTRACT_MAX }, (_, y) => <i key={y} data-on="true" />)}
+                </span>
+              </div>
+            ))}
+            {Array.from({ length: Math.max(0, max - activeSquad.length - signed.length) }, (_, index) => {
+              const isGhost = activeSquad.length + signed.length + index === ghostIndex && target && !target.locked;
+              return (
+                <div key={`e${index}`} className={styles.windowSlot} data-ghost={isGhost || undefined}>
+                  {isGhost ? (
+                    <div className={styles.slotCard}>
+                      <span className={styles.cardBadge} data-kind="signed">NEXT</span>
+                      <PlayerCard card={target.card} displayScale={squadScale} tilt={false} canDrag={false} />
+                    </div>
+                  ) : (
+                    <BenchOpen scale={squadScale} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+      footer={(
+        <footer className={styles.act}>
+          <div className={styles.notes} role="status">
+            {totals.undecided > 0 && <span data-block="true">{totals.undecided} expiring to decide</span>}
+            {drop.length > 0 && <span>{drop.length} released</span>}
+            {totals.trialists > 0 && <span>{totals.trialists} trialist{totals.trialists > 1 ? 's' : ''} will join</span>}
+          </div>
+          <div className={styles.actPair}>
+            <button type="button" className={styles.ghost} disabled={!totals.canClose} onClick={() => { playUiSound('lock_in'); onClose({ own, buy, drop }); }}>Start year {state.year + 1}</button>
+          </div>
+        </footer>
+      )}
+    >
+      {tab === 'mine' && offers.mine.length > 0 ? (
+        <section className={styles.eafcStageRow}>
+          <div className={styles.expiring}>
+            {offers.mine.map(item => (
+              <div className={styles.expiringRow} key={item.card.id}>
+                <PlayerCard card={item.card} displayScale={cardScale} tilt={false} canDrag={false} />
+                <div className={styles.decide}>
+                  {item.suitor && <span className={styles.suitor}><Crest club={clubById(state, item.suitor.id)} size={22} /><span>wants them</span></span>}
+                  <button type="button" className={styles.small} data-on={own[item.card.id] === 'keep' || undefined} disabled={own[item.card.id] !== 'keep' && item.renew > totals.packs} aria-pressed={own[item.card.id] === 'keep'} onClick={() => toggleOwn(item.card.id, 'keep')}>
+                    <span>Renew</span><Packs n={item.renew} label={false} />
+                  </button>
+                  <button type="button" className={styles.small} data-on={own[item.card.id] === 'go' || undefined} aria-pressed={own[item.card.id] === 'go'} onClick={() => toggleOwn(item.card.id, 'go')}>
+                    <span>Let go</span><Packs n={`+${item.fee}`} label={false} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : (
+        <section className={styles.eafcStageRow}>
+          <div className={styles.eafcCardsRow}>
+            {visibleOffers.map(item => (
+              <MarketCard key={item.card.id} item={item} scale={cardScale} taken={buy.includes(item.card.id)} picked={target?.card.id === item.card.id} badge={badgeFor(item)} onPick={() => setPickId(item.card.id)} />
+            ))}
+          </div>
+        </section>
+      )}
+    </ManagementScreen>
   );
 }
 
@@ -1895,6 +1911,11 @@ export default function Club() {
   // Every visit opens on the landing: a new player learns what the mode is, a
   // returning one sees their club and Continue.
   const [screen, setScreen] = useState('landing');
+  const [trainingItem, setTrainingItem] = useState(null);
+  // With a chip pick waiting, the Inventory menu opens on the pick; its tab flips to the rest.
+  const [chipView, setChipView] = useState('pick');
+  // The menus' own tabs: a fresh visit, nothing carried over from the last one.
+  const goTab = (next) => { setTrainingItem(null); setChipView('pick'); setScreen(next); };
   const [prefs, setPrefs] = useState(loadOnboarding);
   // Where the primer and settings hand back to, since both open from more than one place.
   const [primerNext, setPrimerNext] = useState('start');
@@ -1914,13 +1935,7 @@ export default function Club() {
     if (signinResult) setParams({}, { replace: true });
   }, [signinResult, setParams]);
   const screenRef = useRef(screen);
-  // Screen changes morph: elements named the same on both screens (a player's
-  // card, the title, the packs, the action) travel to their new place.
-  const morph = (change) => {
-    if (reducedMotion || typeof document === 'undefined' || !document.startViewTransition) { change(); return; }
-    document.startViewTransition(() => flushSync(change));
-  };
-  const show = next => morph(() => setScreen(next));
+  const show = next => setScreen(next);
   useEffect(() => { screenRef.current = screen; });
   // Match music is fetched and decoded while the player is in the menus, so the
   // first match intro can start it on time.
@@ -1973,7 +1988,8 @@ export default function Club() {
   const found = () => (primerDue(prefs) ? openPrimer('start') : show('start'));
 
   // One first-week tip on the screen it explains, laid over that screen.
-  const withHint = (view, at) => {
+  // `place` says where the tip sits when one screen key covers two layouts (Inventory, chip pick).
+  const withHint = (view, at, place) => {
     const hint = hintFor(prefs, state, at);
     if (!hint) return view;
     return (
@@ -1982,6 +1998,7 @@ export default function Club() {
         <ClubHint
           key={hint}
           screen={hint}
+          place={place}
           onDismiss={() => updatePrefs(markHintSeen(prefs, hint))}
           onHintsOff={() => updatePrefs({ ...prefs, hints: false })}
         />
@@ -1990,72 +2007,50 @@ export default function Club() {
   };
 
   function start(seed, name, picks, crest, tone) {
-    morph(() => {
-      setState(newClub({ seed, name, picks, crest, tone, cards: allCards }));
-      setScreen('season');
-    });
+    setState(newClub({ seed, name, picks, crest, tone, cards: allCards }));
+    setScreen('season');
   }
 
   function finishMatch(outcome) {
-    // finishSeries and closeWindow ignore a repeat, so a double click is harmless.
-    morph(() => {
-      setState(current => finishSeries(current, outcome, allCards));
-      setScreen('result');
+    setState(current => {
+      if (!current || current.year !== state.year || current.week !== state.week || current.phase !== state.phase
+        || nextMatch(current)?.id !== nextMatch(state)?.id) return current;
+      return finishSeries(current, outcome, allCards);
     });
-  }
-
-  function trainPlayer(card, focus) {
-    morph(() => {
-      setState(train(state, card, focus));
-      setNotice(`${card.player} trained`);
-      setScreen('home');
-    });
+    setScreen('result');
   }
 
   function commitEvoPlayer(cardId, evoKey) {
-    morph(() => {
-      setState(current => commitEvolution(current, cardId, evoKey));
-      setNotice(`${cardById.get(cardId)?.player ?? 'Player'} started ${EVO_CHIPS[evoKey]?.name ?? 'Evolution'}`);
-      setScreen('home');
-    });
+    setTrainingItem(null);
+    setState(current => commitEvolution(current, cardId, evoKey));
+    setNotice(`${cardById.get(cardId)?.player ?? 'Player'} started ${EVO_CHIPS[evoKey]?.name ?? 'Evolution'}`);
+    setScreen('home');
   }
 
   function openThePack(kind) {
-    morph(() => {
-      setState(current => openPack(current, kind, allCards));
-      setScreen('open');
-    });
+    setState(current => openPack(current, kind, allCards));
+    setScreen('open');
   }
 
   function pickFromPack(id, releaseId) {
-    morph(() => {
-      setState(current => choosePick(current, id, releaseId));
-      setScreen('vault');
-    });
+    setState(current => choosePick(current, id, releaseId));
+    setScreen('vault');
   }
 
   function takeChip(uid, drop) {
-    morph(() => {
-      setState(current => chooseChip(current, uid, drop));
-      setScreen('home');
-    });
+    setState(current => chooseChip(current, uid, drop));
+    setScreen('home');
   }
 
-  function tapePlayer(card) {
-    morph(() => {
-      setState(spendTape(state, card));
-      setNotice(`${card.player} learned from a tape`);
-      setScreen('home');
-    });
+  function tapePlayer(card, key) {
+    setState(current => spendTape(current, card, key));
   }
 
   function closeTheWindow(decisions) {
     const next = closeWindow(state, decisions, allCards);
-    morph(() => {
-      setState(next);
-      // A closed window opens a new year, and a new year opens with its intro.
-      setScreen(next !== state && next.phase === 'league' && next.week === 0 ? 'season' : 'home');
-    });
+    setState(next);
+    // A closed window opens a new year, and a new year opens with its intro.
+    setScreen(next !== state && next.phase === 'league' && next.week === 0 ? 'season' : 'home');
   }
 
   function fresh() {
@@ -2106,12 +2101,13 @@ export default function Club() {
   }
   if (screen === 'start' || !state) return <Start onStart={start} onExit={() => show('landing')} exitLabel={t('Back')} scale={size.scale} />;
   if (screen === 'train') {
-    return withHint(<Train state={state} size={size} onBack={() => show('home')} onTrain={trainPlayer} onTape={tapePlayer} onEvo={commitEvoPlayer} onBuy={() => setState(buySession(state))} canBuy={canBuySession(state)} />, 'train');
+    return withHint(<Train state={state} go={goTab} size={size} initialFocus={trainingItem?.kind === 'evo' ? 'evo' : trainingItem?.kind === 'tape' ? (trainingItem.key ? `tape:${trainingItem.key}` : 'tape') : null} initialEvoKey={trainingItem?.kind === 'evo' ? trainingItem.key : null} onBack={() => { setTrainingItem(null); show(trainingItem ? 'chips' : 'home'); }} onTape={tapePlayer} onEvo={commitEvoPlayer} />, 'train');
   }
   if (screen === 'open' && state.opening) return <OpenPack key={state.opens} state={state} size={size} onChoose={pickFromPack} />;
-  if (screen === 'vault') return withHint(<Vault state={state} onBack={() => show('home')} onOpenPack={openThePack} onWindow={state.phase === 'review' ? () => show('window') : null} />, 'vault');
+  if (screen === 'vault') return withHint(<Vault state={state} go={goTab} onBack={() => show('home')} onOpenPack={openThePack} onWindow={state.phase === 'review' ? () => show('window') : null} />, 'vault');
   if (screen === 'chips') {
-    return withHint(<ChipPick key={state.chipOffer?.attempt ?? 'hand'} state={state} squad={squadCards(state, allCards).slice(0, STARTERS)} onBack={() => show('home')} onTake={takeChip} onPass={() => morph(() => { setState(current => chooseChip(current, null)); setScreen('home'); })} onReroll={() => setState(current => rerollChips(current))} />, 'chips');
+    if (!state.chipOffer || chipView === 'inventory') return withHint(<Inventory state={state} go={goTab} onPick={() => setChipView('pick')} size={size} onBack={() => show('home')} onTraining={(item) => { setTrainingItem(item); show('train'); }} onEquip={(uid, equipped) => { playUiSound('chip_lift'); setState(current => setTacticEquipped(current, uid, equipped)); }} />, 'chips');
+    return withHint(<ChipPick key={state.chipOffer.attempt} state={state} go={goTab} onInventory={() => setChipView('inventory')} squad={squadCards(state, allCards).slice(0, STARTERS)} onBack={() => show('home')} onTake={takeChip} onPass={() => { setState(current => chooseChip(current, null)); setScreen('home'); }} onReroll={() => setState(current => rerollChips(current))} />, 'chips', 'chipPick');
   }
   if (screen === 'season') {
     // The ground is the first match's map, as it will be on the hub.
@@ -2123,10 +2119,10 @@ export default function Club() {
     return (
       <CrestEdit
         state={state}
-        onDone={(style, tone) => morph(() => {
+        onDone={(style, tone) => {
           setState(current => setClubCrest(current, style, tone));
           setScreen('home');
-        })}
+        }}
       />
     );
   }
@@ -2135,15 +2131,15 @@ export default function Club() {
       <ClubRename
         state={state}
         onBack={() => show('home')}
-        onRename={(name) => morph(() => {
+        onRename={(name) => {
           setState(current => renameClub(current, name));
           setNotice(t('Renamed to {name}', { name: cleanName(name) }));
           setScreen('home');
-        })}
+        }}
       />
     );
   }
-  if (screen === 'squad') return withHint(<Squad state={state} size={size} onBack={() => show('home')} onMove={(from, to) => morph(() => setState(current => moveSquad(current, from, to)))} />, 'squad');
+  if (screen === 'squad') return withHint(<Squad state={state} go={goTab} size={size} onVault={() => show('vault')} onBack={() => show('home')} onMove={(from, to) => setState(current => moveSquad(current, from, to))} />, 'squad');
   const match = nextMatch(state);
   if (screen === 'match' && match) {
     const club = clubById(state, match.id);
@@ -2171,9 +2167,8 @@ export default function Club() {
       />
     );
   }
-  // After a win the chip pick is the one decision left, so Continue leads into it.
-  if (screen === 'result') return <Result state={state} size={size} onContinue={() => show(state.chipOffer && state.last?.won ? 'chips' : screenFor(state))} />;
-  if (screen === 'league') return withHint(<League state={state} onBack={() => show('home')} />, 'league');
+  if (screen === 'result') return <Result state={state} size={size} onContinue={() => show(screenFor(state))} />;
+  if (screen === 'league') return withHint(<League state={state} go={goTab} onBack={() => show('home')} />, 'league');
   if (screen === 'over' || state.phase === 'over') return <Over state={state} onAgain={fresh} />;
   if (screen === 'window') return <Window state={state} size={size} onClose={closeTheWindow} />;
   if (screen === 'review' || !match) return <Review state={state} size={size} onNext={() => show('window')} />;

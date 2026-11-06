@@ -4,14 +4,16 @@ import assert from 'node:assert/strict';
 import allCards from '../shared/src/data/cards.json' with { type: 'json' };
 import { CLUB_SAVE_KEY, loadClub } from '../src/lib/clubSave.js';
 import {
-  GOLD_PITY, PACK_VALUE, grantPacks, packValue, payPacks, settlePacks, squadMax,
+  GOLD_PITY, GOLD_RATING, PACK_VALUE, grantPacks, packValue, payPacks, settlePacks, squadMax,
 } from '../src/engine/club/economy.js';
 import {
-  buySession, canBuySession, canRename, choosePick, cleanName, renameClub, chooseChip, openBlocker, openPack, rerollChips, useTape,
+  canRename, choosePick, cleanName, renameClub, chooseChip, openBlocker, openPack, rerollChips, setTacticEquipped, useTape,
 } from '../src/engine/club/rewards.js';
 import {
-  STARTERS, WEEKS, draftPack, finishSeries, newClub, nextMatch, rollChipOffer, train, trainingOffer, clubCard, squadCards,
+  STARTERS, WEEKS, draftPack, finishSeries, newClub, nextMatch, rollChipOffer, rollSeasonEvo, trainingOffer, clubCard, squadCards,
 } from '../src/engine/club/season.js';
+
+import { rollTapes } from '../src/engine/club/tapes.js';
 
 function draft(seed = 7) {
   const picks = [];
@@ -119,7 +121,7 @@ test('gold pity: the sixth dry silver pack carries a gold card', () => {
     const dry = state.pity.gold;
     state = openPack(state, 'silver', allCards);
     const { guaranteed, ids } = state.opening;
-    const hasGold = ids.some(id => allCards.find(card => card.id === id).rating > 80);
+    const hasGold = ids.some(id => allCards.find(card => card.id === id).rating >= GOLD_RATING);
     if (dry >= GOLD_PITY - 1) assert.ok(guaranteed || hasGold, 'pity pack holds a gold');
     golds.push(hasGold);
     state = choosePick(state, null);
@@ -132,7 +134,7 @@ test('gold pity: the sixth dry silver pack carries a gold card', () => {
 test('icons and gold packs deal only their own kind', () => {
   const state = { ...fresh(), gold: 1, icons: 1, reputation: 99 };
   const gold = openPack(state, 'gold', allCards);
-  assert.ok(gold.opening.ids.every(id => allCards.find(card => card.id === id).rating > 80));
+  assert.ok(gold.opening.ids.every(id => allCards.find(card => card.id === id).rating >= GOLD_RATING));
   const icon = openPack(state, 'icons', allCards);
   assert.ok(icon.opening.ids.every(id => allCards.find(card => card.id === id).league === 'icon'));
   assert.equal(icon.icons, 0);
@@ -144,81 +146,126 @@ test('a club that cannot reach icons still gets the weakest ones, never an empty
   assert.equal(icon.opening.ids.length, 3);
 });
 
-test('a win offers three different chips and a deeper stage guarantees a better one', () => {
-  let state = fresh();
-  state = finishSeries(state, series(true), allCards);
-  assert.equal(state.chipOffer.options.length, 3);
-  assert.equal(new Set(state.chipOffer.options.map(option => option.key)).size, 3);
-  for (const stage of ['Semifinal', 'Final']) {
-    for (let attempt = 0; attempt < 30; attempt += 1) {
-      const offer = rollChipOffer(state, stage, attempt);
-      const best = Math.max(...offer.options.map(option => ['common', 'uncommon', 'rare'].indexOf(chipTier(option.key))));
-      assert.ok(best >= (stage === 'Final' ? 2 : 1));
-    }
-  }
-  const lost = finishSeries(fresh(), series(false), allCards);
-  assert.equal(lost.chipOffer, null);
-});
-
-test('picking a chip adds it to the hand, and a full hand must drop one', () => {
-  let state = finishSeries(fresh(), series(true), allCards);
-  const chip = state.chipOffer.options[0];
-  const picked = chooseChip(state, chip.uid);
-  assert.ok(picked.hand.some(card => card.uid === chip.uid));
-  assert.equal(picked.chipOffer, null);
-  const held = Array.from({ length: 7 }, (_, index) => ({ uid: `held${index}`, key: 'pocket', source: 'owned' }));
-  state = { ...state, hand: held };
-  assert.equal(chooseChip(state, chip.uid), state);
-  const swapped = chooseChip(state, chip.uid, 'held3');
+test('series bank tapes and a win adds a tactic to a full club reserve', () => {
+  const hand = Array.from({ length: 7 }, (_, index) => ({ uid: `held${index}`, key: 'pocket', source: 'owned' }));
+  const state = { ...fresh(), hand };
+  const won = finishSeries(state, { ...series(true), hand }, allCards);
+  assert.equal(won.chipOffer, null);
+  assert.equal(won.packs, state.packs + 1);
+  assert.deepEqual(won.hand, hand);
+  assert.deepEqual(won.tacticReserve, [won.last.tactic]);
+  assert.equal(Object.values(won.trainingTapes).reduce((a, b) => a + b, 0), won.last.tapes.length);
+  assert.equal(setTacticEquipped(won, won.last.tactic.uid, true), won);
+  const swapped = setTacticEquipped(setTacticEquipped(won, hand[0].uid, false), won.last.tactic.uid, true);
   assert.equal(swapped.hand.length, 7);
-  assert.ok(!swapped.hand.some(card => card.uid === 'held3'));
-  assert.equal(chooseChip(state, null).chipOffer, null);
+  assert.ok(swapped.hand.some(chip => chip.uid === won.last.tactic.uid));
+  assert.deepEqual(swapped.tacticReserve, [hand[0]]);
+  const lost = finishSeries(swapped, { ...series(false), hand: [{ uid: 'loan', key: 'pocket', source: 'igl' }] }, allCards);
+  assert.deepEqual(lost.hand, []);
+  assert.deepEqual(lost.tacticReserve, swapped.tacticReserve);
+  assert.ok(lost.last.tapes.length >= 1);
+  assert.equal(lost.packs, won.packs);
 });
 
-test('rerolling a chip offer costs a pack and deals new chips', () => {
-  const state = finishSeries(fresh(), series(true), allCards);
-  const next = rerollChips(state);
-  assert.equal(packValue(next), packValue(state) - 1);
-  assert.notDeepEqual(next.chipOffer.options.map(option => option.key), state.chipOffer.options.map(option => option.key));
-  const broke = { ...state, packs: 0, gold: 0, icons: 0 };
-  assert.equal(rerollChips(broke), broke);
+test('playoff wins bank a better tactic, with no regular series Evo roll', () => {
+  const state = playYear(fresh(), true);
+  assert.equal(chipTier(state.last.tactic.key), 'rare');
+  assert.equal(state.chipOffer, null);
+  assert.ok(state.evoInventory.length <= 1);
+  assert.deepEqual(state.evoInventory, state.last.evoReward ? [state.last.evoReward] : []);
 });
 
-test('a clean sweep earns a second session next week, and training spends one at a time', () => {
-  let state = finishSeries(fresh(), series(true, 3, true), allCards);
-  assert.equal(state.trainSlot, 2);
-  const card = squadCards(state, allCards)[0];
-  state = train(state, card, 'stat');
-  assert.equal(state.trainSlot, 1);
-  state = train(state, squadCards(state, allCards)[1], 'stat');
-  assert.equal(state.trainSlot, 0);
-  const narrow = finishSeries(fresh(), series(true, 3, false), allCards);
-  assert.equal(narrow.trainSlot, 1);
-});
-
-test('a second session can be bought for a pack, once', () => {
+test('an offer in a legacy save can still be claimed or rerolled', () => {
   const state = fresh();
-  assert.equal(canBuySession(state), true);
-  const bought = buySession(state);
-  assert.equal(bought.trainSlot, 2);
-  assert.equal(packValue(bought), packValue(state) - 1);
-  assert.equal(canBuySession(bought), false);
-  assert.equal(buySession(bought), bought);
+  const withOffer = { ...state, chipOffer: rollChipOffer(state, 'Week 1') };
+  const chip = withOffer.chipOffer.options.find(option => !option.evo);
+  const picked = chooseChip(withOffer, chip.uid);
+  assert.deepEqual(picked.hand, [chip]);
+  assert.equal(picked.chipOffer, null);
+  const rerolled = rerollChips(withOffer);
+  assert.equal(packValue(rerolled), packValue(state) - 1);
+  assert.equal(rerolled.chipOffer.attempt, 1);
 });
 
-test('a skill tape finishes a session without using the week', () => {
+test('tape count and type boundaries distinguish wins from losses', () => {
+  const at = (quantity, won, type = 0) => {
+    const rolls = [quantity, type, 0, type, 0, type, 0];
+    return rollTapes(() => rolls.shift(), won);
+  };
+  assert.deepEqual(at(0.79, false), ['aim']);
+  assert.deepEqual(at(0.8, false, 0.8), ['flex', 'flex']);
+  assert.equal(at(0.19, true).length, 1);
+  assert.equal(at(0.2, true).length, 2);
+  assert.equal(at(0.8, true).length, 3);
+});
+
+test('season Evo roll keeps Apex exclusive to International titles', () => {
+  const at = (roll, champion, tier) => {
+    const rolls = [roll, 0];
+    return rollSeasonEvo(() => rolls.shift(), champion, tier);
+  };
+  assert.equal(at(0.24, false, 2), 'glacier');
+  assert.equal(at(0.25, false, 2), null);
+  assert.equal(at(0.29, true, 1), 'clutch_factor');
+  assert.equal(at(0.30, true, 1), null);
+  assert.equal(at(0.049, true, 2), 'apex_predator');
+  assert.equal(at(0.05, true, 2), 'clutch_factor');
+  assert.equal(at(0.35, true, 2), null);
+});
+
+test('season settlement preserves existing career gains without advancing age', () => {
+  const state = fresh();
+  const id = state.squad[0];
+  const veteran = { p: 120, d: 2, a: 3, m: 2, s: 1 };
+  const next = playYear({ ...state, dev: { [id]: veteran } }, false);
+  assert.equal(next.phase, 'review');
+  for (const [key, value] of Object.entries(veteran)) assert.equal(next.dev[id][key], value);
+  assert.equal(next.dev[id].f, 0);
+});
+
+test('a clean sweep grants tape loot without creating a weekly training slot', () => {
+  const state = finishSeries(fresh(), series(true, 3, true), allCards);
+  assert.ok(state.last.tapes.length > 0);
+  assert.equal(Object.hasOwn(state, 'trainSlot'), false);
+});
+
+test('a legacy generic skill tape still advances the player offered skill', () => {
   let state = fresh();
   const card = squadCards(state, allCards).find(item => trainingOffer(state, clubCard(state, item)).skill);
   state = { ...state, tapes: 2 };
   const before = trainingOffer(state, card);
   const next = useTape(state, card);
   assert.equal(next.tapes, 1);
-  assert.equal(next.trainSlot, state.trainSlot);
   assert.equal(trainingOffer(next, card).sessions, before.sessions + 1);
   assert.equal(useTape({ ...state, tapes: 0 }, card).tapes, 0);
 });
 
-test('the bench earns a share of experience, and prospects learn faster', () => {
+test('targeted tapes train a chosen attribute and stop at its cap', () => {
+  const freshState = fresh();
+  const raw = allCards.find(item => item.id === freshState.squad[0]);
+  const state = { ...freshState, trainingTapes: { aim: 2, flex: 1 },
+    training: { [raw.id]: { stats: { aim: 6 }, learning: { key: 'flick', sessions: 1 } } } };
+  const card = clubCard(state, raw);
+  const trained = useTape(state, card, 'aim');
+  assert.equal(trained.training[raw.id].stats.aim, 8);
+  assert.equal(trained.trainingTapes.aim, 1);
+  assert.equal(useTape(trained, clubCard(trained, raw), 'aim'), trained);
+  assert.equal(useTape(trained, clubCard(trained, raw), 'flex'), trained);
+});
+
+test('an 80 OVR development card uses Gold metal even when tired', () => {
+  const state = fresh();
+  const raw = { ...allCards.find(item => item.id === state.squad[0]), rating: 79, tier: 'silver', palette: 'silver' };
+  const promoted = { ...state, dev: { [raw.id]: { d: 1, f: 100 } } };
+  const card = clubCard(promoted, raw);
+  assert.ok(card.rating < 80);
+  assert.equal(card.developmentRating, 80);
+  assert.equal(card.tier, 'gold');
+  assert.equal(card.palette, 'gold');
+  assert.equal(clubCard(state, raw).tier, 'silver');
+});
+
+test('the bench earns a share of starter experience', () => {
   const squad = draft();
   const extra = allCards.find(card => !squad.includes(card.id) && card.league !== 'icon' && card.rating < 76);
   let state = fresh();

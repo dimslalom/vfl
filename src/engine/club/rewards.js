@@ -5,12 +5,14 @@
 // middle of a pack can't lose or reroll it.
 
 import { mulberry32, pickN } from '../../../shared/src/engine/perfectRun.js';
-import { bankTactics } from '../endless/seriesCards.js';
+import { STAT_KEYS } from '../../../shared/src/data/statFields.js';
+import { bankTactics, TACTIC_HAND_MAX } from '../endless/seriesCards.js';
 import { maxSignableRating } from '../endless/stature.js';
 import {
-  GOLD_PITY, GOLD_RATING, NAME_MAX, RENAME_PRICE, REROLL_PRICE, SESSION_PRICE, TAPE_MAX, TRAIN_SLOTS_MAX, payPacks, squadMax, stock,
+  GOLD_PITY, GOLD_RATING, NAME_MAX, RENAME_PRICE, REROLL_PRICE, TAPE_MAX, payPacks, squadMax, stock,
 } from './economy.js';
-import { CONTRACT_MAX, SKILL_SESSIONS, rollChipOffer, squadCards, trainingOffer } from './season.js';
+import { CONTRACT_MAX, SKILL_SESSIONS, STAT_CAP, STAT_STEP, rollChipOffer, squadCards, trainingOffer } from './season.js';
+import { TRAINING_SKILLS } from './tapes.js';
 import { LOGO_STYLES, LOGO_TONES } from './logo.js';
 
 export const PICKS = 3;
@@ -24,7 +26,7 @@ function hash(...parts) {
   return value >>> 0;
 }
 
-const isGold = card => card.rating > GOLD_RATING;
+const isGold = card => card.rating >= GOLD_RATING;
 const strongest = (a, b) => b.rating - a.rating || a.id.localeCompare(b.id);
 
 // ── packs ───────────────────────────────────────────────────────────────────
@@ -140,6 +142,19 @@ export function rerollChips(state) {
   return { ...paid, chipOffer: rollChipOffer(state, state.chipOffer.stage, state.chipOffer.attempt + 1) };
 }
 
+export function setTacticEquipped(state, uid, equipped) {
+  const hand = state.hand ?? [];
+  const reserve = state.tacticReserve ?? [];
+  const from = equipped ? reserve : hand;
+  const chip = from.find(item => item.uid === uid);
+  if (!chip || (equipped && hand.length >= TACTIC_HAND_MAX)) return state;
+  return {
+    ...state,
+    hand: equipped ? [...hand, chip] : hand.filter(item => item.uid !== uid),
+    tacticReserve: equipped ? reserve.filter(item => item.uid !== uid) : [...reserve, chip],
+  };
+}
+
 // ── the club's name ─────────────────────────────────────────────────────────
 
 /** A club name as stored: trimmed, single-spaced, at most NAME_MAX characters. */
@@ -168,27 +183,27 @@ export function setClubCrest(state, style, tone) {
 
 // ── training ────────────────────────────────────────────────────────────────
 
-export function canBuySession(state) {
-  return (state.phase === 'league' || state.phase === 'playoffs')
-    && state.trainSlot < TRAIN_SLOTS_MAX && payPacks(state, SESSION_PRICE) !== null;
-}
-
-/** A second session this week, for a pack. */
-export function buySession(state) {
-  if (!canBuySession(state)) return state;
-  return { ...payPacks(state, SESSION_PRICE), trainSlot: state.trainSlot + 1 };
-}
-
-/** Spend a skill tape on the session a player is learning, without using the week's slot. */
-export function useTape(state, card) {
-  if (!(state.tapes > 0)) return state;
-  const offer = trainingOffer(state, card);
-  if (!offer.skill) return state;
+/** A tape funds one targeted session. Old skill tapes still advance the offered skill. */
+export function useTape(state, card, key = null) {
+  const inventory = state.trainingTapes ?? {};
+  if (key !== null && !STAT_KEYS.includes(key) && !TRAINING_SKILLS.includes(key)) return state;
+  if (!state.squad.includes(card.id) || (key === null ? !(state.tapes > 0) : !(inventory[key] > 0))) return state;
+  const offer = trainingOffer(state, card, key);
   const entry = { stats: {}, skills: [], ...state.training[card.id] };
-  const sessions = offer.sessions + 1;
-  const learned = sessions >= SKILL_SESSIONS;
-  const updated = learned
-    ? { ...entry, skills: [...entry.skills, offer.skill], learning: null }
-    : { ...entry, learning: { key: offer.skill, sessions } };
-  return { ...state, tapes: state.tapes - 1, training: { ...state.training, [card.id]: updated } };
+  if (STAT_KEYS.includes(key)) {
+    if (offer.statCapped) return state;
+    entry.stats = { ...entry.stats, [key]: Math.min(STAT_CAP, (entry.stats[key] ?? 0) + STAT_STEP) };
+  } else {
+    if (!offer.skill) return state;
+    const sessions = offer.sessions + 1;
+    if (sessions >= SKILL_SESSIONS) {
+      entry.skills = [...entry.skills, offer.skill];
+      entry.learning = null;
+    } else {
+      entry.learning = { key: offer.skill, sessions };
+    }
+  }
+  const training = { ...state.training, [card.id]: entry };
+  if (key === null) return { ...state, tapes: state.tapes - 1, training };
+  return { ...state, trainingTapes: { ...inventory, [key]: inventory[key] - 1 }, training };
 }

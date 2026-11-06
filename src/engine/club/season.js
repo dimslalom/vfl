@@ -8,18 +8,19 @@
 // has one to three years left, and anyone on their last year can move. Nothing
 // in the window is a dice roll. A rival takes your player only if you let them.
 
-import { effectiveCard, emptyDev, tickCareerYear, tickFatigue, careerStage } from '../../../shared/src/engine/endless/career.js';
+import { effectiveCard, tickFatigue } from '../../../shared/src/engine/endless/career.js';
+import { STAT_KEYS } from '../../../shared/src/data/statFields.js';
 import { eligibleOrgs, mulberry32, pickN, samplePack } from '../../../shared/src/engine/perfectRun.js';
 import { chipTier } from '../board/board.js';
 import { TIERS, reputationDelta, tierPools } from '../endless/ladder.js';
 import { releaseFee, signingCost } from '../endless/market.js';
 import { maxSignableRating } from '../endless/stature.js';
-import { tickWorldYear } from '../endless/world.js';
 import { createTacticInstance, TACTIC_LIST } from '../endless/seriesCards.js';
 import {
-  BENCH_XP, TITLES_PER_ICON, TRAIN_SLOTS_MAX, clubFatigueExtra, grantPacks, packValue, rewardDefaults, withNews,
+  BENCH_XP, GOLD_RATING, INTERNATIONAL_TIER, TITLES_PER_ICON, clubFatigueExtra, grantPacks, packValue, rewardDefaults, withNews,
   settlePacks, squadMax,
 } from './economy.js';
+import { bankTapes, rollTapes, TRAINING_SKILLS } from './tapes.js';
 
 export const LEAGUE_SIZE = 6;
 export const WEEKS = LEAGUE_SIZE - 1;
@@ -43,8 +44,6 @@ const DRAFT_MAX_RATING = 79;
 const DRAFT_MIN_RATING = 68;
 // A last place in the bottom tier is a warning; two in a row ends the run.
 const SACKED_AFTER = 2;
-const STAT_KEYS = ['aim', 'positioning', 'ability', 'mentality', 'synergy'];
-const BASE_SKILL_KEYS = ['flex', 'flick', 'one_trick', 'mastermind', 'aura'];
 const ROUND_EDGE_PER_POINT = 0.04;
 const YOU = 'you';
 
@@ -137,10 +136,16 @@ export function clubCard(state, card) {
   // The board scores stats, so growth has to reach them to count in a match.
   const tired = Math.round(clubFatigueExtra(state.dev[card.id]));
   const stats = Object.fromEntries(STAT_KEYS.map(key => [key, Math.round(developed.stats[key] + growth + (training?.stats?.[key] ?? 0) - tired)]));
-  const evoOvrGain = Math.round(Object.values(training?.stats ?? {}).reduce((a, b) => a + b, 0) / STAT_KEYS.length);
+  const trainingOvr = Math.round(Object.values(training?.stats ?? {}).reduce((a, b) => a + b, 0) / STAT_KEYS.length);
+  const developmentRating = (tired ? effectiveCard(card, { ...state.dev[card.id], f: 0 }).rating : developed.rating) + trainingOvr;
+  const regularTier = card.league !== 'icon' && ['bronze', 'silver', 'gold'].includes(card.tier);
+  const tier = regularTier ? (developmentRating >= GOLD_RATING ? 'gold' : developmentRating >= 70 ? 'silver' : 'bronze') : card.tier;
   return {
     ...developed,
-    rating: developed.rating - tired + evoOvrGain,
+    rating: developed.rating - tired + trainingOvr,
+    developmentRating,
+    tier,
+    palette: tier === card.tier ? card.palette : tier,
     stats,
     learned: training?.skills ?? [],
     evoTheme: training?.evoTheme ?? null,
@@ -216,7 +221,6 @@ function startYear(state, cards) {
     rivals,
     phase: 'league',
     week: 0,
-    trainSlot: 1,
     clubs,
     fixtures: roundRobin(ids),
     table: Object.fromEntries(ids.map(id => [id, { w: 0, l: 0, rd: 0 }])),
@@ -252,7 +256,6 @@ export function newClub({ seed, name, picks, cards, crest, tone }) {
     history: [],
     seriesWon: 0,
     roundsWon: 0,
-    yearsAtClub: {},
     news: [],
   };
   return startYear(base, cards);
@@ -347,13 +350,12 @@ function growSquad(state, results, cards) {
   state.squad.forEach((id, index) => {
     const card = lookup.get(id);
     const started = index < STARTERS;
-    const current = dev[id] ?? emptyDev(card);
+    const current = dev[id] ?? {};
     let entry = tickFatigue(current, { started });
-    const prospect = careerStage(state.seed, card, entry) === 'prospect';
     const isMvp = started && card.id === mvp;
-    // The bench learns from watching: a share of what a starter earns, prospects twice as fast.
+    // The bench learns from watching: a share of what a starter earns.
     const base = 10 + lanes * 2 + (isMvp ? 10 : 0);
-    const gain = Math.round(base * (started ? 1 : BENCH_XP) * (prospect ? 2 : 1));
+    const gain = Math.round(base * (started ? 1 : BENCH_XP));
     const total = (xp[id] ?? 0) + gain;
     const points = Math.floor(total / XP_PER_POINT);
     if (points) entry = { ...entry, d: (entry.d ?? 0) + points };
@@ -376,6 +378,27 @@ function mostValuable(results) {
 // A win offers three chips. The deeper the stage, the better the best of them.
 const CHIP_FLOOR = { Semifinal: 'uncommon', Final: 'rare' };
 const TIER_ORDER = ['common', 'uncommon', 'rare'];
+
+function rollTactic(state, stage) {
+  const rng = rngFor(state, 'tactic-loot', state.year, state.week, stage);
+  const floor = TIER_ORDER.indexOf(CHIP_FLOOR[stage] ?? 'common');
+  const pool = TACTIC_LIST.flatMap(tactic => {
+    const tier = TIER_ORDER.indexOf(chipTier(tactic.key));
+    if (tier < floor) return [];
+    return tier === 0 ? [tactic.key, tactic.key] : [tactic.key];
+  });
+  return createTacticInstance(rng, pool[Math.floor(rng() * pool.length)]);
+}
+
+export function rollSeasonEvo(rng, champion, tier) {
+  const roll = rng();
+  const apexChance = champion && tier === INTERNATIONAL_TIER ? 0.05 : 0;
+  const regularChance = champion ? 0.30 : 0.25;
+  if (roll < apexChance) return 'apex_predator';
+  if (roll >= apexChance + regularChance) return null;
+  const pool = EVO_KEYS.filter(key => EVO_CHIPS[key].tier === (champion ? 'rare' : 'common'));
+  return pool[Math.floor(rng() * pool.length)];
+}
 
 export function rollChipOffer(state, stage, attempt = 0) {
   const floor = CHIP_FLOOR[stage] ?? 'common';
@@ -502,14 +525,27 @@ function afterSeries(state, { won, results, hand }, cards, opponentId, stage) {
   const roundsWon = results.filter(round => round.winA).length;
   const { dev, xp, growth, mvp } = growSquad(state, results, cards);
   const { activeEvo, training, evoProgress } = processActiveEvo(state, { won, mvp, results });
+  const tapes = rollTapes(rngFor(state, 'tape-loot', state.year, state.week, stage), won);
+  const tactic = won ? rollTactic(state, stage) : null;
+  // Board refills are temporary. Only chips equipped from the club can carry over.
+  const equipped = new Set((state.hand ?? []).map(chip => chip.uid));
+  const surviving = (hand ?? state.hand ?? []).filter(chip => equipped.has(chip.uid));
+  const developed = { ...state, dev, training };
+  const changes = growth.map(row => {
+    const card = cards.find(item => item.id === row.id);
+    const before = clubCard(state, card);
+    const after = clubCard(developed, card);
+    return { ...row, ovrGain: after.developmentRating - before.developmentRating, tier: before.tier === after.tier ? null : after.tier };
+  });
   return {
     ...state,
     dev,
     xp,
-    hand,
+    hand: surviving,
+    tacticReserve: tactic ? [...(state.tacticReserve ?? []), tactic] : state.tacticReserve ?? [],
+    trainingTapes: bankTapes(state.trainingTapes, tapes),
     training,
     activeEvo,
-    chipOffer: won ? rollChipOffer(state, stage) : state.chipOffer,
     packs: state.packs + (won ? 1 : 0),
     seriesWon: state.seriesWon + (won ? 1 : 0),
     roundsWon: state.roundsWon + roundsWon,
@@ -519,10 +555,12 @@ function afterSeries(state, { won, results, hand }, cards, opponentId, stage) {
       opponent: opponentId,
       stage,
       rounds: results.map(({ map, a, b, winA }) => ({ map, a, b, winA })),
-      growth,
+      growth: changes,
       mvp,
       evoProgress,
       packs: won ? 1 : 0,
+      tapes,
+      tactic,
     },
   };
 }
@@ -562,12 +600,6 @@ function settleIfDone(state, cards) {
   return simmed.playoffs.final?.winner ? settleYear(simmed, cards) : simmed;
 }
 
-/** A clean sweep earns a second training session the next week. */
-function nextSessions({ won, results }) {
-  const sweep = won && results.length >= 2 && results.every(round => round.winA);
-  return sweep ? TRAIN_SLOTS_MAX : 1;
-}
-
 /** Record the series you just played and move the year along. */
 export function finishSeries(state, outcome, cards) {
   const match = nextMatch(state);
@@ -584,7 +616,7 @@ export function finishSeries(state, outcome, cards) {
       table = recordResult(table, a, b, score.a, score.b);
     }
     const week = state.week + 1;
-    const next = { ...played, table, week, trainSlot: nextSessions(outcome) };
+    const next = { ...played, table, week };
     if (week < WEEKS) return next;
     const playoffs = startPlayoffs(next, cards);
     return playoffs.playoffs.seeds.includes(YOU) ? simPlayoffs(playoffs, cards) : settleIfDone(playoffs, cards);
@@ -595,25 +627,27 @@ export function finishSeries(state, outcome, cards) {
   const nextPlayoffs = match.bestOf === 5
     ? { ...played.playoffs, final: { ...final, winner } }
     : { ...played.playoffs, semis: semis.map(item => (item.ids.includes(YOU) ? { ...item, winner } : item)) };
-  return settleIfDone({ ...played, trainSlot: nextSessions(outcome), playoffs: nextPlayoffs }, cards);
+  return settleIfDone({ ...played, playoffs: nextPlayoffs }, cards);
 }
 
 // ── training ────────────────────────────────────────────────────────────────
 
-/** This week's three choices for a player: a stat, a skill and rest. */
-export function trainingOffer(state, card) {
+/** Preview a tape's target. Generic skill tapes use the player's current skill offer. */
+export function trainingOffer(state, card, target = null) {
   const today = hash(state.seed, card.id, state.year, state.week);
   const entry = state.training[card.id] ?? {};
-  const stat = STAT_KEYS[today % STAT_KEYS.length];
-  const owned = BASE_SKILL_KEYS.filter(key => card.learned?.includes(key) || card.specialties?.some?.(spec => spec.key === key));
-  const open = BASE_SKILL_KEYS.filter(key => !owned.includes(key));
-  const skill = entry.learning?.key ?? (entry.skills?.length ? null : open[today % Math.max(open.length, 1)] ?? null);
+  const stat = STAT_KEYS.includes(target) ? target : STAT_KEYS[today % STAT_KEYS.length];
+  const open = TRAINING_SKILLS.filter(key => !card.learned?.includes(key)
+    && !card.specialties?.some(spec => (spec.key ?? spec) === key));
+  const canLearn = Boolean(entry.learning?.key) || !entry.skills?.length;
+  const skill = !canLearn ? null : TRAINING_SKILLS.includes(target)
+    ? (open.includes(target) && (!entry.learning || entry.learning.key === target) ? target : null)
+    : entry.learning?.key ?? open[today % Math.max(open.length, 1)] ?? null;
   return {
     stat,
     statCapped: (entry.stats?.[stat] ?? 0) >= STAT_CAP,
     skill,
     sessions: entry.learning?.sessions ?? 0,
-    fatigue: state.dev[card.id]?.f ?? 0,
   };
 }
 
@@ -633,7 +667,7 @@ export function isEligibleForEvo(card, evoKey) {
 }
 
 export function commitEvolution(state, cardId, evoKey) {
-  if (!state.trainSlot || state.trainSlot <= 0) return state;
+  if (!state.squad.includes(cardId)) return state;
   if (!state.evoInventory?.includes(evoKey)) return state;
   if (state.activeEvo) return state; // Only 1 active evo at a time across the club
 
@@ -663,35 +697,10 @@ export function commitEvolution(state, cardId, evoKey) {
 
   return {
     ...state,
-    trainSlot: Math.max(0, state.trainSlot - 1),
     evoInventory: nextInventory,
     activeEvo,
     training: nextTraining,
   };
-}
-
-/** Spend the week's slot. A skill takes three sessions; a stat lands at once. */
-export function train(state, card, focus) {
-  if (!state.trainSlot) return state;
-  const offer = trainingOffer(state, card);
-  const entry = { stats: {}, skills: [], ...state.training[card.id] };
-  const done = next => ({ ...next, trainSlot: Math.max(0, state.trainSlot - 1) });
-  if (focus === 'rest') {
-    const dev = { ...state.dev[card.id], f: 0 };
-    return done({ ...state, dev: { ...state.dev, [card.id]: dev } });
-  }
-  if (focus === 'stat') {
-    if (offer.statCapped) return state;
-    const stats = { ...entry.stats, [offer.stat]: (entry.stats[offer.stat] ?? 0) + STAT_STEP };
-    return done({ ...state, training: { ...state.training, [card.id]: { ...entry, stats } } });
-  }
-  if (!offer.skill) return state;
-  const sessions = offer.sessions + 1;
-  const learned = sessions >= SKILL_SESSIONS;
-  const updated = learned
-    ? { ...entry, skills: [...entry.skills, offer.skill], learning: null }
-    : { ...entry, learning: { key: offer.skill, sessions } };
-  return done({ ...state, training: { ...state.training, [card.id]: updated } });
 }
 
 // ── year end ────────────────────────────────────────────────────────────────
@@ -706,7 +715,6 @@ function placementOf(state, cards) {
 }
 
 function settleYear(state, cards) {
-  const lookup = byId(cards);
   const placement = placementOf(state, cards);
   const table = standings(state, cards);
   const leaguePos = table.find(row => row.you).pos;
@@ -719,22 +727,10 @@ function settleYear(state, cards) {
   else if (lastPlaces) movement = 'warned';
   const before = squadCards(state, cards);
 
-  const rng = rngFor(state, 'career', state.year);
   const dev = { ...state.dev };
-  const yearsAtClub = { ...state.yearsAtClub };
   for (const id of state.squad) {
-    yearsAtClub[id] = (yearsAtClub[id] ?? 0) + 1;
-    const card = lookup.get(id);
-    const { dev: updated } = tickCareerYear(rng, state.seed, card, dev[id] ?? emptyDev(card), {
-      year: state.year,
-      yearsAtOrg: yearsAtClub[id],
-      rested: dev[id]?.idle ?? 0,
-      cohesion: 4,
-    });
-    dev[id] = { ...updated, f: 0, idle: 0 };
+    if (dev[id]) dev[id] = { ...dev[id], f: 0, idle: 0 };
   }
-  const orgs = state.clubs.map(club => ({ roster: club.roster.map(id => lookup.get(id)) }));
-  const worldDev = tickWorldYear(rng, state.seed, orgs, dev, { year: state.year });
 
   const contracts = { ...state.contracts };
   for (const id of state.squad) contracts[id] = Math.max(1, contracts[id] - 1);
@@ -744,11 +740,13 @@ function settleYear(state, cards) {
   // Playoffs pay gold, a title pays two, and every second title pays an icon.
   const goldGained = placement === 1 ? 2 : placement <= 3 ? 1 : 0;
   const iconsGained = placement === 1 && titles % TITLES_PER_ICON === 0 ? 1 : 0;
+  const evo = rollSeasonEvo(rngFor(state, 'season-evo', state.year), placement === 1, state.tier);
   const settled = {
     ...grantPacks(state, { silver: packsGained, gold: goldGained, icons: iconsGained }),
-    dev: worldDev,
+    dev,
+    evoInventory: evo ? [...(state.evoInventory ?? []), evo] : state.evoInventory ?? [],
+    last: { ...state.last, evoReward: evo },
     contracts,
-    yearsAtClub,
     titles,
     lastPlaces,
     history: [...(state.history ?? []), { year: state.year, tier: state.tier, leaguePos, placement, movement }],
@@ -766,7 +764,7 @@ function settleYear(state, cards) {
       gold: goldGained,
       icons: iconsGained,
       fromTier: state.tier,
-      changes: after.map((card, index) => ({ id: card.id, rating: card.rating, delta: card.rating - before[index].rating })),
+      changes: after.map((card, index) => ({ id: card.id, rating: card.rating, delta: card.developmentRating - before[index].developmentRating })),
     },
   };
 }

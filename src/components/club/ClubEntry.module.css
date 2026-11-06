@@ -120,7 +120,19 @@
 .hint small { font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; }
 .hint button { min-height: var(--tap-min-secondary, 28px); padding: var(--sp-1) var(--sp-3); border: 0; background: transparent; color: var(--bg); font: inherit; font-size: var(--fs-label); font-weight: 800; cursor: pointer; }
 .hint button[data-main] { background: var(--bg); color: var(--ink); }
-@keyframes hintIn { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translateX(-50%); } }
+@keyframes hintIn { from { opacity: 0; transform: translate(var(--hint-x, -50%), -8px); } to { opacity: 1; transform: translateX(var(--hint-x, -50%)); } }
+/* On a wide screen each menu's tip sits in that menu's own empty space, never over its cards or table. */
+@media (min-width: 760px) {
+  .hint[data-at='squad'], .hint[data-at='league'], .hint[data-at='train'] { --hint-x: 0; left: auto; right: max(var(--sp-10), env(safe-area-inset-right)); width: 380px; transform: none; }
+  .hint[data-at='squad'], .hint[data-at='league'] { top: auto; bottom: max(var(--sp-6), env(safe-area-inset-bottom)); }
+  .hint[data-at='vault'] { top: auto; bottom: max(var(--sp-6), env(safe-area-inset-bottom)); }
+  .hint[data-at='chips'] { --hint-x: 0; top: auto; bottom: max(var(--sp-6), env(safe-area-inset-bottom)); left: auto; right: max(var(--sp-10), env(safe-area-inset-right)); width: 380px; transform: none; }
+  .hint[data-at='chipPick'] { --hint-x: 0; top: auto; bottom: max(var(--sp-6), env(safe-area-inset-bottom)); left: max(var(--sp-10), env(safe-area-inset-left)); width: 380px; transform: none; }
+}
+/* On a phone the menus' header holds their tabs, so their tips sit at the bottom instead. */
+@media (max-width: 759px) {
+  .hint[data-at]:not([data-at='home']) { top: auto; bottom: max(var(--sp-3), env(safe-area-inset-bottom)); }
+}
 @media (prefers-reduced-motion: reduce) { .hint { animation: none; } }
 
 /* ── phones ──────────────────────────────────────────────────────────────── */
