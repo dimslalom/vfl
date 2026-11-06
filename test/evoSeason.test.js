@@ -60,6 +60,27 @@ test('isEligibleForEvo validates rating caps and role restrictions', () => {
   assert.equal(isEligibleForEvo(sentinel85, 'glacier').reason, 'Skill only');
 });
 
+test('Apex evos allow players up to 92-93 rating without capping', () => {
+  const derke91 = { id: 'd91', rating: 91, role: 'Duelist' };
+  const chronicle92 = { id: 'c92', rating: 92, role: 'Initiator' };
+  const aspas93 = { id: 'a93', rating: 93, role: 'Duelist' };
+  const godTier95 = { id: 'g95', rating: 95, role: 'Duelist' };
+
+  // Valkyrie Ascent (maxRating: 93)
+  assert.equal(isEligibleForEvo(derke91, 'valkyrie').eligible, true);
+  assert.equal(isEligibleForEvo(derke91, 'valkyrie').capped, false);
+  assert.equal(isEligibleForEvo(chronicle92, 'valkyrie').eligible, true);
+  assert.equal(isEligibleForEvo(chronicle92, 'valkyrie').capped, false);
+  assert.equal(isEligibleForEvo(godTier95, 'valkyrie').capped, true);
+
+  // Sovereign Crown (maxRating: 93)
+  assert.equal(isEligibleForEvo(aspas93, 'sovereign').eligible, true);
+
+  // Singularity Core (maxRating: 92)
+  assert.equal(isEligibleForEvo(derke91, 'singularity').capped, false);
+  assert.equal(isEligibleForEvo(aspas93, 'singularity').capped, true);
+});
+
 test('evoStatGain caps stat boosts for high-rated players while granting full boosts below ceiling', () => {
   const stats = { positioning: 1, mentality: 1 };
   // Under ceiling: full stats

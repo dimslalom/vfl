@@ -41,7 +41,7 @@
 .skill span { color: var(--ink); }
 .entry dl { margin: 0; display: grid; gap: var(--sp-2); }
 .entry dt { font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: var(--track-mono); text-transform: uppercase; color: var(--muted); }
-.entry dd { margin: 2px 0 0; font-size: 12px; line-height: 1.4; color: var(--muted); }
+.entry dd { margin: 2px 0 0; font-size: var(--fs-annotation); line-height: 1.4; color: var(--muted); }
 
 .focus { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--sp-10); align-items: center; padding: var(--sp-10) var(--sp-10) var(--sp-8); background: var(--bg-sunken); }
 .focusCard { display: grid; place-items: center; padding: 60px 70px; }
@@ -54,6 +54,58 @@
 .gainTable td.to { color: var(--ink); font-weight: 700; }
 .up { color: var(--win) !important; font-weight: 700; font-size: var(--fs-label) !important; }
 .up[data-zero] { color: var(--faint) !important; }
+
+.balanceGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--sp-4);
+}
+.balanceCard {
+  padding: var(--sp-4);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.balanceCard h3 {
+  margin: 0;
+  font-size: var(--fs-title);
+  line-height: 1.2;
+}
+.balanceCard dl {
+  margin: 0;
+  display: grid;
+  gap: var(--sp-2);
+}
+.balanceCard dt {
+  font: 700 var(--fs-micro)/1 var(--font-mono);
+  letter-spacing: var(--track-mono);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.balanceCard dd {
+  margin: 2px 0 0;
+  font-size: var(--fs-label);
+  color: var(--ink);
+}
+.badgeCapped {
+  display: inline-block;
+  padding: 2px 6px;
+  background: var(--surface-hi);
+  color: var(--gold);
+  font: 700 var(--fs-micro)/1.2 var(--font-mono);
+  letter-spacing: var(--track-mono);
+  text-transform: uppercase;
+}
+.badgeEligible {
+  display: inline-block;
+  padding: 2px 6px;
+  background: var(--surface-hi);
+  color: var(--win);
+  font: 700 var(--fs-micro)/1.2 var(--font-mono);
+  letter-spacing: var(--track-mono);
+  text-transform: uppercase;
+}
 
 .inGame { display: grid; gap: var(--sp-4); }
 .screens { display: grid; gap: var(--sp-8); max-width: 1120px; }

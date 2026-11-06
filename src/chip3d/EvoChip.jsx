@@ -84,7 +84,10 @@ function EvoChipFlat({ evoKey, size }) {
           <polygon points={hex()} fill="none" stroke={metal} strokeWidth="7" strokeLinejoin="round" />
           <polygon points={hex(.86)} fill="none" stroke="#8a5a1c" strokeWidth="1" strokeLinejoin="round" />
           <polygon className={styles.comet} points={hex()} pathLength="100" fill="none" stroke="#fff2dc" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-          {[[7, 50], [93, 50]].map(([x, y]) => <polygon key={x} points={`${x},${y - 7} ${x + 3},${y} ${x},${y + 7} ${x - 3},${y}`} fill="#c8102e" stroke="#ffe9a8" strokeWidth=".6" />)}
+          {[[7, 50], [93, 50]].map(([x, y]) => {
+            const gemColor = evo.theme === 'sovereign' ? '#9333ea' : evo.theme === 'singularity' ? '#0891b2' : evo.theme === 'valkyrie' ? '#e11d48' : '#c8102e';
+            return <polygon key={x} points={`${x},${y - 7} ${x + 3},${y} ${x},${y + 7} ${x - 3},${y}`} fill={gemColor} stroke="#ffe9a8" strokeWidth=".6" />;
+          })}
           <polygon points="41,4 50,-6 59,4 50,13" fill={art.bg[1]} stroke={metal} strokeWidth="2" />
           <polygon points="46.5,-1 48.5,-1 49.6,8" fill={art.metal[1]} /><polygon points="51.5,-1 53.5,-1 50.4,8" fill={art.metal[1]} />
         </>

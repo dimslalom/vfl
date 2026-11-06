@@ -5,7 +5,9 @@ import SpecialtyIcon from '../../shared/src/components/SpecialtyIcon';
 import { SPECIALTIES } from '../../shared/src/data/specialties';
 import { STAT_KEYS, STAT_LABELS } from '../../shared/src/data/statFields';
 import { CHIP_KEYS } from '../chip3d/chipData';
-import { EVO_CHIPS, EVO_KEYS, commitEvolution, newClub, squadCards } from '../engine/club/season';
+import {
+  EVO_CHIPS, EVO_KEYS, commitEvolution, evoStatGain, isEligibleForEvo, newClub, squadCards, xpPerPoint,
+} from '../engine/club/season';
 import EvoShowcase from '../evo3d/EvoShowcase';
 import { EvoChip } from '../chip3d/EvoChip';
 import { ChipPick, Result, Train } from './Club';
@@ -14,7 +16,7 @@ import styles from './EvoLab.module.css';
 // The evo codex: every evo at every stage, then the real game screens it shows
 // up on, running against a mock club so they can be clicked through.
 
-const PLAYERS = ['SugarZ3ro', 'Boaster', 'Derke', 'Chronicle', 'jinggg', 'Leo', 'Demon1', 'Less']
+const PLAYERS = ['gMd', 'Boaster', 'SugarZ3ro', 'Derke', 'Demon1', 'Chronicle', 'Leo', 'Less']
   .map(name => allCards.find(card => card.player === name))
   .filter(Boolean);
 const STAGES = [{ id: 0, label: 'Base' }, { id: 1, label: 'Evo I' }, { id: 2, label: 'Evo II' }];
@@ -28,8 +30,13 @@ function mockClub(card, evoKey, stage) {
   state = { ...state, trainingTapes: { positioning: 1 }, evoInventory: [evoKey], activeEvo: null };
   if (stage === 0) return state;
   // Stage 1 is mid-evo: level one done, level two one match short.
-  const stats = { ...evo.level1.stats };
-  if (stage === 2) for (const [key, value] of Object.entries(evo.level2.stats)) stats[key] = (stats[key] ?? 0) + value;
+  const l1Gains = evoStatGain(card.rating, evo.requirements?.maxRating, evo.level1.stats);
+  const stats = { ...l1Gains };
+  if (stage === 2) {
+    const l1Ovr = Math.round(Object.values(l1Gains).reduce((a, b) => a + b, 0) / 5);
+    const l2Gains = evoStatGain(card.rating + l1Ovr, evo.requirements?.maxRating, evo.level2.stats);
+    for (const [key, value] of Object.entries(l2Gains)) stats[key] = (stats[key] ?? 0) + value;
+  }
   const training = { stats, skills: stage === 2 ? [evo.level2.skill] : [], evoTheme: evo.theme, evoLevel: stage, evoBadge: stage === 2 ? evo.badge : null, evolutions: stage === 2 ? [evoKey] : [] };
   return {
     ...state,
@@ -78,9 +85,10 @@ const noop = () => {};
 
 export default function EvoLab() {
   const [player, setPlayer] = useState(PLAYERS[0]);
-  const [evoKey, setEvoKey] = useState('apex_predator');
+  const [evoKey, setEvoKey] = useState('glacier');
   const [stage, setStage] = useState(2);
   const evo = EVO_CHIPS[evoKey];
+  const fit = isEligibleForEvo(player, evoKey);
 
   // Every evo on this player at the chosen stage, read through the club engine
   // so the numbers are the ones the game would show.
@@ -97,7 +105,7 @@ export default function EvoLab() {
       <section className={styles.switches} aria-label="Preview">
         <div className={styles.switch} role="group" aria-label="Player">
           <span>Player</span>
-          {PLAYERS.map(item => <button key={item.id} type="button" data-on={player.id === item.id || undefined} aria-pressed={player.id === item.id} onClick={() => setPlayer(item)}>{item.player}</button>)}
+          {PLAYERS.map(item => <button key={item.id} type="button" data-on={player.id === item.id || undefined} aria-pressed={player.id === item.id} onClick={() => setPlayer(item)}>{item.player} ({item.rating})</button>)}
         </div>
         <div className={styles.switch} role="group" aria-label="Stage">
           <span>Stage</span>
@@ -122,7 +130,7 @@ export default function EvoLab() {
                 </span>
                 <span className={styles.skill} style={{ color: skill.color }}><SpecialtyIcon spec={skill.key} size={18} /><b>{skill.code}</b><span>{skill.name}</span></span>
                 <dl>
-                  <div><dt>Takes</dt><dd>{def.requirements.roles ? def.requirements.roles.join(', ') : 'Any role'} up to {def.requirements.maxRating}</dd></div>
+                  <div><dt>Takes</dt><dd>{def.requirements.roles ? def.requirements.roles.join(', ') : 'Any role'}, {def.requirements.maxRating} ceiling</dd></div>
                   <div><dt>Evo I</dt><dd>{def.level1.label}</dd></div>
                   <div><dt>Evo II</dt><dd>{def.level2.label}</dd></div>
                 </dl>
@@ -134,11 +142,18 @@ export default function EvoLab() {
 
       <section className={styles.focus} aria-label={`${evo.name} on ${player.player}`}>
         <div className={styles.focusCard}>
-          <EvoShowcase key={`${evoKey}-${stage}-${player.id}`} card={card} displayScale={0.62} tilt={evoKey !== 'apex_predator'} />
+          <EvoShowcase key={`${evoKey}-${stage}-${player.id}`} card={card} displayScale={0.62} tilt={EVO_CHIPS[evoKey]?.tier !== 'apex'} />
         </div>
         <div className={styles.focusBody}>
           <span className={styles.tier} data-tier={evo.tier}>{evo.tier}</span>
           <h2>{evo.name}</h2>
+          <div>
+            {fit.capped
+              ? <span className={styles.badgeCapped}>Ceiling reached: {player.rating} / {evo.requirements.maxRating} (Skill only)</span>
+              : fit.eligible
+                ? <span className={styles.badgeEligible}>Eligible: full stats and skill</span>
+                : <span className={styles.badgeCapped}>{fit.reason}</span>}
+          </div>
           <table className={styles.gainTable}>
             <tbody>
               {STAT_KEYS.map(key => <Gain key={key} label={STAT_LABELS[key]} from={player.stats[key]} to={card.stats[key]} />)}
@@ -146,6 +161,58 @@ export default function EvoLab() {
             </tbody>
           </table>
         </div>
+      </section>
+
+      <section className={styles.balanceGrid} aria-label="Progression balance">
+        <article className={styles.balanceCard}>
+          <h3>Soft rating ceiling</h3>
+          <dl>
+            <div>
+              <dt>Status on {player.player} ({player.rating} OVR)</dt>
+              <dd>{fit.capped ? `Rating cap reached (${player.rating} / ${evo.requirements.maxRating}): unlocks ${SPECIALTIES[evo.level2.skill].name} skill and theme without stat inflation` : fit.eligible ? `Below ceiling (${player.rating} / ${evo.requirements.maxRating}): gains full stats and skill` : fit.reason}</dd>
+            </div>
+            <div>
+              <dt>Fix applied</dt>
+              <dd>No lockout: high-rated or leveled players can always evolve to earn skills and themes.</dd>
+            </div>
+          </dl>
+        </article>
+
+        <article className={styles.balanceCard}>
+          <h3>XP curve ({xpPerPoint(player.rating)} XP target)</h3>
+          <dl>
+            <div>
+              <dt>Rookies (&lt;75 OVR)</dt>
+              <dd>150 XP per point for fast early progression</dd>
+            </div>
+            <div>
+              <dt>Starters (75 to 81 OVR)</dt>
+              <dd>250 XP per point for steady development</dd>
+            </div>
+            <div>
+              <dt>Stars (82+ OVR)</dt>
+              <dd>400 XP per point to prevent rapid stat ballooning</dd>
+            </div>
+          </dl>
+        </article>
+
+        <article className={styles.balanceCard}>
+          <h3>Pack economy</h3>
+          <dl>
+            <div>
+              <dt>In-season silver packs</dt>
+              <dd>Awarded on 2-0 sweeps, derby weeks (W5 and W9), and playoff wins</dd>
+            </div>
+            <div>
+              <dt>Regular 2-1 series</dt>
+              <dd>Tapes, XP, and tactic chips (no silver pack)</dd>
+            </div>
+            <div>
+              <dt>Transfer budget</dt>
+              <dd>6 silver packs baseline at year end (up from 3) for contract renewals</dd>
+            </div>
+          </dl>
+        </article>
       </section>
 
       <section className={styles.inGame} aria-label="In game">
@@ -192,6 +259,11 @@ function LabResult({ player, evoKey, stage }) {
     const evo = EVO_CHIPS[evoKey];
     const level = stage === 2 ? evo.level2 : evo.level1;
     const squad = club.squad.slice(0, 5);
+    const l1Gains = evoStatGain(player.rating, evo.requirements?.maxRating, evo.level1.stats);
+    const l1Ovr = Math.round(Object.values(l1Gains).reduce((a, b) => a + b, 0) / 5);
+    const gainedStats = stage === 2
+      ? evoStatGain(player.rating + l1Ovr, evo.requirements?.maxRating, level.stats)
+      : l1Gains;
     return {
       ...club,
       last: {
@@ -200,8 +272,8 @@ function LabResult({ player, evoKey, stage }) {
         won: true,
         packs: 1,
         rounds: [{ map: 'Ascent', a: 13, b: 9, winA: true }, { map: 'Bind', a: 11, b: 13, winA: false }, { map: 'Haven', a: 13, b: 7, winA: true }],
-        growth: squad.map((id, i) => ({ id, pct: 30 + i * 12, gain: 14, mvp: id === player.id })),
-        evoProgress: { cardId: player.id, evoKey, level: stage, completed: true, name: evo.name, gainedStats: level.stats, skill: stage === 2 ? level.skill : undefined },
+        growth: squad.map((id, i) => ({ id, pct: 30 + i * 12, gain: 14, targetXp: xpPerPoint(player.rating), mvp: id === player.id })),
+        evoProgress: { cardId: player.id, evoKey, level: stage, completed: true, name: evo.name, gainedStats, skill: stage === 2 ? level.skill : undefined },
       },
     };
   });

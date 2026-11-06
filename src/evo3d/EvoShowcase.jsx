@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import PlayerCard from '../../shared/src/components/PlayerCard';
 import EvoFx from '../../shared/src/components/EvoFx';
+import { EVO_ART } from '../../shared/src/components/evoArt';
 import useReducedMotion from '../../shared/src/lib/useReducedMotion';
 import styles from './EvoShowcase.module.css';
 
@@ -11,11 +12,11 @@ const CARD_H = 580;
 // effects, and an Apex card swaps to the Blender-built 3D model once three.js
 // and the model have loaded. Until then, and without WebGL, the flat card shows.
 export default function EvoShowcase({ card, displayScale = 0.5, ...cardProps }) {
-  const apex = card.evoTheme === 'apex';
-  const sig = `${card.id}:${card.evoLevel}:${card.rating}:${Object.values(card.stats ?? {}).join(',')}`;
+  const isApex = EVO_ART[card.evoTheme]?.tier === 'apex';
+  const sig = `${card.id}:${card.evoLevel}:${card.rating}:${card.evoTheme}:${Object.values(card.stats ?? {}).join(',')}`;
   return (
     <div className={styles.root} style={{ width: CARD_W * displayScale, height: CARD_H * displayScale }}>
-      {apex
+      {isApex
         ? <Apex3D key={sig} card={card} displayScale={displayScale} cardProps={cardProps} />
         : <PlayerCard card={card} displayScale={displayScale} evoFx canDrag={false} {...cardProps} />}
     </div>
@@ -28,6 +29,7 @@ function Apex3D({ card, displayScale, cardProps }) {
   const [live, setLive] = useState(false);
   const still = useReducedMotion();
   const level = card.evoLevel === 2 ? 2 : 1;
+  const theme = card.evoTheme || 'apex';
   useEffect(() => {
     // A canvas per mount: a torn-down renderer loses its WebGL context for
     // good, so a remount (StrictMode does one) must not reuse that canvas.
@@ -38,7 +40,7 @@ function Apex3D({ card, displayScale, cardProps }) {
     holderRef.current.appendChild(canvas);
     let dispose = null, cancelled = false;
     import('./apexScene')
-      .then(({ mountApex }) => mountApex(canvas, cardRef.current, { level, still, onLost: () => { if (!cancelled) { delete canvas.dataset.live; setLive(false); } } }))
+      .then(({ mountApex }) => mountApex(canvas, cardRef.current, { level, theme, still, onLost: () => { if (!cancelled) { delete canvas.dataset.live; setLive(false); } } }))
       .then(teardown => {
         if (cancelled) { teardown?.(); return; }
         dispose = teardown;
@@ -46,16 +48,21 @@ function Apex3D({ card, displayScale, cardProps }) {
       })
       .catch(() => {});
     return () => { cancelled = true; dispose?.(); canvas.remove(); };
-  }, [level, still]);
+  }, [level, theme, still]);
   return (
     <>
       <div className={styles.flat} data-hidden={live || undefined}>
         <PlayerCard card={card} displayScale={displayScale} evoFx={!live} canDrag={false} {...cardProps} />
       </div>
+      {live && (
+        <div className={styles.fxBack} style={{ transform: `scale(${displayScale})` }}>
+          <EvoFx theme={theme} level={level} layer="back" border={false} />
+        </div>
+      )}
       <div ref={holderRef} className={styles.holder} />
       {live && (
         <div className={styles.fx} style={{ transform: `scale(${displayScale})` }}>
-          <EvoFx theme="apex" level={level} layer="front" border={false} />
+          <EvoFx theme={theme} level={level} layer="front" border={false} />
         </div>
       )}
     </>

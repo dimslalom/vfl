@@ -21,6 +21,16 @@ export const SKILL_FX = {
   flick: { name: 'Glint', color: 0xffd36b, note: 'A gold glint and sparks when it stands alone' },
   one_trick: { name: 'Ember', color: 0xff8a3d, note: 'Embers rise from a warm glow on its map' },
   aura: { name: 'Shockwave', color: 0xb98cff, note: 'Rings roll out across the lane at the enemy' },
+  ironclad: { name: 'Fortress', color: 0xadb5bd, note: 'Heavy steel glow and deflection sparks' },
+  lurk: { name: 'Stealth', color: 0x2dd4bf, note: 'Shrouded smoke mist' },
+  velocity: { name: 'Swift', color: 0x51cf66, note: 'Lime-green swift slipstream bands and trail' },
+  combustion: { name: 'Solar', color: 0xffa94d, note: 'Solar flare corona rings' },
+  phase: { name: 'Abyss', color: 0xa855f7, note: 'Dark violet rift distortion' },
+  timewarp: { name: 'Chrono', color: 0xd8b34c, note: 'Reverse temporal clock rings' },
+  surge: { name: 'Storm', color: 0x339af0, note: 'Electric storm sparks' },
+  ascendance: { name: 'Divine', color: 0xffd43b, note: 'Golden light pillar and celestial rays' },
+  dominion: { name: 'Crown', color: 0xfcc419, note: 'Imperial gold seal glow' },
+  black_hole: { name: 'Vortex', color: 0x22b8cf, note: 'Gravitational event horizon vortex rings' },
 };
 
 const TOP = CARD_T / 2 + 0.004;
@@ -285,6 +295,77 @@ export function attachSkillFx(group, skill, { floorParent = group } = {}) {
       rim.material.opacity = 0.4 + burst;
     };
     disposers.push(() => { rings.forEach(ring => { ring.geometry.dispose(); ring.material.dispose(); }); glow.geometry.dispose(); glow.material.dispose(); });
+  }
+
+  if (skill === 'velocity') {
+    const band = sweep({ hue: spec.color, width: 0.28, speed: 3.4, rainbow: false });
+    fx.add(band.mesh);
+    const sparks = particles(45, spec.color, 0.08);
+    fx.add(sparks.points);
+    parts.push(sparks);
+    update = (dt) => {
+      band.material.uniforms.t.value = time;
+      band.material.uniforms.strength.value = 1.2 + burst;
+      rim.material.opacity = 0.45 + burst;
+      emit(sparks, dt, 24 + burst * 70, () => {
+        const [x, z] = edgePoint();
+        return [x, TOP, z, (Math.random() - 0.5) * 0.8, 1.8 + Math.random() * 1.5, (Math.random() - 0.5) * 0.8, 0.4];
+      }, 1.2);
+    };
+    disposers.push(() => { band.mesh.geometry.dispose(); band.material.dispose(); });
+  }
+
+  if (skill === 'black_hole') {
+    const rings = [0, 1, 2].map(() => {
+      const mesh = new Mesh(new RingGeometry(0.85, 0.95, 64), new MeshBasicMaterial({ color: spec.color, transparent: true, blending: AdditiveBlending, depthWrite: false, opacity: 0 }));
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.position.y = 0.003;
+      floor.add(mesh);
+      return mesh;
+    });
+    const glow = new Mesh(new PlaneGeometry(CARD_W * 2, CARD_H * 1.8), new MeshBasicMaterial({ map: softDot(), color: 0x7950f2, transparent: true, blending: AdditiveBlending, depthWrite: false, opacity: 0.4 }));
+    glow.rotation.x = -Math.PI / 2;
+    floor.add(glow);
+    update = () => {
+      rings.forEach((ring, n) => {
+        const phase = (1 - (((time * (0.8 + burst)) + n / rings.length) % 1));
+        const r = 0.2 + phase * 0.9;
+        ring.scale.set(r, r, 1);
+        ring.material.opacity = phase * 0.85;
+      });
+      glow.material.opacity = 0.4 + Math.sin(time * 3) * 0.1 + burst * 0.5;
+      rim.material.opacity = 0.5 + burst;
+    };
+    disposers.push(() => { rings.forEach(r => { r.geometry.dispose(); r.material.dispose(); }); glow.geometry.dispose(); glow.material.dispose(); });
+  }
+
+  if (skill === 'ascendance' || skill === 'dominion') {
+    const glow = new Mesh(new PlaneGeometry(CARD_W * 2.2, CARD_H * 1.8), new MeshBasicMaterial({ map: softDot(), color: spec.color, transparent: true, blending: AdditiveBlending, depthWrite: false, opacity: 0.5 }));
+    glow.rotation.x = -Math.PI / 2;
+    floor.add(glow);
+    const motes = particles(40, spec.color, 0.08);
+    fx.add(motes.points);
+    parts.push(motes);
+    update = (dt) => {
+      glow.material.opacity = 0.4 + Math.sin(time * 2.5) * 0.12 + burst * 0.5;
+      rim.material.opacity = 0.5 + burst;
+      emit(motes, dt, 16 + burst * 50, () => [
+        (Math.random() - 0.5) * CARD_W * 1.2, 0, (Math.random() - 0.5) * CARD_H * 1.2,
+        (Math.random() - 0.5) * 0.2, 0.9 + Math.random() * 0.8, (Math.random() - 0.5) * 0.2, 0.3,
+      ], 2);
+    };
+    disposers.push(() => { glow.geometry.dispose(); glow.material.dispose(); });
+  }
+
+  if (skill === 'surge' || skill === 'combustion' || skill === 'timewarp' || skill === 'phase' || skill === 'ironclad' || skill === 'lurk') {
+    const glow = new Mesh(new PlaneGeometry(CARD_W * 1.6, CARD_H * 1.4), new MeshBasicMaterial({ map: softDot(), color: spec.color, transparent: true, blending: AdditiveBlending, depthWrite: false, opacity: 0.4 }));
+    glow.rotation.x = -Math.PI / 2;
+    floor.add(glow);
+    update = () => {
+      glow.material.opacity = 0.35 + Math.sin(time * 3) * 0.1 + burst * 0.4;
+      rim.material.opacity = 0.4 + burst;
+    };
+    disposers.push(() => { glow.geometry.dispose(); glow.material.dispose(); });
   }
 
   const noHit = (node) => { node.raycast = () => {}; };

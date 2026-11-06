@@ -212,13 +212,17 @@ export function makeEvoChip(info, index, { THICK, grain }) {
     add(slab(hexShape(0.8, 0.78), 0.015, 0.004), dark, top);
     const crest = add(slab(diamond(0, 1.02, 0.16, 0.2), 0.08, 0.02), metal, top);
     crest.position.y = top;
-    const ruby = new MeshPhysicalMaterial({ color: '#a3071f', roughness: 0.08, metalness: 0, transmission: 0, clearcoat: 1, clearcoatRoughness: 0.05, emissive: '#3a0008', envMapIntensity: 1.4 });
+
+    const theme = info.evo.theme;
+    const gemColor = theme === 'sovereign' ? '#9333ea' : theme === 'singularity' ? '#0891b2' : theme === 'valkyrie' ? '#e11d48' : '#a3071f';
+    const cometColor = theme === 'sovereign' ? '#e879f9' : theme === 'singularity' ? '#22d3ee' : theme === 'valkyrie' ? '#fb7185' : '#ff6a7a';
+    const ruby = new MeshPhysicalMaterial({ color: gemColor, roughness: 0.08, metalness: 0, transmission: 0, clearcoat: 1, clearcoatRoughness: 0.05, emissive: gemColor, envMapIntensity: 1.4 });
     for (const x of [-0.8, 0.8]) add(slab(diamond(x, 0, 0.04, 0.1), 0.03, 0.01), ruby, lip - 0.02);
     // A light running round the bezel, as on the Apex card.
     const bead = new SphereGeometry(0.035, 12, 8);
     geos.push(bead);
     comet = [1, 0.7, 0.45, 0.25].map((s, i) => {
-      const m = new Mesh(bead, new MeshBasicMaterial({ color: i ? '#ff6a7a' : '#fff4dc', transparent: true, opacity: s, toneMapped: false }));
+      const m = new Mesh(bead, new MeshBasicMaterial({ color: i ? cometColor : '#fff4dc', transparent: true, opacity: s, toneMapped: false }));
       m.scale.setScalar(1 - i * 0.18);
       m.position.y = lip;
       group.add(m);

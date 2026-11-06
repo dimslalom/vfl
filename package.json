@@ -16,7 +16,7 @@
     "rive:build": "node scripts/rive-build.js",
     "arena:model": "/Applications/Blender.app/Contents/MacOS/Blender -b --factory-startup -P tools/arena3d/build_arena.py --",
     "pack:model": "/Applications/Blender.app/Contents/MacOS/Blender -b --factory-startup -P tools/pack3d/build_pack.py -- public/assets/pack3d/pack.glb",
-    "evo:model": "/Applications/Blender.app/Contents/MacOS/Blender -b --factory-startup -P tools/evo3d/build_apex.py -- public/assets/evo3d/apex.glb"
+    "evo:model": "/Applications/Blender.app/Contents/MacOS/Blender -b --factory-startup -P tools/evo3d/build_apex.py -- all"
   },
   "dependencies": {
     "@rive-app/react-canvas": "4.36.0",

@@ -106,9 +106,129 @@ export const EVO_CHIPS = {
     badge: 'OVD',
     color: '#ff003c',
     headline: 'OVD',
-    requirements: { maxRating: 83, roles: null },
+    requirements: { maxRating: 93, roles: null },
     level1: { type: 'play', count: 2, stats: { aim: 2, positioning: 2, ability: 2, mentality: 2, synergy: 2 }, label: 'Play 2 matches with player starting' },
     level2: { type: 'mvp', count: 3, stats: { aim: 3, positioning: 3, ability: 3, mentality: 3, synergy: 3 }, skill: 'overdrive', label: 'Win 3 matches where player is MVP' },
+  },
+  bastion: {
+    key: 'bastion',
+    name: 'Bastion Wall',
+    tier: 'common',
+    theme: 'iron',
+    badge: 'ICD',
+    color: '#f59e0b',
+    headline: 'ICD',
+    requirements: { maxRating: 81, roles: ['Sentinel', 'Initiator'] },
+    level1: { type: 'play', count: 1, stats: { positioning: 1, ability: 1 }, label: 'Play 1 match with player starting' },
+    level2: { type: 'win', count: 2, stats: { positioning: 1, mentality: 1 }, skill: 'ironclad', label: 'Win 2 matches with player in starting 5' },
+  },
+  phantom_drift: {
+    key: 'phantom_drift',
+    name: 'Phantom Drift',
+    tier: 'common',
+    theme: 'phantom',
+    badge: 'LRK',
+    color: '#2dd4bf',
+    headline: 'LRK',
+    requirements: { maxRating: 81, roles: ['Controller', 'Duelist'] },
+    level1: { type: 'play', count: 1, stats: { aim: 1, positioning: 1 }, label: 'Play 1 match with player starting' },
+    level2: { type: 'win', count: 2, stats: { aim: 1, ability: 1 }, skill: 'lurk', label: 'Win 2 matches with player in starting 5' },
+  },
+  hyperdrive: {
+    key: 'hyperdrive',
+    name: 'Hyperdrive',
+    tier: 'common',
+    theme: 'neon',
+    badge: 'VEL',
+    color: '#84cc16',
+    headline: 'VEL',
+    requirements: { maxRating: 82, roles: ['Duelist', 'Initiator'] },
+    level1: { type: 'win', count: 1, stats: { aim: 1, mentality: 1 }, label: 'Win 1 match with player starting' },
+    level2: { type: 'win', count: 2, stats: { aim: 1, synergy: 1 }, skill: 'velocity', label: 'Win 2 matches with player in starting 5' },
+  },
+  solstice: {
+    key: 'solstice',
+    name: 'Solstice Flame',
+    tier: 'rare',
+    theme: 'solar',
+    badge: 'CMB',
+    color: '#fb923c',
+    headline: 'CMB',
+    requirements: { maxRating: 86, roles: null },
+    level1: { type: 'win', count: 1, stats: { ability: 2, mentality: 2 }, label: 'Win 1 match with player starting' },
+    level2: { type: 'mvp', count: 2, stats: { aim: 2, synergy: 2 }, skill: 'combustion', label: 'Win 2 matches where player is MVP' },
+  },
+  void_walker: {
+    key: 'void_walker',
+    name: 'Void Walker',
+    tier: 'rare',
+    theme: 'abyss',
+    badge: 'PHS',
+    color: '#a855f7',
+    headline: 'PHS',
+    requirements: { maxRating: 86, roles: null },
+    level1: { type: 'play', count: 2, stats: { positioning: 2, mentality: 2 }, label: 'Play 2 matches with player starting' },
+    level2: { type: 'win', count: 2, stats: { positioning: 2, ability: 2 }, skill: 'phase', label: 'Win 2 matches with player in starting 5' },
+  },
+  chronos: {
+    key: 'chronos',
+    name: 'Chronos Dial',
+    tier: 'rare',
+    theme: 'chrono',
+    badge: 'TRP',
+    color: '#eab308',
+    headline: 'TRP',
+    requirements: { maxRating: 87, roles: null },
+    level1: { type: 'win', count: 1, stats: { mentality: 2, synergy: 2 }, label: 'Win 1 match with player starting' },
+    level2: { type: 'win', count: 2, stats: { mentality: 2, aim: 2 }, skill: 'timewarp', label: 'Win 2 matches with player in starting 5' },
+  },
+  tempest: {
+    key: 'tempest',
+    name: 'Tempest Surge',
+    tier: 'rare',
+    theme: 'storm',
+    badge: 'SRG',
+    color: '#38bdf8',
+    headline: 'SRG',
+    requirements: { maxRating: 87, roles: null },
+    level1: { type: 'play', count: 2, stats: { aim: 2, synergy: 2 }, label: 'Play 2 matches with player starting' },
+    level2: { type: 'mvp', count: 2, stats: { aim: 2, positioning: 2 }, skill: 'surge', label: 'Win 2 matches where player is MVP' },
+  },
+  valkyrie: {
+    key: 'valkyrie',
+    name: 'Valkyrie Ascent',
+    tier: 'apex',
+    theme: 'valkyrie',
+    badge: 'ASC',
+    color: '#fb7185',
+    headline: 'ASC',
+    requirements: { maxRating: 93, roles: null },
+    level1: { type: 'play', count: 2, stats: { aim: 2, positioning: 2, ability: 2, mentality: 2, synergy: 2 }, label: 'Play 2 matches with player starting' },
+    level2: { type: 'mvp', count: 3, stats: { aim: 3, positioning: 3, ability: 3, mentality: 3, synergy: 3 }, skill: 'ascendance', label: 'Win 3 matches where player is MVP' },
+  },
+  sovereign: {
+    key: 'sovereign',
+    name: 'Sovereign Crown',
+    tier: 'apex',
+    theme: 'sovereign',
+    badge: 'DMN',
+    color: '#d946ef',
+    headline: 'DMN',
+    requirements: { maxRating: 93, roles: null },
+    level1: { type: 'play', count: 2, stats: { aim: 2, positioning: 2, ability: 2, mentality: 2, synergy: 2 }, label: 'Play 2 matches with player starting' },
+    level2: { type: 'mvp', count: 3, stats: { aim: 3, positioning: 3, ability: 3, mentality: 3, synergy: 3 }, skill: 'dominion', label: 'Win 3 matches where player is MVP' },
+  },
+  singularity: {
+    key: 'singularity',
+    name: 'Singularity Core',
+    tier: 'apex',
+    theme: 'singularity',
+    badge: 'BKH',
+    color: '#06b6d4',
+    headline: 'BKH',
+    requirements: { maxRating: 92, roles: null },
+    level1: { type: 'play', count: 2, stats: { aim: 2, positioning: 2, ability: 2, mentality: 2, synergy: 2 }, label: 'Play 2 matches with player starting' },
+    level2: { type: 'mvp', count: 3, stats: { aim: 3, positioning: 3, ability: 3, mentality: 3, synergy: 3 }, skill: 'black_hole', label: 'Win 3 matches where player is MVP' },
   },
 };
 
@@ -434,7 +554,10 @@ export function rollSeasonEvo(rng, champion, tier) {
   const roll = rng();
   const apexChance = champion && tier === INTERNATIONAL_TIER ? 0.05 : 0;
   const regularChance = champion ? 0.30 : 0.25;
-  if (roll < apexChance) return 'apex_predator';
+  if (roll < apexChance) {
+    const apexPool = EVO_KEYS.filter(key => EVO_CHIPS[key].tier === 'apex');
+    return apexPool[Math.floor(rng() * apexPool.length)];
+  }
   if (roll >= apexChance + regularChance) return null;
   const pool = EVO_KEYS.filter(key => EVO_CHIPS[key].tier === (champion ? 'rare' : 'common'));
   return pool[Math.floor(rng() * pool.length)];
@@ -461,8 +584,8 @@ export function rollChipOffer(state, stage, attempt = 0) {
   const evoRoll = rng();
   if (evoRoll < 0.28) {
     const evoPool = stage === 'Final' || stage === 'Semifinal'
-      ? ['clutch_factor', 'hivemind', 'apex_predator']
-      : ['glacier', 'first_strike', 'clutch_factor', 'hivemind'];
+      ? EVO_KEYS.filter(k => EVO_CHIPS[k].tier !== 'common')
+      : EVO_KEYS.filter(k => EVO_CHIPS[k].tier !== 'apex');
     const chosenEvoKey = evoPool[Math.floor(rng() * evoPool.length)];
     const evoDef = EVO_CHIPS[chosenEvoKey];
 

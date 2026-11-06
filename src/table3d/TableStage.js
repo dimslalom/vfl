@@ -987,6 +987,32 @@ export default class TableStage {
       },
     });
     this.timeline.timeScale(this.reducedMotion ? 20 : 1);
+    if (result.displacements?.length) {
+      result.displacements.forEach(disp => {
+        this.timeline.call(() => {
+          if (disp.side === 'you') this.slots = [...result.youSlots];
+          else this.oppPlan.slots = [...result.themSlots];
+          playUiSound('rotate_ready');
+          this.place();
+          const cardEntry = this.cards.find(c => c.side === disp.side && c.card.id === disp.card.id);
+          if (cardEntry?.fx?.burst) cardEntry.fx.burst();
+        });
+        this.timeline.to({}, { duration: this.reducedMotion ? 0.1 : 0.65 });
+      });
+    }
+    if (result.velocityMoves?.length) {
+      result.velocityMoves.forEach(move => {
+        this.timeline.call(() => {
+          if (move.side === 'you') this.slots = [...result.youSlots];
+          else this.oppPlan.slots = [...result.themSlots];
+          playUiSound('rotate_ready');
+          this.place();
+          const cardEntry = this.cards.find(c => c.side === move.side && c.card.id === move.card.id);
+          if (cardEntry?.fx?.burst) cardEntry.fx.burst();
+        });
+        this.timeline.to({}, { duration: this.reducedMotion ? 0.1 : 0.65 });
+      });
+    }
     result.lanes.forEach((laneResult, lane) => this.playLane(laneResult, lane));
     if (result.lanes.length === 3 && result.youWon === 3) {
       this.timeline.call(() => {

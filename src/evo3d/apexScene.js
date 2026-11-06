@@ -5,14 +5,19 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { assetPath, roleAbbr } from '../../shared/src/lib/utils';
-import { evoFace, APEX_PTS, APEX_FLOOR_PTS, FLOOR_PTS, SIL_PTS, insetPts } from '../../shared/src/components/evoArt';
+import { evoFace, outlinePts, floorPts, insetPts } from '../../shared/src/components/evoArt';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import SpecialtyIcon from '../../shared/src/components/SpecialtyIcon';
 import { EVO_SKILLS, getCardSpecialties } from '../../shared/src/data/specialties';
 import { STAT_KEYS, STAT_LABELS } from '../../shared/src/data/statFields';
 
-const MODEL = '/assets/evo3d/apex.glb';
+const MODELS = {
+  apex: '/assets/evo3d/apex.glb',
+  valkyrie: '/assets/evo3d/valkyrie.glb',
+  sovereign: '/assets/evo3d/sovereign.glb',
+  singularity: '/assets/evo3d/singularity.glb',
+};
 const U = 100;
 const BASE = 0.16;
 const X = px => (px - 200) / U;
@@ -21,8 +26,14 @@ const Y = py => (290 - py) / U;
 export const SPILL = { x: 0.22, y: 0.18 };
 const VIEW_H = 5.8 * (1 + SPILL.y * 2);
 
-let modelPromise;
-const loadModel = () => (modelPromise ??= new GLTFLoader().loadAsync(assetPath(MODEL)));
+const modelPromises = new Map();
+const loadModel = (theme = 'apex') => {
+  const modelUrl = MODELS[theme] ?? MODELS.apex;
+  if (!modelPromises.has(modelUrl)) {
+    modelPromises.set(modelUrl, new GLTFLoader().loadAsync(assetPath(modelUrl)));
+  }
+  return modelPromises.get(modelUrl);
+};
 
 const loadImg = src => new Promise(resolve => {
   if (!src) return resolve(null);
@@ -78,8 +89,8 @@ function polyPath(ctx, points) {
 
 const FONT = '"Familjen Grotesk", sans-serif';
 
-async function drawFace(card, level) {
-  const face = evoFace('apex', level);
+async function drawFace(card, level, theme = 'apex') {
+  const face = evoFace(theme, level);
   // The specialty rail, drawn the way PlayerCard prints it: a bare crest of
   // icon over code in card ink, evo-earned skills in their evo's brightest metal.
   const specs = getCardSpecialties(card).map(spec => {
@@ -102,13 +113,13 @@ async function drawFace(card, level) {
   if (bgImg) px.drawImage(bgImg, 0, 0, 400, 580);
 
   const [floor, fx] = faceCanvas();
-  polyPath(fx, level === 2 ? APEX_FLOOR_PTS : FLOOR_PTS);
-  fx.fillStyle = '#0d0204';
+  polyPath(fx, floorPts(theme, level));
+  fx.fillStyle = face.floor;
   fx.fill();
-  fx.strokeStyle = 'rgba(255,31,75,.7)';
+  fx.strokeStyle = face.line;
   fx.lineWidth = 1.2;
   fx.beginPath(); fx.moveTo(0, 411); fx.lineTo(400, 411); fx.stroke();
-  if (level === 2) { fx.strokeStyle = 'rgba(255,31,75,.3)'; fx.beginPath(); fx.moveTo(0, 417); fx.lineTo(400, 417); fx.stroke(); }
+  if (level === 2) { fx.strokeStyle = `${face.line}55`; fx.beginPath(); fx.moveTo(0, 417); fx.lineTo(400, 417); fx.stroke(); }
   fx.textAlign = 'center';
   fx.fillStyle = ink;
   fx.font = `700 44px ${FONT}`;
@@ -131,7 +142,7 @@ async function drawFace(card, level) {
     const y = 58 + i * 66;
     // Same outline as the flat card's rail: a tight halo in the floor tone.
     tx.font = `700 22px ${FONT}`;
-    tx.shadowColor = '#0d0204';
+    tx.shadowColor = face.floor;
     for (const [dx, dy] of [[2, 0], [-2, 0], [0, 2], [0, -2]]) {
       tx.shadowOffsetX = dx * 2; tx.shadowOffsetY = dy * 2;
       if (icons[i]) tx.drawImage(icons[i], 327, y, 34, 34);
@@ -164,7 +175,7 @@ function environment(renderer) {
  * Mounts the card on a canvas. Returns null when WebGL is not available, so
  * the caller keeps the flat card; otherwise a function that tears it down.
  */
-export async function mountApex(canvas, card, { level = 2, still = false, onLost } = {}) {
+export async function mountApex(canvas, card, { level = 2, theme, still = false, onLost } = {}) {
   let renderer;
   try {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
@@ -177,7 +188,8 @@ export async function mountApex(canvas, card, { level = 2, still = false, onLost
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
 
-  const [gltf, art] = await Promise.all([loadModel(), drawFace(card, level)]);
+  const evoTheme = theme || card.evoTheme || 'apex';
+  const [gltf, art] = await Promise.all([loadModel(evoTheme), drawFace(card, level, evoTheme)]);
   const disposables = [];
   const keep = thing => { disposables.push(thing); return thing; };
 
@@ -192,7 +204,7 @@ export async function mountApex(canvas, card, { level = 2, still = false, onLost
 
   // Card plate carrying the face art, then the portrait floating above the
   // rakes, then a raised stat plinth that hides the portrait's cut line.
-  add(ext(level === 2 ? APEX_PTS : SIL_PTS, 0.14), [keep(new THREE.MeshBasicMaterial({ map: keep(texture(art.plate, true)) })), goldSide], 0);
+  add(ext(outlinePts(evoTheme, level), 0.14), [keep(new THREE.MeshBasicMaterial({ map: keep(texture(art.plate, true)) })), goldSide], 0);
   if (art.portrait) {
     const map = keep(new THREE.Texture(art.portrait));
     map.colorSpace = THREE.SRGBColorSpace;
@@ -200,13 +212,13 @@ export async function mountApex(canvas, card, { level = 2, still = false, onLost
     const portrait = add(keep(new THREE.PlaneGeometry(4, 4.12)), keep(new THREE.MeshBasicMaterial({ map, transparent: true, alphaTest: 0.04 })), BASE + 0.2 * depth);
     portrait.position.y = Y(206);
   }
-  add(ext(level === 2 ? APEX_FLOOR_PTS : FLOOR_PTS, 0.26 * depth), [keep(new THREE.MeshBasicMaterial({ map: keep(texture(art.floor, true)) })), goldSide], BASE);
+  add(ext(floorPts(evoTheme, level), 0.26 * depth), [keep(new THREE.MeshBasicMaterial({ map: keep(texture(art.floor, true)) })), goldSide], BASE);
   add(keep(new THREE.PlaneGeometry(4, 5.8)), keep(new THREE.MeshBasicMaterial({ map: keep(texture(art.top)), transparent: true })), BASE + 0.3 * depth);
 
   // Light running round the border, drawn per frame onto a plane on the bezel.
   const PAD = 24;
   const [borderCanvas, bx] = faceCanvas(PAD);
-  const track = level === 2 ? APEX_PTS : insetPts(8.5);
+  const track = level === 2 ? outlinePts(evoTheme, 2) : insetPts(8.5);
   const trackPath = new Path2D(`M${track.map(p => p.join(',')).join(' L')} Z`);
   const perimeter = track.reduce((sum, p, i) => { const q = track[(i + 1) % track.length]; return sum + Math.hypot(q[0] - p[0], q[1] - p[1]); }, 0);
   const borderMap = keep(texture(borderCanvas));
@@ -227,13 +239,15 @@ export async function mountApex(canvas, card, { level = 2, still = false, onLost
         bx.stroke(trackPath);
       }
     }
-    // The whole border flares on the claw swipe's beat (EvoFx runs it every 5s).
-    const beat = seconds % 5;
-    if (level === 2 && beat < 0.6) {
-      const a = 1 - beat / 0.6;
+    // The whole border flares on the swipe's beat (EvoFx runs it every 3.2s).
+    const beat = seconds % 3.2;
+    if (level === 2 && beat < 0.5) {
+      const a = 1 - beat / 0.5;
       bx.setLineDash([]);
-      bx.strokeStyle = `rgba(255,40,80,${a * 0.85})`; bx.lineWidth = 6; bx.stroke(trackPath);
-      bx.strokeStyle = `rgba(255,240,210,${a * 0.6})`; bx.lineWidth = 1.5; bx.stroke(trackPath);
+      const strokeColor = evoTheme === 'singularity' ? `rgba(34,184,207,${a * 0.85})` : (evoTheme === 'valkyrie' || evoTheme === 'sovereign') ? `rgba(255,212,59,${a * 0.85})` : `rgba(255,40,80,${a * 0.85})`;
+      const innerColor = evoTheme === 'singularity' ? `rgba(177,151,252,${a * 0.6})` : (evoTheme === 'valkyrie' || evoTheme === 'sovereign') ? `rgba(255,250,210,${a * 0.6})` : `rgba(255,240,210,${a * 0.6})`;
+      bx.strokeStyle = strokeColor; bx.lineWidth = 6; bx.stroke(trackPath);
+      bx.strokeStyle = innerColor; bx.lineWidth = 1.5; bx.stroke(trackPath);
     }
     borderMap.needsUpdate = true;
   };
@@ -244,7 +258,8 @@ export async function mountApex(canvas, card, { level = 2, still = false, onLost
   scene.add(group);
   scene.add(new THREE.AmbientLight(0xffffff, 0.6));
   const key = new THREE.DirectionalLight(0xfff0d8, 2.8); key.position.set(-3, 4, 6); scene.add(key);
-  const rim = new THREE.DirectionalLight(0xff2a4a, 1.2); rim.position.set(4, -2, 3); scene.add(rim);
+  const rimColor = evoTheme === 'singularity' ? 0x22b8cf : (evoTheme === 'valkyrie' || evoTheme === 'sovereign') ? 0xffd43b : 0xff2a4a;
+  const rim = new THREE.DirectionalLight(rimColor, 1.2); rim.position.set(4, -2, 3); scene.add(rim);
   scene.environment = keep(environment(renderer));
   scene.environmentIntensity = 1.6;
 
