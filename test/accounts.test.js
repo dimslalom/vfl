@@ -1,17 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { handleAccounts, readCookie, safeNext } from '../worker/accounts.js';
 
 const ORIGIN = 'https://vctfantasy.dimas.works';
-const MIGRATION = readFileSync(new URL('../worker/migrations/accounts/0001_accounts.sql', import.meta.url), 'utf8');
+const MIGRATIONS_DIR = new URL('../worker/migrations/accounts/', import.meta.url);
+const MIGRATIONS = readdirSync(MIGRATIONS_DIR)
+  .filter(f => f.endsWith('.sql'))
+  .sort()
+  .map(f => readFileSync(new URL(f, MIGRATIONS_DIR), 'utf8'));
 
 // A D1-shaped wrapper over real SQLite, so the routes run the migration's schema.
 function d1() {
   const db = new DatabaseSync(':memory:');
   db.exec('PRAGMA foreign_keys = ON');
-  db.exec(MIGRATION);
+  for (const migration of MIGRATIONS) db.exec(migration);
   const statement = (sql, args = []) => ({
     bind: (...next) => statement(sql, next),
     first: async () => db.prepare(sql).get(...args) ?? null,
@@ -181,7 +185,68 @@ test('sign out ends the session; delete account removes everything', async () =>
   await handleAccounts(request('/api/club-save', { method: 'PUT', cookie, origin: ORIGIN, body: { save: { v: 2 } } }), environment);
   assert.equal((await handleAccounts(request('/api/account', { method: 'DELETE', cookie }), environment)).status, 403);
   assert.equal((await handleAccounts(request('/api/account', { method: 'DELETE', cookie, origin: ORIGIN }), environment)).status, 200);
-  for (const table of ['users', 'sessions', 'club_saves']) assert.equal(environment.ACCOUNTS.count(table), 0, table);
+  for (const table of ['users', 'sessions', 'club_saves', 'club_leaderboard']) assert.equal(environment.ACCOUNTS.count(table), 0, table);
+});
+
+test('club leaderboard accepts guest and signed-in scores, and ranks by score and power', async () => {
+  const environment = env();
+
+  // Guest club submission
+  const guestRes = await handleAccounts(request('/api/leaderboard/club', {
+    method: 'POST',
+    origin: ORIGIN,
+    body: {
+      clientId: '550e8400-e29b-41d4-a716-446655440000',
+      name: 'Guest Stars',
+      crest: 'slash',
+      tone: 'crimson',
+      score: 1500,
+      power: 80,
+      w: 8,
+      l: 4,
+      starCardId: 'card-1',
+      cardIds: ['card-1', 'card-2'],
+    },
+  }), environment);
+  assert.equal(guestRes.status, 200);
+
+  // Signed-in user submission
+  const { session } = await signIn(environment, { profile: { id: '99', username: 'pro_gamer', global_name: 'Pro', avatar: null } });
+  const userRes = await handleAccounts(request('/api/leaderboard/club', {
+    method: 'POST',
+    cookie: `vfl_session=${session}`,
+    origin: ORIGIN,
+    body: {
+      name: 'Champion Club',
+      crest: 'laurel',
+      tone: 'gold',
+      score: 2500,
+      power: 85,
+      w: 12,
+      l: 2,
+      starCardId: 'card-pro',
+      cardIds: ['card-pro', 'card-3'],
+    },
+  }), environment);
+  assert.equal(userRes.status, 200);
+
+  // Read leaderboard
+  const listRes = await handleAccounts(request('/api/leaderboard/global'), environment);
+  assert.equal(listRes.status, 200);
+  const data = await listRes.json();
+  assert.equal(data.rows.length, 2);
+  assert.equal(data.rows[0].name, 'Champion Club');
+  assert.equal(data.rows[0].pos, 1);
+  assert.equal(data.rows[1].name, 'Guest Stars');
+  assert.equal(data.rows[1].pos, 2);
+
+  // Cross-origin write rejected
+  const fakeRes = await handleAccounts(request('/api/leaderboard/club', {
+    method: 'POST',
+    origin: 'https://evil.site',
+    body: { clientId: '550e8400-e29b-41d4-a716-446655440000', name: 'Fake' },
+  }), environment);
+  assert.equal(fakeRes.status, 403);
 });
 
 test('local dev can name its own origin for the redirect and the write check', async () => {

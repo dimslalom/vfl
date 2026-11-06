@@ -1,44 +1,30 @@
-import { clubPower, clubScore, squadCards, STARTERS } from '../engine/club/season';
+import { clubPower, clubScore, squadCards, STARTERS } from '../engine/club/season.js';
 
 const YOU = 'you';
-
 const SCORE_CACHE_KEY = 'vfl-my-leaderboard-score';
+const CLIENT_ID_KEY = 'vfl-client-id';
+let fallbackClientId;
 
-const CIRCUIT_DEFS = [
-  { id: 'fnc', name: 'Fnatic', org: 'FNC', style: 'laurel', tone: 'sunset', score: 1820, w: 14, l: 2 },
-  { id: 'tl', name: 'Team Liquid', org: 'TL', style: 'roundel', tone: 'cyan', score: 1780, w: 13, l: 3 },
-  { id: 'kc', name: 'Karmine Corp', org: 'KC', style: 'slash', tone: 'crimson', score: 1710, w: 12, l: 4 },
-  { id: 'vit', name: 'Team Vitality', org: 'VIT', style: 'hex', tone: 'gold', score: 1650, w: 12, l: 4 },
-  { id: 'th', name: 'Team Heretics', org: 'TH', style: 'shield', tone: 'sunset', score: 1590, w: 11, l: 5 },
-  { id: 'nrg', name: 'NRG', org: 'NRG', style: 'block', tone: 'teal', score: 1540, w: 11, l: 5 },
-  { id: 'g2', name: 'G2 Esports', org: 'G2', style: 'sigil', tone: 'bone', score: 1490, w: 10, l: 6 },
-  { id: 'gen', name: 'Gen.G', org: 'GEN', style: 'stack', tone: 'gold', score: 1430, w: 10, l: 6 },
-  { id: 'loud', name: 'LOUD', org: 'LOUD', style: 'slash', tone: 'teal', score: 1380, w: 9, l: 7 },
-  { id: 'kru', name: 'KRU Esports', org: 'KRÜ', style: 'mirror', tone: 'crimson', score: 1310, w: 9, l: 7 },
-];
+export function getClientId() {
+  try {
+    let id = localStorage.getItem(CLIENT_ID_KEY);
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem(CLIENT_ID_KEY, id);
+    }
+    return id;
+  } catch {
+    fallbackClientId ??= crypto.randomUUID();
+    return fallbackClientId;
+  }
+}
 
-export function buildGlobalCircuit(allCards) {
-  return CIRCUIT_DEFS.map(item => {
-    const cards = allCards.filter(c => c.org === item.org).slice(0, STARTERS);
-    const starCard = [...cards].sort((a, b) => b.rating - a.rating)[0] ?? cards[0];
-    const power = cards.length ? Math.round(cards.reduce((sum, c) => sum + c.rating, 0) / cards.length) : 80;
-    return {
-      id: item.id,
-      name: item.name,
-      style: item.style,
-      tone: item.tone,
-      score: item.score,
-      w: item.w,
-      l: item.l,
-      power,
-      starCard,
-      cards,
-      you: false,
-    };
-  });
+export function buildGlobalCircuit() {
+  return [];
 }
 
 export function buildUserEntry(state, allCards) {
+  if (!state) return null;
   const starters = squadCards(state, allCards).slice(0, STARTERS);
   const starCard = [...starters].sort((a, b) => b.rating - a.rating)[0] ?? starters[0];
   const power = clubPower(state, YOU, allCards);
@@ -63,37 +49,80 @@ export function buildUserEntry(state, allCards) {
 }
 
 export async function fetchGlobalClubs(state, allCards) {
-  const baseCircuit = buildGlobalCircuit(allCards);
+  if (!state) return [];
   const userEntry = buildUserEntry(state, allCards);
+  const clientId = getClientId();
+  const cardById = new Map((allCards ?? []).map(c => [c.id, c]));
+
+  syncClubScore(state, allCards);
+
+  let serverRows = null;
+  let serverUserRow = null;
 
   try {
-    const response = await fetch('/api/leaderboard/global', {
+    const response = await fetch(`/api/leaderboard/global?clientId=${encodeURIComponent(clientId)}`, {
+      credentials: 'same-origin',
       headers: { Accept: 'application/json' },
     });
     if (response.ok) {
       const data = await response.json();
-      if (Array.isArray(data?.rows) && data.rows.length > 0) {
-        // Merge server rows if available
+      if (Array.isArray(data?.rows)) {
+        serverRows = data.rows;
+        serverUserRow = data.userRow ?? null;
       }
     }
   } catch {
-    // Offline fallback: graceful degradation to local circuit
+    // Offline fallback
   }
 
-  const all = [...baseCircuit, userEntry];
-  all.sort((a, b) => {
-    if (b.score !== a.score) return b.score - a.score;
-    return b.power - a.power;
-  });
+  if (serverRows !== null && serverRows.length > 0) {
+    const list = serverRows.map(row => {
+      const isYou = Boolean(row.isYou || row.id === clientId || row.name === state.name);
+      if (isYou) return userEntry;
+      const cards = (row.cardIds ?? []).map(id => cardById.get(id)).filter(Boolean);
+      const starCard = (row.starCardId ? cardById.get(row.starCardId) : null) ?? cards[0] ?? (allCards ? allCards[0] : null);
+      return {
+        id: row.id,
+        name: row.name,
+        style: row.style,
+        tone: row.tone,
+        score: row.score,
+        w: row.w,
+        l: row.l,
+        power: row.power,
+        starCard,
+        cards: cards.length > 0 ? cards : squadCards(state, allCards).slice(0, STARTERS),
+        you: false,
+      };
+    });
 
-  return all.map((entry, index) => ({
-    ...entry,
-    pos: index + 1,
-  }));
+    const hasYou = list.some(item => item.you);
+    if (!hasYou) {
+      if (serverUserRow) {
+        userEntry.pos = serverUserRow.pos;
+      }
+      list.push(userEntry);
+      list.sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return b.power - a.power;
+      });
+    }
+
+    return list.map((entry, index) => ({
+      ...entry,
+      pos: entry.pos ?? (index + 1),
+    }));
+  }
+
+  return [{ ...userEntry, pos: 1 }];
 }
 
 export async function syncClubScore(state, allCards) {
+  if (!state) return;
   const entry = buildUserEntry(state, allCards);
+  if (!entry) return;
+  const clientId = getClientId();
+
   try {
     localStorage.setItem(SCORE_CACHE_KEY, JSON.stringify({
       name: entry.name,
@@ -108,8 +137,10 @@ export async function syncClubScore(state, allCards) {
   try {
     await fetch('/api/leaderboard/club', {
       method: 'POST',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        clientId,
         name: entry.name,
         crest: entry.style,
         tone: entry.tone,
@@ -117,7 +148,8 @@ export async function syncClubScore(state, allCards) {
         power: entry.power,
         w: entry.w,
         l: entry.l,
-        starCardId: entry.starCard?.id,
+        starCardId: entry.starCard?.id ?? null,
+        cardIds: (entry.cards ?? []).map(c => c.id),
       }),
     });
   } catch {

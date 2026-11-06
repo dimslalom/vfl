@@ -11,6 +11,8 @@
 //   PUT    /api/club-save              replace it with { save }
 //   DELETE /api/club-save              remove it (club abandoned or sacked)
 //   DELETE /api/account                delete the account and everything in it
+//   POST   /api/leaderboard/club       submit or update club on the leaderboard
+//   GET    /api/leaderboard/global     read global club standings
 
 const SESSION_COOKIE = 'vfl_session';
 const STATE_COOKIE = 'vfl_oauth';
@@ -45,6 +47,8 @@ export async function handleAccounts(request, env, { fetcher = fetch, now = Date
     'PUT /api/club-save': () => writeClubSave(request, origins, env, now()),
     'DELETE /api/club-save': () => deleteClubSave(request, origins, env, now()),
     'DELETE /api/account': () => deleteAccount(request, url, env, now(), origins),
+    'POST /api/leaderboard/club': () => writeClubLeaderboard(request, origins, env, now()),
+    'GET /api/leaderboard/global': () => readGlobalLeaderboard(request, url, env, now()),
   };
   const handler = routes[route];
   if (!handler) return null;
@@ -182,10 +186,143 @@ async function deleteAccount(request, url, env, at, origins) {
   if (!user) return json({ error: 'signed_out' }, 401);
   await env.ACCOUNTS.batch([
     env.ACCOUNTS.prepare('DELETE FROM club_saves WHERE user_id = ?').bind(user.id),
+    env.ACCOUNTS.prepare('DELETE FROM club_leaderboard WHERE user_id = ? OR id = ?').bind(user.id, user.id),
     env.ACCOUNTS.prepare('DELETE FROM sessions WHERE user_id = ?').bind(user.id),
     env.ACCOUNTS.prepare('DELETE FROM users WHERE id = ?').bind(user.id),
   ]);
   return json({ ok: true }, 200, [cookie(url, SESSION_COOKIE, '', { maxAge: 0, path: '/' })]);
+}
+
+// ── Club leaderboard ────────────────────────────────────────────────────────
+
+async function writeClubLeaderboard(request, origins, env, at) {
+  if (!sameOrigin(request, origins)) return json({ error: 'forbidden' }, 403);
+  const text = await readText(request, MAX_SAVE_BYTES);
+  if (text === null) return json({ error: 'payload_too_large' }, 413);
+  let body;
+  try { body = JSON.parse(text); } catch { return json({ error: 'invalid_json' }, 400); }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return json({ error: 'invalid_submission' }, 400);
+
+  const user = await currentUser(request, env, at);
+  const clientId = typeof body.clientId === 'string' && /^[0-9a-f-]{8,64}$/i.test(body.clientId.trim())
+    ? body.clientId.trim()
+    : null;
+  const id = user ? user.id : clientId;
+  if (!id) return json({ error: 'invalid_submission' }, 400);
+
+  const name = typeof body.name === 'string' ? body.name.trim().slice(0, 32) : '';
+  const crest = typeof body.crest === 'string' ? body.crest.trim().slice(0, 32) : 'laurel';
+  const tone = typeof body.tone === 'string' ? body.tone.trim().slice(0, 32) : 'sunset';
+  const score = Number.isInteger(body.score) && body.score >= 0 ? Math.min(body.score, 10000000) : 0;
+  const power = Number.isInteger(body.power) && body.power >= 0 ? Math.min(body.power, 150) : 80;
+  const w = Number.isInteger(body.w) && body.w >= 0 ? Math.min(body.w, 1000) : 0;
+  const l = Number.isInteger(body.l) && body.l >= 0 ? Math.min(body.l, 1000) : 0;
+  const starCardId = typeof body.starCardId === 'string' ? body.starCardId.slice(0, 64) : null;
+  const cardIds = Array.isArray(body.cardIds)
+    ? body.cardIds.filter(item => typeof item === 'string').slice(0, 10)
+    : [];
+
+  if (!name) return json({ error: 'invalid_submission' }, 400);
+
+  await env.ACCOUNTS.prepare(
+    `INSERT INTO club_leaderboard (id, user_id, club_name, crest, tone, score, power, w, l, star_card_id, card_ids, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       user_id = excluded.user_id,
+       club_name = excluded.club_name,
+       crest = excluded.crest,
+       tone = excluded.tone,
+       score = excluded.score,
+       power = excluded.power,
+       w = excluded.w,
+       l = excluded.l,
+       star_card_id = excluded.star_card_id,
+       card_ids = excluded.card_ids,
+       updated_at = excluded.updated_at`,
+  ).bind(
+    id,
+    user ? user.id : null,
+    name,
+    crest,
+    tone,
+    score,
+    power,
+    w,
+    l,
+    starCardId,
+    JSON.stringify(cardIds),
+    at,
+  ).run();
+
+  if (user && clientId && clientId !== user.id) {
+    await env.ACCOUNTS.prepare('DELETE FROM club_leaderboard WHERE id = ?').bind(clientId).run();
+  }
+
+  return json({ ok: true, id });
+}
+
+async function readGlobalLeaderboard(request, url, env, at) {
+  const user = await currentUser(request, env, at);
+  const clientId = url.searchParams.get('clientId');
+  const myId = user ? user.id : (clientId || null);
+
+  const parsedLimit = parseInt(url.searchParams.get('limit') ?? '50', 10);
+  const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 100) : 50;
+
+  const { results } = await env.ACCOUNTS.prepare(
+    `SELECT id, user_id, club_name, crest, tone, score, power, w, l, star_card_id, card_ids, updated_at
+     FROM club_leaderboard
+     ORDER BY score DESC, power DESC, updated_at ASC
+     LIMIT ?`,
+  ).bind(limit).all();
+
+  const rows = (results ?? []).map((r, index) => ({
+    pos: index + 1,
+    id: r.id,
+    name: r.club_name,
+    style: r.crest,
+    tone: r.tone,
+    score: r.score,
+    power: r.power,
+    w: r.w,
+    l: r.l,
+    starCardId: r.star_card_id,
+    cardIds: r.card_ids ? JSON.parse(r.card_ids) : [],
+    isYou: Boolean(myId && (r.id === myId || (r.user_id && user && r.user_id === user.id))),
+  }));
+
+  let userRow = null;
+  const inList = rows.some(r => r.isYou);
+  if (!inList && myId) {
+    const caller = await env.ACCOUNTS.prepare(
+      `SELECT id, user_id, club_name, crest, tone, score, power, w, l, star_card_id, card_ids, updated_at
+       FROM club_leaderboard WHERE id = ? OR (user_id IS NOT NULL AND user_id = ?)`,
+    ).bind(myId, myId).first();
+
+    if (caller) {
+      const ahead = await env.ACCOUNTS.prepare(
+        `SELECT COUNT(*) AS n FROM club_leaderboard
+         WHERE score > ? OR (score = ? AND power > ?) OR (score = ? AND power = ? AND updated_at < ?)`,
+      ).bind(caller.score, caller.score, caller.power, caller.score, caller.power, caller.updated_at).first();
+
+      userRow = {
+        pos: (ahead?.n ?? 0) + 1,
+        id: caller.id,
+        name: caller.club_name,
+        style: caller.crest,
+        tone: caller.tone,
+        score: caller.score,
+        power: caller.power,
+        w: caller.w,
+        l: caller.l,
+        starCardId: caller.star_card_id,
+        cardIds: caller.card_ids ? JSON.parse(caller.card_ids) : [],
+        isYou: true,
+      };
+    }
+  }
+
+  return json({ rows, userRow });
 }
 
 // ── Clubs save ──────────────────────────────────────────────────────────────

@@ -1540,7 +1540,7 @@ function League({ state, go, onBack, onChallenge, size }) {
                   <LedgerRow label={t('Score')}>{selectedClub.score}</LedgerRow>
                   <LedgerRow label={t('Record')}>{`${selectedClub.w}-${selectedClub.l}`}</LedgerRow>
                   <LedgerRow label={t('Roster power')}>{`${selectedClub.power} OVR`}</LedgerRow>
-                  <LedgerRow label={t('Star player')}>{selectedClub.starCard.player}</LedgerRow>
+                  <LedgerRow label={t('Star player')}>{selectedClub.starCard?.player ?? ''}</LedgerRow>
                 </div>
               </div>
               <div className={styles.managementActions}>
@@ -1573,7 +1573,7 @@ function League({ state, go, onBack, onChallenge, size }) {
                     key={row.id}
                     data-you={row.you || undefined}
                     data-top={row.pos === 1 ? '1' : undefined}
-                    data-cut={row.pos === 4 ? t('Top 10') : undefined}
+                    data-cut={row.pos === 10 && globalRows.length > 10 ? t('Top 10') : undefined}
                     onClick={() => setSelectedId(row.id)}
                   >
                     {isSelected && <SelectionCorners />}
