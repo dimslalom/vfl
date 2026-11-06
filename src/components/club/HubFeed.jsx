@@ -19,7 +19,7 @@ function Face({ card }) {
 }
 
 // A rival's crest; a club with no logo file gets a mark drawn from its name, never an empty box.
-function Crest({ club, size }) {
+export function Crest({ club, size }) {
   if (club?.logo) return <img className={styles.crest} src={assetPath(club.logo)} alt="" style={{ width: size, height: size }} />;
   return club ? <ClubLogo name={club.name} size={size} /> : <span className={styles.crest} style={{ width: size, height: size }} />;
 }

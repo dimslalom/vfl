@@ -73,7 +73,6 @@ export function decayIdleBonds(bonds, starterIds) {
   return { bonds: next, faded };
 }
 
-/** Drop bonds for anyone no longer on the squad. */
 export function pruneBonds(bonds, keepIds) {
   const keep = new Set(keepIds);
   const next = {};

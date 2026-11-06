@@ -6,7 +6,7 @@ import cards from '../shared/src/data/cards.json' with { type: 'json' };
 import { eligibleOrgs, mulberry32, samplePack } from '../shared/src/engine/perfectRun.js';
 import { tierPools } from '../src/engine/endless/ladder.js';
 import {
-  PRESTIGE_MIN_TITLES, applyPrestige, canPrestige, canSign, freeAgents,
+  canSign, freeAgents,
   holdCost, maxSignableRating, packPool, poachInterest, releaseFee, rollNpcSignings,
   rollPoachOffer, signingCost, signingTargets,
 } from '../src/engine/endless/market.js';
@@ -170,26 +170,6 @@ test('free agents exclude both your squad and everyone signed', () => {
   const signedIds = { [cards[300].id]: 'FNC' };
   const free = freeAgents(cards, squadIds, signedIds);
   assert.equal(free.length, cards.length - squadIds.size - 1);
-});
-
-// ── prestige ────────────────────────────────────────────────────────────────
-
-test('prestige is gated on reaching the top and winning there', () => {
-  assert.deepEqual(canPrestige({ tier: 1, titles: 9, prestige: {} }), { ok: false, reason: 'tier' });
-  assert.deepEqual(canPrestige({ tier: 2, titles: 0, prestige: {} }), { ok: false, reason: 'titles' });
-  assert.equal(canPrestige({ tier: 2, titles: PRESTIGE_MIN_TITLES, prestige: {} }).ok, true);
-});
-
-test('banking compounds, so walking away beats farming a solved run', () => {
-  let prestige = { level: 0, multiplier: 1, bankedScore: 0 };
-  prestige = applyPrestige(prestige, 1000);
-  assert.equal(prestige.level, 1);
-  assert.equal(prestige.bankedScore, 1000);
-  assert.equal(prestige.multiplier, 1.5);
-
-  prestige = applyPrestige(prestige, 1000);
-  assert.equal(prestige.bankedScore, 2500, 'the same run is worth more the second time');
-  assert.equal(prestige.multiplier, 2);
 });
 
 // ── news ────────────────────────────────────────────────────────────────────

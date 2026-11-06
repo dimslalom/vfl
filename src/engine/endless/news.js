@@ -13,21 +13,6 @@ import { t } from '../../lib/i18n.js';
 
 export const FEED_CAP = 40;
 
-export const NEWS_KINDS = [
-  'signing',    // a rival org signed a free agent
-  'poach',      // a rival came for one of yours
-  'departure',  // ...and you let them go
-  'held',       // ...and you refused
-  'signed',     // you signed a specific player
-  'prospect',   // an academy prospect joined
-  'promote',
-  'relegate',
-  'legend',
-  'bond',
-  'growth',
-  'decline',
-];
-
 /** Append items, newest first, bounded so a long run cannot grow the save. */
 export function pushNews(feed, items, { year, event }) {
   const stamped = items.map(item => ({ ...item, y: year, t: event }));

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import allCards from '../../shared/src/data/cards.json';
 import { STAT_KEYS, STAT_LABELS, STAT_LABELS_FULL } from '../../shared/src/data/statFields';
@@ -43,8 +43,9 @@ import ClubSettings from '../components/club/ClubSettings';
 import ClubHint from '../components/club/ClubHint';
 import ClubSyncChoice from '../components/club/ClubSyncChoice';
 import ClubRename from '../components/club/ClubRename';
+import AmbientBroadcast from '../components/club/AmbientBroadcast';
 import { LatestMove, Scout } from '../components/club/HubFeed';
-import { attention } from '../engine/club/attention';
+import { attention, pressing } from '../engine/club/attention';
 import SeasonIntro from '../components/club/SeasonIntro';
 import { stageLabel } from '../components/club/clubSummary';
 import useClubSync from '../lib/useClubSync';
@@ -493,7 +494,6 @@ function Home({ state, go, onAbandon, onSettings, onPrimer, size }) {
   const squad = squadCards(state, allCards);
   const match = nextMatch(state);
   const opponent = clubById(state, match.id);
-  const firstMap = pickSeriesMaps(seriesSeed(state, match), match.bestOf)[0];
   const pos = standings(state, allCards).find(row => row.you).pos;
   const started = state.results.length > 0;
   const max = squadMax(state);
@@ -515,7 +515,7 @@ function Home({ state, go, onAbandon, onSettings, onPrimer, size }) {
         <PackCounter state={state} onOpen={() => go('vault')} />
         <ClubMenu onAbandon={onAbandon} onSettings={onSettings} onPrimer={onPrimer} onRename={() => go('rename')} onCrest={() => go('crest')} />
       </Hud>
-      <Ground map={firstMap?.image && assetPath(firstMap.image)} className={styles.home} style={{ '--hero-w': `${size.heroWidth}px` }}>
+      <Ground className={styles.home} style={{ '--hero-w': `${size.heroWidth}px` }}>
         <Road state={state} />
         <section className={styles.homeSquad} aria-label="Your squad">
           <span className={styles.groupLabel}>Starting five</span>
@@ -1342,6 +1342,12 @@ export function Result({ state, onContinue, size }) {
             <li key={key}><TapeCard scale={0.135} target={key} /><b>{tapeName(key)} tape ×{count}</b></li>
           ))}
           {last.evoReward && <li><EvoChip evoKey={last.evoReward} size={90} /><b>{EVO_CHIPS[last.evoReward].name} Evo</b></li>}
+          {last.flawlessRounds > 0 && (
+            <li className={styles.flawlessLootItem}>
+              <span className={styles.flawlessLootBadge}>{t('FLAWLESS')}</span>
+              <b>{t('Clean sweep bonus')}</b>
+            </li>
+          )}
         </ul>
         {milestones.length > 0 && (
           <ul className={styles.resultMilestones} aria-label="Player milestones">
@@ -1362,7 +1368,10 @@ export function Result({ state, onContinue, size }) {
               <li key={index} data-won={round.winA} style={{ '--deal': index }}>
                 <img src={mapArt(round.map)} alt="" />
                 <b>{round.map}</b>
-                <span className={styles.mapScore}>{round.a}–{round.b}</span>
+                <span className={styles.mapScore}>
+                  {round.a}–{round.b}
+                  {round.a === 3 && <small className={styles.mapFlawlessTag}>{t('FLAWLESS')}</small>}
+                </span>
                 <em>{round.winA ? 'Won' : 'Lost'}</em>
               </li>
             ))}
@@ -1426,34 +1435,66 @@ function Bracket({ state, table }) {
   const { playoffs } = state;
   const seeds = playoffs?.seeds ?? table.slice(0, 4).map(row => row.id);
   const team = (id, seed, winner) => (
-    <li data-you={id === 'you' || undefined} data-out={winner && winner !== id ? true : undefined} data-won={winner === id || undefined}>
-      <span className={styles.seed}>{seed}</span>
+    <li
+      className={styles.bracketRow}
+      data-you={id === 'you' || undefined}
+      data-out={winner && winner !== id ? true : undefined}
+      data-won={winner === id || undefined}
+    >
+      <span className={styles.bracketSeed}>{seed ?? ''}</span>
       {id === 'you' ? <OwnMark state={state} size={24} /> : <Crest club={clubById(state, id)} size={24} />}
-      <b>{id === 'you' ? state.name : clubById(state, id).name}</b>
+      <b className={styles.bracketClubName}>{id === 'you' ? state.name : clubById(state, id).name}</b>
     </li>
   );
   const semi = (index, a, b) => {
     const match = playoffs?.semis[index];
     return (
       <div className={styles.match}>
-        <span className={styles.matchHead}>Semifinal {index + 1}<small>Bo3</small></span>
-        <ol>{team(match?.ids[0] ?? seeds[a], a + 1, match?.winner)}{team(match?.ids[1] ?? seeds[b], b + 1, match?.winner)}</ol>
+        <div className={styles.matchHead}>
+          <span>{t('Semifinal')} {index + 1}</span>
+          <small>Bo3</small>
+        </div>
+        <ol className={styles.matchPod}>
+          {team(match?.ids[0] ?? seeds[a], a + 1, match?.winner)}
+          {team(match?.ids[1] ?? seeds[b], b + 1, match?.winner)}
+        </ol>
       </div>
     );
   };
   const final = playoffs?.final;
   return (
-    <section className={styles.bracket} aria-label="Playoffs">
+    <section className={styles.bracket} aria-label={t('Playoffs')}>
       <div className={styles.bracketHead}>
-        <h2 className={styles.sectionHead}>Playoffs</h2>
-        {!playoffs && <Tag>Projected</Tag>}
+        <h2 className={styles.sectionHead}>{t('Playoffs')}</h2>
+        {!playoffs && <Tag>{t('Projected')}</Tag>}
       </div>
       <div className={styles.bracketGrid} data-projected={!playoffs || undefined}>
         <div className={styles.semis}>{semi(0, 0, 3)}{semi(1, 1, 2)}</div>
         <span className={styles.joiner} aria-hidden="true" />
         <div className={styles.match} data-final="true">
-          <span className={styles.matchHead}>Final<small>Bo5</small></span>
-          {final ? <ol>{team(final.ids[0], null, final.winner)}{team(final.ids[1], null, final.winner)}</ol> : <p className={styles.plain}>Semifinal winners</p>}
+          <div className={styles.matchHead}>
+            <span>{t('Final')}</span>
+            <small>Bo5</small>
+          </div>
+          {final ? (
+            <ol className={styles.matchPod}>
+              {team(final.ids[0], null, final.winner)}
+              {team(final.ids[1], null, final.winner)}
+            </ol>
+          ) : (
+            <ol className={styles.matchPod} data-pending="true">
+              <li className={styles.bracketRow} data-pending="true">
+                <span className={styles.bracketSeed} />
+                <span className={styles.pendingMark} aria-hidden="true" />
+                <span className={styles.pendingClubName}>{t('Semifinal 1 winner')}</span>
+              </li>
+              <li className={styles.bracketRow} data-pending="true">
+                <span className={styles.bracketSeed} />
+                <span className={styles.pendingMark} aria-hidden="true" />
+                <span className={styles.pendingClubName}>{t('Semifinal 2 winner')}</span>
+              </li>
+            </ol>
+          )}
         </div>
       </div>
     </section>
@@ -1500,22 +1541,39 @@ function League({ state, go, onBack, onChallenge, size }) {
           <Road state={state} />
           <div className={styles.leagueBody}>
             <section className={styles.leagueTable} aria-label={tierName(state.tier)}>
-              <div className={styles.bracketHead}>
-                <h2 className={styles.sectionHead}>{tierName(state.tier)}</h2>
-                <span className={styles.tierBars} role="img" aria-label={`Tier ${state.tier + 1} of 3`}>
-                  {[0, 1, 2].map(index => <i key={index} data-on={index === state.tier || undefined} />)}
-                </span>
+              <div className={styles.tableHeaderGroup}>
+                <div className={styles.bracketHead}>
+                  <h2 className={styles.sectionHead}>{tierName(state.tier)}</h2>
+                  <span className={styles.tierBars} role="img" aria-label={`Tier ${state.tier + 1} of 3`}>
+                    {[0, 1, 2].map(index => <i key={index} data-on={index === state.tier || undefined} />)}
+                  </span>
+                </div>
+                <div className={styles.tableColLabels} aria-hidden="true">
+                  <span>W–L</span>
+                  <span>RD</span>
+                </div>
               </div>
               <ol className={styles.table}>
-                <li className={styles.tableHead} aria-hidden="true"><span /><span /><span /><span>W–L</span><span>RD</span></li>
                 {table.map(row => (
-                  <li key={row.id} data-you={row.you || undefined} data-cut={row.pos === 4 ? 'Playoff line' : row.pos === 5 ? 'Drop zone' : undefined}>
-                    <b className={styles.pos}>{row.pos}</b>
-                    {row.you ? <OwnMark state={state} size={32} /> : <Crest club={clubById(state, row.id)} />}
-                    <b className={styles.clubName}>{row.name}</b>
-                    <b className={styles.record}>{row.w}–{row.l}</b>
-                    <span className={styles.rd} data-sign={Math.sign(row.rd)}>{row.rd > 0 ? `+${row.rd}` : row.rd}</span>
-                  </li>
+                  <Fragment key={row.id}>
+                    <li data-you={row.you || undefined}>
+                      <b className={styles.pos}>{row.pos}</b>
+                      {row.you ? <OwnMark state={state} size={32} /> : <Crest club={clubById(state, row.id)} />}
+                      <b className={styles.clubName}>{row.name}</b>
+                      <b className={styles.record}>{row.w}–{row.l}</b>
+                      <span className={styles.rd} data-sign={Math.sign(row.rd)}>{row.rd > 0 ? `+${row.rd}` : row.rd}</span>
+                    </li>
+                    {row.pos === 4 && (
+                      <li key="cut-playoff" className={styles.cutRow} role="separator" aria-label={t('Playoff line')}>
+                        <span>{t('Playoff line')}</span>
+                      </li>
+                    )}
+                    {row.pos === 5 && (
+                      <li key="cut-drop" className={styles.cutRow} role="separator" aria-label={t('Drop zone')}>
+                        <span>{t('Drop zone')}</span>
+                      </li>
+                    )}
+                  </Fragment>
                 ))}
               </ol>
             </section>
@@ -2184,12 +2242,14 @@ export default function Club() {
   if (screen === 'landing') {
     const next = state && nextMatch(state);
     const map = next ? pickSeriesMaps(seriesSeed(state, next), next.bestOf)[0]?.image : undefined;
+    const due = state ? pressing(state).length > 0 : false;
     return (
       <>
       <ClubLanding
         state={state}
         account={sync.account}
         map={map}
+        due={due}
         onContinue={() => show(screenFor(state))}
         onFound={found}
         onPrimer={() => openPrimer('landing')}
@@ -2216,46 +2276,12 @@ export default function Club() {
     );
   }
   if (screen === 'start' || !state) return <Start onStart={start} onExit={() => show('landing')} exitLabel={t('Back')} scale={size.scale} />;
-  if (screen === 'train') {
-    return withHint(<Train state={state} go={goTab} size={size} initialFocus={trainingItem?.kind === 'evo' ? 'evo' : trainingItem?.kind === 'tape' ? (trainingItem.key ? `tape:${trainingItem.key}` : 'tape') : null} initialEvoKey={trainingItem?.kind === 'evo' ? trainingItem.key : null} onBack={() => { setTrainingItem(null); show(trainingItem ? 'chips' : 'home'); }} onTape={tapePlayer} onEvo={commitEvoPlayer} />, 'train');
-  }
-  if (screen === 'open' && state.opening) return <OpenPack key={state.opens} state={state} size={size} onChoose={pickFromPack} />;
-  if (screen === 'vault') return withHint(<Vault state={state} go={goTab} onBack={() => show('home')} onOpenPack={openThePack} onWindow={state.phase === 'review' ? () => show('window') : null} />, 'vault');
-  if (screen === 'chips') {
-    if (!state.chipOffer || chipView === 'inventory') return withHint(<Inventory state={state} go={goTab} onPick={() => setChipView('pick')} size={size} onBack={() => show('home')} onTraining={(item) => { setTrainingItem(item); show('train'); }} onEquip={(uid, equipped) => { playUiSound('chip_lift'); setState(current => setTacticEquipped(current, uid, equipped)); }} />, 'chips');
-    return withHint(<ChipPick key={state.chipOffer.attempt} state={state} go={goTab} onInventory={() => setChipView('inventory')} squad={squadCards(state, allCards).slice(0, STARTERS)} onBack={() => show('home')} onTake={takeChip} onPass={() => { setState(current => chooseChip(current, null)); setScreen('home'); }} onReroll={() => setState(current => rerollChips(current))} />, 'chips', 'chipPick');
-  }
   if (screen === 'season') {
     // The ground is the first match's map, as it will be on the hub.
     const first = nextMatch(state);
     const map = first ? pickSeriesMaps(seriesSeed(state, first), first.bestOf)[0]?.image : undefined;
     return <SeasonIntro key={state.year} state={state} map={map} reducedMotion={reducedMotion} onDone={() => show('home')} />;
   }
-  if (screen === 'crest') {
-    return (
-      <CrestEdit
-        state={state}
-        onDone={(style, tone) => {
-          setState(current => setClubCrest(current, style, tone));
-          setScreen('home');
-        }}
-      />
-    );
-  }
-  if (screen === 'rename') {
-    return (
-      <ClubRename
-        state={state}
-        onBack={() => show('home')}
-        onRename={(name) => {
-          setState(current => renameClub(current, name));
-          setNotice(t('Renamed to {name}', { name: cleanName(name) }));
-          setScreen('home');
-        }}
-      />
-    );
-  }
-  if (screen === 'squad') return withHint(<Squad state={state} go={goTab} size={size} onVault={() => show('vault')} onBack={() => show('home')} onMove={(from, to) => setState(current => moveSquad(current, from, to))} />, 'squad');
   const match = nextMatch(state);
   if (screen === 'match' && match) {
     const club = clubById(state, match.id);
@@ -2353,23 +2379,91 @@ export default function Club() {
     );
   }
   if (screen === 'result') return <Result state={state} size={size} onContinue={() => show(screenFor(state))} />;
-  if (screen === 'league') return withHint(<League state={state} go={goTab} onBack={() => show('home')} onChallenge={startChallenge} size={size} />, 'league');
   if (screen === 'over' || state.phase === 'over') return <Over state={state} onAgain={fresh} />;
-  if (screen === 'window') return <Window state={state} size={size} onClose={closeTheWindow} />;
-  if (screen === 'review' || !match) return <Review state={state} size={size} onNext={() => { syncClubScore(state, allCards); show('window'); }} />;
-  return withHint(
-    <>
-      <Home
-        state={state}
-        size={size}
-        go={(next) => { setNotice(''); show(next); }}
-        onAbandon={fresh}
-        onSettings={() => openSettings('home')}
-        onPrimer={() => openPrimer('home')}
+
+  // ── Club Hub and Management views ──────────────────────────────────────────
+  // Ambient muffled VCT broadcast video and audio plays continuously across all
+  // hub menus without restarting between tab switches.
+  const first = nextMatch(state);
+  const activeMap = first ? pickSeriesMaps(seriesSeed(state, first), first.bestOf)[0]?.image : undefined;
+
+  let hubView;
+  if (screen === 'settings') {
+    hubView = (
+      <ClubSettings
+        prefs={prefs}
+        onChange={updatePrefs}
+        onBack={() => show(settingsBack)}
+        onPrimer={() => openPrimer('settings')}
+        account={sync.account}
+        onSignOut={sync.signOut}
+        onDeleteAccount={sync.deleteAccount}
       />
-      {notice && <p className={styles.toast} role="status">{notice}</p>}
-      {alerts}
-    </>,
-    'home',
+    );
+  } else if (screen === 'train') {
+    hubView = withHint(<Train state={state} go={goTab} size={size} initialFocus={trainingItem?.kind === 'evo' ? 'evo' : trainingItem?.kind === 'tape' ? (trainingItem.key ? `tape:${trainingItem.key}` : 'tape') : null} initialEvoKey={trainingItem?.kind === 'evo' ? trainingItem.key : null} onBack={() => { setTrainingItem(null); show(trainingItem ? 'chips' : 'home'); }} onTape={tapePlayer} onEvo={commitEvoPlayer} />, 'train');
+  } else if (screen === 'open' && state.opening) {
+    hubView = <OpenPack key={state.opens} state={state} size={size} onChoose={pickFromPack} />;
+  } else if (screen === 'vault') {
+    hubView = withHint(<Vault state={state} go={goTab} onBack={() => show('home')} onOpenPack={openThePack} onWindow={state.phase === 'review' ? () => show('window') : null} />, 'vault');
+  } else if (screen === 'chips') {
+    if (!state.chipOffer || chipView === 'inventory') {
+      hubView = withHint(<Inventory state={state} go={goTab} onPick={() => setChipView('pick')} size={size} onBack={() => show('home')} onTraining={(item) => { setTrainingItem(item); show('train'); }} onEquip={(uid, equipped) => { playUiSound('chip_lift'); setState(current => setTacticEquipped(current, uid, equipped)); }} />, 'chips');
+    } else {
+      hubView = withHint(<ChipPick key={state.chipOffer.attempt} state={state} go={goTab} onInventory={() => setChipView('inventory')} squad={squadCards(state, allCards).slice(0, STARTERS)} onBack={() => show('home')} onTake={takeChip} onPass={() => { setState(current => chooseChip(current, null)); setScreen('home'); }} onReroll={() => setState(current => rerollChips(current))} />, 'chips', 'chipPick');
+    }
+  } else if (screen === 'crest') {
+    hubView = (
+      <CrestEdit
+        state={state}
+        onDone={(style, tone) => {
+          setState(current => setClubCrest(current, style, tone));
+          setScreen('home');
+        }}
+      />
+    );
+  } else if (screen === 'rename') {
+    hubView = (
+      <ClubRename
+        state={state}
+        onBack={() => show('home')}
+        onRename={(name) => {
+          setState(current => renameClub(current, name));
+          setNotice(t('Renamed to {name}', { name: cleanName(name) }));
+          setScreen('home');
+        }}
+      />
+    );
+  } else if (screen === 'squad') {
+    hubView = withHint(<Squad state={state} go={goTab} size={size} onVault={() => show('vault')} onBack={() => show('home')} onMove={(from, to) => setState(current => moveSquad(current, from, to))} />, 'squad');
+  } else if (screen === 'league') {
+    hubView = withHint(<League state={state} go={goTab} onBack={() => show('home')} onChallenge={startChallenge} size={size} />, 'league');
+  } else if (screen === 'window') {
+    hubView = <Window state={state} size={size} onClose={closeTheWindow} />;
+  } else if (screen === 'review' || !match) {
+    hubView = <Review state={state} size={size} onNext={() => { syncClubScore(state, allCards); show('window'); }} />;
+  } else {
+    hubView = withHint(
+      <>
+        <Home
+          state={state}
+          size={size}
+          go={(next) => { setNotice(''); show(next); }}
+          onAbandon={fresh}
+          onSettings={() => openSettings('home')}
+          onPrimer={() => openPrimer('home')}
+        />
+        {notice && <p className={styles.toast} role="status">{notice}</p>}
+        {alerts}
+      </>,
+      'home',
+    );
+  }
+
+  return (
+    <>
+      <AmbientBroadcast active={true} map={activeMap && assetPath(activeMap)} />
+      {hubView}
+    </>
   );
 }

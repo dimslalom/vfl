@@ -67,14 +67,4 @@ export const MAP_LANES = {
   ],
 };
 
-export function winsNeeded(bestOf) {
-  return Math.ceil(bestOf / 2);
-}
-
-/** Who has taken the series, or null while it is still live. */
-export function seriesWinner(bestOf, youWins, themWins) {
-  const needed = winsNeeded(bestOf);
-  if (youWins >= needed) return 'you';
-  if (themWins >= needed) return 'them';
-  return null;
-}
+export { winsNeeded, seriesWinner } from './board.js';

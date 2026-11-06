@@ -19,10 +19,6 @@ export function getClientId() {
   }
 }
 
-export function buildGlobalCircuit() {
-  return [];
-}
-
 export function buildUserEntry(state, allCards) {
   if (!state) return null;
   const starters = squadCards(state, allCards).slice(0, STARTERS);

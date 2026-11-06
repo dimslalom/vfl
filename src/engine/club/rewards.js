@@ -11,21 +11,13 @@ import { maxSignableRating } from '../endless/stature.js';
 import {
   GOLD_PITY, GOLD_RATING, NAME_MAX, RENAME_PRICE, REROLL_PRICE, TAPE_MAX, payPacks, squadMax, stock,
 } from './economy.js';
-import { CONTRACT_MAX, SKILL_SESSIONS, STAT_CAP, STAT_STEP, rollChipOffer, squadCards, trainingOffer } from './season.js';
+import { CONTRACT_MAX, SKILL_SESSIONS, STAT_CAP, STAT_STEP, hashTag, rollChipOffer, squadCards, trainingOffer } from './season.js';
 import { TRAINING_SKILLS } from './tapes.js';
 import { LOGO_STYLES, LOGO_TONES } from './logo.js';
 
 export const PICKS = 3;
 
-function hash(...parts) {
-  let value = 2166136261;
-  for (const char of parts.join('|')) {
-    value ^= char.charCodeAt(0);
-    value = Math.imul(value, 16777619);
-  }
-  return value >>> 0;
-}
-
+const hash = hashTag;
 const isGold = card => card.rating >= GOLD_RATING;
 const strongest = (a, b) => b.rating - a.rating || a.id.localeCompare(b.id);
 
@@ -168,7 +160,6 @@ export function canRename(state, name) {
   return Boolean(next) && next !== state.name && state.phase !== 'over' && payPacks(state, RENAME_PRICE) !== null;
 }
 
-/** A new name for RENAME_PRICE in pack value. */
 export function renameClub(state, name) {
   if (!canRename(state, name)) return state;
   return { ...payPacks(state, RENAME_PRICE), name: cleanName(name) };

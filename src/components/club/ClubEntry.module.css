@@ -3,20 +3,29 @@
    and add only what those don't cover. Tokens only; no new grays (plates). */
 
 /* ── landing ─────────────────────────────────────────────────────────────── */
-.landing { justify-content: center; gap: var(--sp-6); text-align: center; }
+.landing { justify-content: center; gap: var(--sp-6); padding-bottom: var(--sp-8); text-align: center; }
 .kicker { font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
-.headline { margin: 0; font-size: var(--fs-hero); font-weight: 900; line-height: 1; letter-spacing: -.015em; text-transform: uppercase; overflow-wrap: anywhere; }
+/* 700 is the heaviest Familjen weight loaded; anything above it is a faked bold. */
+.headline { margin: 0; font-size: var(--fs-hero); font-weight: 700; line-height: 1; letter-spacing: -.015em; text-transform: uppercase; overflow-wrap: anywhere; }
 .lead { max-width: 46ch; margin: 0; color: var(--muted); font-size: var(--fs-body); line-height: 1.5; }
 .intro { display: flex; flex-direction: column; align-items: center; gap: var(--sp-3); }
-.cardRow { display: flex; align-items: flex-end; justify-content: center; gap: var(--sp-2); }
+.cardRow { display: flex; align-items: flex-end; justify-content: center; gap: var(--sp-2); perspective: 1000px; }
 .cardRow > * { filter: var(--shadow-rest); }
-.tags { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--sp-1); }
+.tags { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--sp-3); }
 
-/* The next fixture: one plate, the rival named in ink, the stage muted. */
+/* Table position: six pips, yours lit. */
+.place { display: inline-flex; align-items: center; gap: var(--sp-2); }
+.place small { font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.placePips { display: flex; gap: 2px; }
+.placePips i { width: 14px; height: 6px; background: var(--plate-inset); }
+.placePips i[data-on] { background: var(--win); }
+
+/* The next fixture: one plate, the rival's crest and name in ink, the stage and format muted. */
 .fixture { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); background: var(--plate); text-align: left; }
 .fixture > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .fixture small { font: 700 var(--fs-micro)/1.2 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
 .fixture b { font-size: var(--fs-lead); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fixture .bestOf { align-self: flex-end; padding-left: var(--sp-2); white-space: nowrap; }
 
 /* Footer: quiet links left, the one action right. It sits above the ground's
    fixed map layer, like the club's .act bar. */
@@ -25,7 +34,9 @@
 .links { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
 .link { min-height: var(--tap-min); padding: 0 var(--sp-3); border: 0; background: var(--plate); color: var(--ink); font: inherit; font-size: var(--fs-label); font-weight: 700; cursor: pointer; }
 .go { display: flex; flex-direction: column; align-items: flex-end; gap: var(--sp-2); }
-.note { margin: 0; font: 700 var(--fs-micro)/1.3 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.note { margin: 0; font-size: var(--fs-label); line-height: 1.4; color: var(--muted); }
+/* Continue carries the hub's attention pip when a pick is waiting. */
+.flagged { position: relative; }
 @media (hover: hover) { .link:hover { background: var(--plate-hi); } }
 
 /* ── primer ──────────────────────────────────────────────────────────────── */
@@ -140,7 +151,7 @@
   .landing { gap: var(--sp-4); }
   .headline { font-size: clamp(34px, 11vw, 56px); }
   /* Five cards don't fit a phone: the middle three carry the row. */
-  .cardRow > :nth-child(1), .cardRow > :nth-child(5) { display: none; }
+  .cardRow[data-count='5'] > :nth-child(1), .cardRow[data-count='5'] > :nth-child(5) { display: none; }
   .foot, .stepAct { flex-direction: column-reverse; align-items: stretch; gap: var(--sp-2); }
   .go { align-items: stretch; text-align: center; }
   .go > button { width: 100%; min-width: 0; }

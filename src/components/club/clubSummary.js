@@ -30,6 +30,17 @@ export const SHOWCASE = allCards
   .sort((a, b) => b.rating - a.rating || a.id.localeCompare(b.id))
   .slice(0, 5);
 
+const withPhoto = card => card.photo !== '/assets/players/placeholder.png';
+const strongest = cards => [...cards].sort((a, b) => b.rating - a.rating || a.id.localeCompare(b.id))[0];
+
+// The climb a new player signs up for, in three real cards: the best silver a
+// founding draft can deal (68 to 79), the best gold, and the best Icon.
+export const CLIMB = [
+  strongest(allCards.filter(card => withPhoto(card) && card.tier === 'silver' && card.league === 'vct' && card.rating <= 79)),
+  strongest(allCards.filter(card => withPhoto(card) && card.tier === 'gold' && card.league === 'vct')),
+  strongest(allCards.filter(card => withPhoto(card) && card.tier === 'icon')),
+].filter(Boolean);
+
 export const DEFAULT_MAP = '/assets/maps/ascent.webp';
 
 export function stageLabel(match) {

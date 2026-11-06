@@ -229,6 +229,34 @@ test('a clean sweep grants tape loot without creating a weekly training slot', (
   assert.equal(Object.hasOwn(state, 'trainSlot'), false);
 });
 
+test('winning all three lanes in a round awards a flawless sweep bonus tape and extra squad XP', () => {
+  const normalSeries = {
+    won: true,
+    results: [
+      { map: 'Ascent', a: 2, b: 1, winA: true, mvp: null },
+      { map: 'Bind', a: 2, b: 1, winA: true, mvp: null },
+    ],
+    hand: [],
+  };
+  const flawlessSeries = {
+    won: true,
+    results: [
+      { map: 'Ascent', a: 3, b: 0, winA: true, mvp: null },
+      { map: 'Bind', a: 2, b: 1, winA: true, mvp: null },
+    ],
+    hand: [],
+  };
+  const normalState = finishSeries(fresh(42), normalSeries, allCards);
+  const flawlessState = finishSeries(fresh(42), flawlessSeries, allCards);
+
+  assert.equal(flawlessState.last.flawlessRounds, 1);
+  assert.equal(flawlessState.last.flawlessTapes.length, 1);
+  assert.equal(flawlessState.last.tapes.length, normalState.last.tapes.length + 1);
+  const normalGain = normalState.last.growth[0].gain;
+  const flawlessGain = flawlessState.last.growth[0].gain;
+  assert.ok(flawlessGain > normalGain);
+});
+
 test('a legacy generic skill tape still advances the player offered skill', () => {
   let state = fresh();
   const card = squadCards(state, allCards).find(item => trainingOffer(state, clubCard(state, item)).skill);

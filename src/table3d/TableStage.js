@@ -30,7 +30,7 @@ import { STAT_LABELS_FULL } from '../../shared/src/data/statFields.js';
 import { disposeChip, makeChip, printChip, THICK } from '../chip3d/ChipStack.js';
 import { createChipView } from '../chip3d/chipRenderer.js';
 import { attack, chipFire, lightning, lockShatter, slash } from './chipFx.js';
-import { attachLaneVerdictFx, disposeLaneVerdictFx } from './LaneVerdictFx.js';
+import { attachLaneVerdictFx, disposeLaneVerdictFx, triggerFlawlessSweepFx } from './LaneVerdictFx.js';
 import { attachSkillFx, readyPose } from './SkillFx.js';
 import { ARENAS, createSoftFocus, loadArena, preloadArena } from './arena.js';
 import {
@@ -988,6 +988,13 @@ export default class TableStage {
     });
     this.timeline.timeScale(this.reducedMotion ? 20 : 1);
     result.lanes.forEach((laneResult, lane) => this.playLane(laneResult, lane));
+    if (result.lanes.length === 3 && result.youWon === 3) {
+      this.timeline.call(() => {
+        triggerFlawlessSweepFx(this.lanes, { reducedMotion: this.reducedMotion, onUpdate: this.mark });
+        playUiSound('flawless');
+      }, null, '+=0.25');
+      this.timeline.to({}, { duration: this.reducedMotion ? 0.2 : 0.65 });
+    }
   }
 
   // One lane scores step by step: theirs, then yours; each player's card pops as

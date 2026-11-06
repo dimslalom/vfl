@@ -11,7 +11,7 @@
 import { effectiveCard, tickFatigue } from '../../../shared/src/engine/endless/career.js';
 import { STAT_KEYS } from '../../../shared/src/data/statFields.js';
 import { eligibleOrgs, mulberry32, pickN, samplePack } from '../../../shared/src/engine/perfectRun.js';
-import { chipTier } from '../board/board.js';
+import { chipTier, winsNeeded } from '../board/board.js';
 import { TIERS, reputationDelta, tierPools } from '../endless/ladder.js';
 import { releaseFee, signingCost } from '../endless/market.js';
 import { maxSignableRating } from '../endless/stature.js';
@@ -20,7 +20,7 @@ import {
   BENCH_XP, GOLD_RATING, INTERNATIONAL_TIER, TITLES_PER_ICON, clubFatigueExtra, grantPacks, packValue, rewardDefaults, withNews,
   settlePacks, squadMax,
 } from './economy.js';
-import { bankTapes, rollTapes, TRAINING_SKILLS } from './tapes.js';
+import { bankTapes, rollFlawlessTape, rollTapes, TRAINING_SKILLS } from './tapes.js';
 
 export const LEAGUE_SIZE = 6;
 export const WEEKS = LEAGUE_SIZE - 1;
@@ -114,7 +114,7 @@ export const EVO_CHIPS = {
 
 export const EVO_KEYS = Object.keys(EVO_CHIPS);
 
-function hash(...parts) {
+export function hashTag(...parts) {
   let value = 2166136261;
   for (const char of parts.join('|')) {
     value ^= char.charCodeAt(0);
@@ -122,6 +122,8 @@ function hash(...parts) {
   }
   return value >>> 0;
 }
+
+const hash = hashTag;
 
 const rngFor = (state, ...tags) => mulberry32(hash(state.seed, ...tags));
 const byId = cards => new Map(cards.map(card => [card.id, card]));
@@ -313,7 +315,7 @@ export function nextMatch(state) {
 // ── simulated series between rivals ─────────────────────────────────────────
 
 function simSeries(rng, powerA, powerB, bestOf) {
-  const need = Math.ceil(bestOf / 2);
+  const need = winsNeeded(bestOf);
   const chance = Math.max(0.15, Math.min(0.85, 0.5 + (powerA - powerB) * ROUND_EDGE_PER_POINT));
   let a = 0;
   let b = 0;
@@ -343,6 +345,7 @@ function recordResult(table, a, b, roundsA, roundsB) {
 function growSquad(state, results, cards) {
   const lookup = byId(cards);
   const lanes = results.reduce((sum, round) => sum + round.a, 0);
+  const flawlessRounds = results.filter(round => round.a === 3).length;
   const mvp = mostValuable(results);
   const dev = { ...state.dev };
   const xp = { ...state.xp };
@@ -354,7 +357,7 @@ function growSquad(state, results, cards) {
     let entry = tickFatigue(current, { started });
     const isMvp = started && card.id === mvp;
     // The bench learns from watching: a share of what a starter earns.
-    const base = 10 + lanes * 2 + (isMvp ? 10 : 0);
+    const base = 10 + lanes * 2 + (isMvp ? 10 : 0) + flawlessRounds * 5;
     const gain = Math.round(base * (started ? 1 : BENCH_XP));
     const total = (xp[id] ?? 0) + gain;
     const points = Math.floor(total / XP_PER_POINT);
@@ -523,9 +526,15 @@ function processActiveEvo(state, { won, mvp, results }) {
 
 function afterSeries(state, { won, results, hand }, cards, opponentId, stage) {
   const roundsWon = results.filter(round => round.winA).length;
+  const flawlessRounds = results.filter(round => round.a === 3).length;
+  const flawlessTapes = Array.from(
+    { length: flawlessRounds },
+    (_, i) => rollFlawlessTape(rngFor(state, 'flawless-tape', state.year, state.week, stage, i)),
+  );
   const { dev, xp, growth, mvp } = growSquad(state, results, cards);
   const { activeEvo, training, evoProgress } = processActiveEvo(state, { won, mvp, results });
   const tapes = rollTapes(rngFor(state, 'tape-loot', state.year, state.week, stage), won);
+  const allTapes = [...tapes, ...flawlessTapes];
   const tactic = won ? rollTactic(state, stage) : null;
   // Board refills are temporary. Only chips equipped from the club can carry over.
   const equipped = new Set((state.hand ?? []).map(chip => chip.uid));
@@ -543,7 +552,7 @@ function afterSeries(state, { won, results, hand }, cards, opponentId, stage) {
     xp,
     hand: surviving,
     tacticReserve: tactic ? [...(state.tacticReserve ?? []), tactic] : state.tacticReserve ?? [],
-    trainingTapes: bankTapes(state.trainingTapes, tapes),
+    trainingTapes: bankTapes(state.trainingTapes, allTapes),
     training,
     activeEvo,
     packs: state.packs + (won ? 1 : 0),
@@ -559,7 +568,9 @@ function afterSeries(state, { won, results, hand }, cards, opponentId, stage) {
       mvp,
       evoProgress,
       packs: won ? 1 : 0,
-      tapes,
+      tapes: allTapes,
+      flawlessRounds,
+      flawlessTapes,
       tactic,
     },
   };
@@ -899,7 +910,6 @@ function nextTier(state) {
 
 // ── squad and score ─────────────────────────────────────────────────────────
 
-/** Swap two squad positions. The first five start and the first is IGL. */
 export function moveSquad(state, from, to) {
   const squad = [...state.squad];
   [squad[from], squad[to]] = [squad[to], squad[from]];

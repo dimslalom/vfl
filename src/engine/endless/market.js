@@ -229,39 +229,3 @@ export function signingTargets(cards, { squadIds, signedIds, reputation, roster 
     .slice(0, limit);
 }
 
-// ── prestige ────────────────────────────────────────────────────────────────
-
-export const PRESTIGE_TIER = 2;          // International
-export const PRESTIGE_MIN_TITLES = 2;
-export const PRESTIGE_STEP = 0.5;
-
-export function canPrestige({ tier, titles, prestige }) {
-  if (tier < PRESTIGE_TIER) return { ok: false, reason: 'tier' };
-  if (titles < PRESTIGE_MIN_TITLES) return { ok: false, reason: 'titles' };
-  return { ok: true, multiplier: (prestige?.multiplier ?? 1) + PRESTIGE_STEP };
-}
-
-/**
- * Bank the run and start again harder. The banked score keeps compounding,
- * so a dominant player has a reason to walk away from a solved run instead of
- * farming it - the anti-runaway mechanic that is a CHOICE rather than a nerf.
- */
-export function applyPrestige(prestige, score) {
-  const level = (prestige?.level ?? 0) + 1;
-  const multiplier = (prestige?.multiplier ?? 1);
-  return {
-    level,
-    multiplier: multiplier + PRESTIGE_STEP,
-    bankedScore: (prestige?.bankedScore ?? 0) + Math.round(score * multiplier),
-  };
-}
-
-/**
- * What retiring a run pays right now. Prestige ends the run, so it pays at the
- * step the button promises rather than the multiplier the run started on.
- */
-export function prestigePayout(prestige, score) {
-  const multiplier = (prestige?.multiplier ?? 1) + PRESTIGE_STEP;
-  const { bankedScore: total } = applyPrestige({ ...prestige, multiplier }, score);
-  return { multiplier, total, bonus: total - score };
-}

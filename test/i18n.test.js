@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { LANGS, dictionary, getLang, t } from '../src/lib/i18n.js';
+import { LANGS, dictionary, getLang, pickLang, t } from '../src/lib/i18n.js';
 import { specialtyTexts } from './helpers/i18nExtras.js';
 
 function sources(dir) {
@@ -60,4 +60,14 @@ test('English is the fallback and placeholders fill in', () => {
   assert.equal(getLang(), 'en');
   assert.equal(t('Year {n}', { n: 3 }), 'Year 3');
   assert.equal(t('A string nobody translated'), 'A string nobody translated');
+});
+
+test('a first visit opens in the browser language, a chosen one always wins', () => {
+  assert.equal(pickLang(null, ['pt-BR', 'en']), 'pt');
+  assert.equal(pickLang(null, ['fr-FR', 'es-419']), 'es');
+  assert.equal(pickLang(null, ['en-GB', 'pt-BR']), 'en');
+  assert.equal(pickLang(null, ['de']), 'en');
+  assert.equal(pickLang(null, []), 'en');
+  assert.equal(pickLang('en', ['pt-BR']), 'en');
+  assert.equal(pickLang('nope', ['es']), 'es');
 });

@@ -2,11 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
    BOARD_SKILLS, allPlacements, chainLane, sideScores, bestPlacement, bestRotate, hasSkill, isLegalPlacement, isLegalRotate, isLegalRotation, laneFormula,
-  laneScore, resolveBoard, rotate, rotateMoves, playBoard,
+  laneScore, resolveBoard, rotate, rotateMoves, playBoard, seriesWinner, winsNeeded,
 } from '../src/engine/board/board.js';
 import allCards from '../shared/src/data/cards.json' with { type: 'json' };
 import { getCardSpecialties } from '../shared/src/data/specialties.js';
-import { MAP_LANES, seriesWinner, winsNeeded } from '../src/engine/board/mapLanes.js';
+import { MAP_LANES } from '../src/engine/board/mapLanes.js';
 import { MAP_NAMES } from '../src/engine/endless/seriesCards.js';
 
 const stats = value => ({ aim: value, positioning: value, ability: value, mentality: value, synergy: value });

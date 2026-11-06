@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import PackTear from '../../shared/src/components/PackTear';
 import useReducedMotion from '../../shared/src/lib/useReducedMotion';
 import { PACK_TYPES } from './packTypes';
@@ -98,10 +98,10 @@ function Pack3D({ interactive, onTorn, onFail, type = 'silver' }) {
     return () => clearTimeout(timer);
   }, [ready, interactive]);
 
-  const tearNow = () => {
+  const tearNow = useCallback(() => {
     if (sceneRef.current && ready) sceneRef.current.autoTear();
     else queuedRef.current = true;
-  };
+  }, [ready]);
 
   // Space/Enter tears the pack without focusing it, unless focus is on a control that owns those keys.
   useEffect(() => {
@@ -115,7 +115,7 @@ function Pack3D({ interactive, onTorn, onFail, type = 'silver' }) {
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  });
+  }, [interactive, tearNow]);
 
   return (
     <div

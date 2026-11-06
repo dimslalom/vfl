@@ -4,6 +4,8 @@
 // ligatures, shields, roundels, negative-space blocks, keyword emblems).
 // Pure and deterministic: the same name and style always give the same SVG.
 
+import { hashTag } from './season.js';
+
 // Strokes on a 4 x 6 grid. Square caps and mitred joins keep it sharp.
 const GLYPHS = {
   A: [[[0, 6], [2, 0], [4, 6]], [[0.9, 4], [3.1, 4]]],
@@ -116,9 +118,7 @@ export function cleanName(name) {
 }
 
 export function hashName(name) {
-  let h = 2166136261;
-  for (const ch of cleanName(name)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
-  return h >>> 0;
+  return hashTag(cleanName(name));
 }
 
 /** Up to three letters: word starts for a long name, the opening letters of a short one. */

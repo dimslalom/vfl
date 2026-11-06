@@ -121,13 +121,13 @@ export function chipInfo(key) {
  */
 export function chipPlan(key, roster = []) {
   const id = TACTICS[key].key;
+  const chipDef = CHIPS[id];
   const ctx = { igl: roster[0]?.id };
-  if (id === 'noRespect') {
+  if (chipDef?.special === 'disrespect') {
     const flick = roster.filter(card => hasSkill(card, 'flick'));
-    // Their best scoring 0 is the same for everyone; it only fits your five when one of them has Flick.
-    return { kind: 'disrespect', mult: 1, cards: flick.slice(0, 1), fits: flick.length > 0, flick: flick.length > 0 };
+    return { kind: chipDef.special, mult: 1, cards: flick.slice(0, 1), fits: flick.length > 0, flick: flick.length > 0 };
   }
-  if (id === 'lockout') return { kind: 'cancel', mult: 1, cards: [], fits: true };
+  if (chipDef?.special === 'cancel') return { kind: chipDef.special, mult: 1, cards: [], fits: true };
   const base = tacticMult({ key: id }, [exampleCard('any', 0)], ctx);
   let best = { mult: base, cards: [] };
   const consider = (cards) => {

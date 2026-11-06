@@ -15,6 +15,11 @@ export function rollTapes(rng, won) {
   });
 }
 
+export function rollFlawlessTape(rng) {
+  const pool = rng() < 0.6 ? TRAINING_SKILLS : STAT_KEYS;
+  return pool[Math.floor(rng() * pool.length)];
+}
+
 export function bankTapes(inventory, keys) {
   const next = { ...inventory };
   for (const key of keys) next[key] = (next[key] ?? 0) + 1;

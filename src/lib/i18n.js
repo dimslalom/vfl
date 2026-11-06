@@ -15,12 +15,27 @@ const STORAGE_KEY = 'vfl-lang';
 const DICTIONARIES = { es, pt };
 const listeners = new Set();
 
+/**
+ * The language to start in: the player's own choice if they made one, else the
+ * first shipped language the browser asks for ("pt-BR" opens in pt), else English.
+ */
+export function pickLang(stored, preferred = []) {
+  if (LANGS.some(lang => lang.key === stored)) return stored;
+  for (const tag of preferred) {
+    const base = String(tag).toLowerCase().split('-')[0];
+    if (LANGS.some(lang => lang.key === base)) return base;
+  }
+  return 'en';
+}
+
 function readLang() {
+  // Only a browser page asks the browser; Node and the Worker stay in English.
+  const nav = typeof document !== 'undefined' ? globalThis.navigator : null;
+  const preferred = nav?.languages?.length ? nav.languages : [nav?.language].filter(Boolean);
   try {
-    const stored = globalThis.localStorage?.getItem(STORAGE_KEY);
-    return LANGS.some(lang => lang.key === stored) ? stored : 'en';
+    return pickLang(globalThis.localStorage?.getItem(STORAGE_KEY), preferred);
   } catch {
-    return 'en';
+    return pickLang(null, preferred);
   }
 }
 

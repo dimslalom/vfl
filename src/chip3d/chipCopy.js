@@ -47,12 +47,12 @@ const COPY = {
     risk: t('The chain skips a lane that already holds one of your chips. From the left lane it chains to the middle.'),
   }),
   noRespect: () => ({
-    effect: t('The enemy\'s best player on its lane scores 0.'),
+    effect: t("The enemy's best player on its lane scores 0."),
     when: t('Against a lane carried by one star. A Flick player on its lane also adds ×1.5.'),
     risk: t('Without a Flick player your own lane gets no boost.'),
   }),
   lockout: () => ({
-    effect: t('The enemy\'s chip on its lane pays nothing.'),
+    effect: t("The enemy's chip on its lane pays nothing."),
     when: t('Facing the chip that would decide a lane.'),
     risk: t('No boost of its own, and wasted if they play no chip on its lane.'),
   }),

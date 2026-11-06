@@ -5,6 +5,7 @@ import { t } from '../../lib/i18n';
 import { resetHints } from '../../lib/clubOnboarding';
 import LanguagePicker from '../LanguagePicker';
 import MusicControls from '../MusicControls';
+import AmbientControls from '../AmbientControls';
 import club from '../../pages/Club.module.css';
 import styles from './ClubEntry.module.css';
 import { DEFAULT_MAP } from './clubSummary';
@@ -90,6 +91,7 @@ export default function ClubSettings({ prefs, onChange, onBack, onPrimer, accoun
           </li>
           <li className={styles.groupHead}>{t('This device')}</li>
           <MusicControls as="li" />
+          <AmbientControls as="li" />
           <li>
             <span><b>{t('Language')}</b></span>
             <LanguagePicker />

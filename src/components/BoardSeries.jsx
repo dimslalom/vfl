@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { playUiSound } from '../../shared/src/lib/gameAudio';
 import useReducedMotion from '../../shared/src/lib/useReducedMotion';
-import { BOARD_SKILLS, hasSkill } from '../engine/board/board';
-import { seriesWinner, winsNeeded } from '../engine/board/mapLanes';
+import { BOARD_SKILLS, hasSkill, seriesWinner, winsNeeded } from '../engine/board/board';
 import { refillTacticHand, settleTactic } from '../engine/endless/seriesCards';
 import { namedSeriesMaps, pickSeriesMaps, roundBoard, roundResult } from '../prototype/boardSetup';
 import { chipInfo, chipPlan } from '../chip3d/chipData';
 import { chipCopy, planLine } from '../chip3d/chipCopy';
 import { titleCase } from '../lib/titleCase';
+import { t } from '../lib/i18n';
 import MatchIntro from './MatchIntro';
 import { settleMatchMusic, stopMatchMusic } from '../lib/music';
 import { ChipGuideButton, ChipLadder } from '../chip3d/ChipHelp';
@@ -378,7 +378,7 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
     if (barRef.current) observer.observe(barRef.current);
     if (hostRef.current) observer.observe(hostRef.current);
     return () => observer.disconnect();
-  });
+  }, [attempt]);
 
   // Stable, so the intro's effects don't re-run on every board update.
   const openIntro = useCallback(() => playRoundRef.current(), []);
@@ -468,8 +468,16 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
         {phase === 'rotate' && !three && <p className={styles.hint}>{moves === 2 ? 'Mastermind IGL: move two players' : 'IGL rotate: move one player'}</p>}
         {phase === 'resolve' && <p className={styles.hint}>Tap to skip</p>}
       </div>
+      {outcome && outcome.lanes?.length === 3 && outcome.youWon === 3 && (
+        <div className={styles.flawlessBanner} role="status" aria-label={t('FLAWLESS')}>
+          <span className={styles.flawlessKicker}>{t('Clean sweep')}</span>
+          <b className={styles.flawlessTitle}>{t('FLAWLESS')}</b>
+          <span className={styles.flawlessSub}>{t('All 3 lanes won')}</span>
+        </div>
+      )}
       {outcome && (() => {
         const won = (outcome.champion ?? outcome.winner) === 'you';
+        const flawless = outcome.lanes?.length === 3 && outcome.youWon === 3;
         // A round shows its number as a big numeral beside the map name, so the
         // two never need a typed separator. The series verdict keeps its score.
         const kicker = outcome.champion ? `Series ${score.you}–${score.them}` : maps[shownRound].name;
@@ -489,6 +497,7 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
                     ? (won ? 'Series won' : 'Series lost')
                     : (won ? 'Round won' : 'Round lost')}
                 </h2>
+                {flawless && <span className={styles.flawlessPill}>{t('FLAWLESS')}</span>}
               </span>
             </div>
             <div className={styles.outcomeBody}>

@@ -21,3 +21,12 @@ export function attention(state, limit = 4) {
   if (room > 0) items.push({ key: 'places', n: room, go: 'vault' });
   return items.slice(0, limit);
 }
+
+// A pick that is open right now: a pack mid-pick or a chip offer. Packs, tapes and
+// places can wait, and a last contract year can't be acted on until the window.
+const PRESSING = new Set(['open-pack', 'chip-offer']);
+
+/** The attention items that should be seen before the next match. */
+export function pressing(state) {
+  return attention(state, 99).filter(item => PRESSING.has(item.key));
+}

@@ -39,6 +39,42 @@ export function disposeLaneVerdictFx(laneMesh) {
   laneMesh.userData.verdictFx = null;
 }
 
+/**
+ * Celebratory 3-lane sweep surge: pulses the border flash and top surface emissive
+ * across all winning lanes with an emerald-cyan wave.
+ */
+export function triggerFlawlessSweepFx(laneMeshes, { reducedMotion = false, onUpdate } = {}) {
+  if (!laneMeshes || reducedMotion) return;
+  laneMeshes.forEach((laneMesh, index) => {
+    const fx = laneMesh?.userData?.verdictFx;
+    if (!fx || fx.verdict !== 'you') return;
+    const { top } = laneMesh.userData;
+    if (fx.uniforms?.uFlash) {
+      fx.uniforms.uFlash.value = 1.35;
+      gsap.to(fx.uniforms.uFlash, {
+        value: 0,
+        duration: 0.85,
+        delay: index * 0.08,
+        ease: 'power2.out',
+        onUpdate,
+      });
+    }
+    if (top?.emissive) {
+      const orig = top.emissive.getHex();
+      top.emissive.setHex(0x1fd5a8);
+      gsap.to(top.emissive, {
+        r: ((orig >> 16) & 255) / 255,
+        g: ((orig >> 8) & 255) / 255,
+        b: (orig & 255) / 255,
+        duration: 0.95,
+        delay: index * 0.08,
+        ease: 'power2.out',
+        onUpdate,
+      });
+    }
+  });
+}
+
 // ── WINNING LANE: BRIGHT + LUMINOUS BORDER VFX ──────────────────────────────
 
 function attachWinBorderFx(laneMesh, { len, tip, reducedMotion, instant, onUpdate }) {
@@ -172,6 +208,7 @@ function attachWinBorderFx(laneMesh, { len, tip, reducedMotion, instant, onUpdat
 
   const fx = {
     verdict: 'you',
+    uniforms,
     animated: !reducedMotion,
     update(dt) {
       if (reducedMotion) return false;

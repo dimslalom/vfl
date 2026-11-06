@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { attention } from '../src/engine/club/attention.js';
+import { attention, pressing } from '../src/engine/club/attention.js';
 import { withNews } from '../src/engine/club/economy.js';
 
 const base = () => ({ phase: 'league', tier: 0, titles: 0, history: [], squad: ['a', 'b', 'c', 'd', 'e', 'f', 'g'], contracts: { a: 3, b: 3, c: 3, d: 3, e: 3, f: 3, g: 3 }, packs: 0, opening: null, chipOffer: null });
@@ -28,4 +28,11 @@ test('the news log is newest first, stamped with the year, and keeps the last ei
   assert.equal(state.news.length, 8);
   assert.equal(state.news[0].id, 'p9');
   assert.deepEqual(withNews({ year: 3 }, [{ id: 'x', club: 'c', kind: 'out' }]), [{ id: 'x', club: 'c', kind: 'out', year: 3 }]);
+});
+
+test('only an open pick is pressing: packs, places and last contract years can wait', () => {
+  const quiet = { ...base(), packs: 3, contracts: { ...base().contracts, a: 1 } };
+  assert.deepEqual(pressing(quiet), []);
+  assert.deepEqual(pressing({ ...quiet, chipOffer: { attempt: 0 } }).map(item => item.key), ['chip-offer']);
+  assert.deepEqual(pressing({ ...quiet, opening: { kind: 'silver' } }).map(item => item.key), ['open-pack']);
 });

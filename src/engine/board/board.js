@@ -7,7 +7,18 @@ import { TACTICS, tacticActivation } from '../endless/seriesCards.js';
 export const LANES = 3;
 export const SQUAD_SIZE = 5;
 export const LANE_CAP = 3;
-export const MAPS_TO_WIN = 2;
+export const PRIMARY_LANE = 0;
+
+export function winsNeeded(bestOf) {
+  return Math.ceil(bestOf / 2);
+}
+
+export function seriesWinner(bestOf, youWins, themWins) {
+  const needed = winsNeeded(bestOf);
+  if (youWins >= needed) return 'you';
+  if (themWins >= needed) return 'them';
+  return null;
+}
 
 // Combos add, so a lane can be read as a plain sum; only a tactic multiplies.
 const ROLE_PAIR = 20;
@@ -109,7 +120,7 @@ export function laneScore(cards, lane, tactic = null, ctx = {}) {
     add('anchor', 24, 'Anchor');
   }
   // First Blood: On the primary (leftmost) lane, +20 opening duel bonus per player.
-  if (ctx.laneIndex === 0) {
+  if (ctx.laneIndex === PRIMARY_LANE) {
     for (const card of cards) {
       if (hasSkill(card, 'first_blood')) add('first_blood', 20, 'First Blood');
     }

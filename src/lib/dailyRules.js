@@ -4,7 +4,7 @@ export const DAILY_YEARS = 1;
 
 // The most one year can score: three titles through four rounds each, every
 // map won 13-0, a Grand Slam and a Perfect Season. Worked out against
-// ROUND_META in test/dailyRules.test.js, so a format change fails the test.
+// ROUND_META in test/uxLogic.test.js, so a format change fails the test.
 export const DAILY_SCORE_MAX = 3341;
 
 // Overall boards count only scores made under one-year Daily rules. Stored
