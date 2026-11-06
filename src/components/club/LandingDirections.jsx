@@ -95,7 +95,7 @@ export function PackLanding({ state }) {
         {summary ? (
           <div className={lab.packFive}>
             <div className={styles.cardRow}>
-              {summary.starters.map(card => <PlayerCard key={card.id} card={card} displayScale={0.34} tilt={false} canDrag={false} />)}
+              {summary.starters.map(card => <PlayerCard key={card.id} card={card} displayScale={0.34} tilt canDrag={false} />)}
             </div>
           </div>
         ) : (
@@ -140,7 +140,7 @@ export function LadderLanding({ state }) {
               <b>{tier.label}</b>
               {index === here && (
                 <span className={lab.rungClub}>
-                  {(summary ? summary.starters : SHOWCASE).slice(0, 3).map(card => <PlayerCard key={card.id} card={card} displayScale={0.12} tilt={false} canDrag={false} />)}
+                  {(summary ? summary.starters : SHOWCASE).slice(0, 3).map(card => <PlayerCard key={card.id} card={card} displayScale={0.12} tilt canDrag={false} />)}
                   <small>{summary ? 'You' : 'You start here'}</small>
                 </span>
               )}

@@ -34,7 +34,7 @@ export const SKILL_SESSIONS = 3;
 export const STAT_STEP = 2;
 export const STAT_CAP = 8;
 export const XP_PER_POINT = 150;
-export const YEAR_PACKS = 3;
+export const YEAR_PACKS = 6;
 export const TITLE_PACKS = 2;
 export const RIVAL_PREMIUM = 1;
 export const TRIAL_MAX_RATING = 70;
@@ -342,6 +342,41 @@ function recordResult(table, a, b, roundsA, roundsB) {
 
 // ── after a series you played ───────────────────────────────────────────────
 
+export function xpPerPoint(rating) {
+  if (rating < 75) return 150;
+  if (rating < 82) return 250;
+  return 400;
+}
+
+export function evoStatGain(cardRating, maxRating, desiredStats) {
+  if (!maxRating || cardRating < maxRating) {
+    if (!maxRating) return { ...desiredStats };
+    const statKeys = Object.keys(desiredStats);
+    const totalDesired = Object.values(desiredStats).reduce((a, b) => a + b, 0);
+    const maxStatPoints = Math.max(0, Math.floor((maxRating - cardRating) * 5));
+    if (totalDesired <= maxStatPoints) return { ...desiredStats };
+    if (maxStatPoints === 0) return Object.fromEntries(statKeys.map(k => [k, 0]));
+    let remaining = maxStatPoints;
+    const result = {};
+    for (const [k, v] of Object.entries(desiredStats)) {
+      const take = Math.min(v, remaining);
+      result[k] = take;
+      remaining -= take;
+    }
+    return result;
+  }
+  return Object.fromEntries(Object.keys(desiredStats).map(k => [k, 0]));
+}
+
+export function packEarnedFromSeries(state, { won, results }, stage) {
+  if (!won) return false;
+  const sweep = results.length > 0 && results.every(round => round.winA);
+  if (sweep) return true;
+  if (state.phase === 'playoffs' || stage === 'Semifinal' || stage === 'Final') return true;
+  if (state.phase === 'league' && (state.week === 4 || state.week === 8)) return true;
+  return false;
+}
+
 function growSquad(state, results, cards) {
   const lookup = byId(cards);
   const lanes = results.reduce((sum, round) => sum + round.a, 0);
@@ -360,10 +395,12 @@ function growSquad(state, results, cards) {
     const base = 10 + lanes * 2 + (isMvp ? 10 : 0) + flawlessRounds * 5;
     const gain = Math.round(base * (started ? 1 : BENCH_XP));
     const total = (xp[id] ?? 0) + gain;
-    const points = Math.floor(total / XP_PER_POINT);
+    const currentCard = clubCard(state, card);
+    const targetXp = xpPerPoint(currentCard.rating);
+    const points = Math.floor(total / targetXp);
     if (points) entry = { ...entry, d: (entry.d ?? 0) + points };
-    xp[id] = total % XP_PER_POINT;
-    growth.push({ id, gain, pct: xp[id], mvp: isMvp, bench: !started });
+    xp[id] = total % targetXp;
+    growth.push({ id, gain, pct: xp[id], targetXp, mvp: isMvp, bench: !started });
     dev[id] = entry;
   });
   return { dev, xp, growth, mvp };
@@ -450,7 +487,7 @@ export function rollChipOffer(state, stage, attempt = 0) {
   return { stage, floor, attempt, options };
 }
 
-function processActiveEvo(state, { won, mvp, results }) {
+function processActiveEvo(state, { won, mvp, results }, cards) {
   if (!state.activeEvo) return { activeEvo: null, training: state.training, evoProgress: null };
   const { cardId, evoKey } = state.activeEvo;
   const evo = EVO_CHIPS[evoKey];
@@ -466,6 +503,9 @@ function processActiveEvo(state, { won, mvp, results }) {
   let evoProgress = null;
 
   if (started) {
+    const rawCard = cards?.find(c => c.id === cardId) ?? { id: cardId, rating: 75 };
+    const currentCard = clubCard(state, rawCard);
+
     if (!activeEvo.l1Done) {
       const req = evo.level1;
       const countMatch = (req.type === 'play') || (req.type === 'win' && won) || (req.type === 'mvp' && won && isMvp);
@@ -475,7 +515,8 @@ function processActiveEvo(state, { won, mvp, results }) {
 
       if (l1Done) {
         const stats = { ...cardTraining.stats };
-        for (const [sKey, sVal] of Object.entries(req.stats)) {
+        const gainedStats = evoStatGain(currentCard.rating, evo.requirements?.maxRating, req.stats);
+        for (const [sKey, sVal] of Object.entries(gainedStats)) {
           stats[sKey] = (stats[sKey] ?? 0) + sVal;
         }
         cardTraining = {
@@ -484,7 +525,7 @@ function processActiveEvo(state, { won, mvp, results }) {
           evoTheme: evo.theme,
           evoLevel: 1,
         };
-        evoProgress = { cardId, evoKey, level: 1, completed: true, name: evo.name, gainedStats: req.stats };
+        evoProgress = { cardId, evoKey, level: 1, completed: true, name: evo.name, gainedStats };
       } else {
         evoProgress = { cardId, evoKey, level: 1, completed: false, progress: l1Progress, total: req.count, name: evo.name };
       }
@@ -497,7 +538,8 @@ function processActiveEvo(state, { won, mvp, results }) {
 
       if (l2Done) {
         const stats = { ...cardTraining.stats };
-        for (const [sKey, sVal] of Object.entries(req.stats)) {
+        const gainedStats = evoStatGain(currentCard.rating, evo.requirements?.maxRating, req.stats);
+        for (const [sKey, sVal] of Object.entries(gainedStats)) {
           stats[sKey] = (stats[sKey] ?? 0) + sVal;
         }
         const skills = [...new Set([...(cardTraining.skills ?? []), req.skill])];
@@ -512,7 +554,7 @@ function processActiveEvo(state, { won, mvp, results }) {
           evolutions,
           activeEvoKey: null,
         };
-        evoProgress = { cardId, evoKey, level: 2, completed: true, name: evo.name, skill: req.skill, gainedStats: req.stats };
+        evoProgress = { cardId, evoKey, level: 2, completed: true, name: evo.name, skill: req.skill, gainedStats };
         activeEvo = null; // Evolution fully mastered!
       } else {
         evoProgress = { cardId, evoKey, level: 2, completed: false, progress: l2Progress, total: req.count, name: evo.name };
@@ -532,10 +574,11 @@ function afterSeries(state, { won, results, hand }, cards, opponentId, stage) {
     (_, i) => rollFlawlessTape(rngFor(state, 'flawless-tape', state.year, state.week, stage, i)),
   );
   const { dev, xp, growth, mvp } = growSquad(state, results, cards);
-  const { activeEvo, training, evoProgress } = processActiveEvo(state, { won, mvp, results });
+  const { activeEvo, training, evoProgress } = processActiveEvo({ ...state, dev }, { won, mvp, results }, cards);
   const tapes = rollTapes(rngFor(state, 'tape-loot', state.year, state.week, stage), won);
   const allTapes = [...tapes, ...flawlessTapes];
   const tactic = won ? rollTactic(state, stage) : null;
+  const packWon = packEarnedFromSeries(state, { won, results }, stage);
   // Board refills are temporary. Only chips equipped from the club can carry over.
   const equipped = new Set((state.hand ?? []).map(chip => chip.uid));
   const surviving = (hand ?? state.hand ?? []).filter(chip => equipped.has(chip.uid));
@@ -555,7 +598,7 @@ function afterSeries(state, { won, results, hand }, cards, opponentId, stage) {
     trainingTapes: bankTapes(state.trainingTapes, allTapes),
     training,
     activeEvo,
-    packs: state.packs + (won ? 1 : 0),
+    packs: state.packs + (packWon ? 1 : 0),
     seriesWon: state.seriesWon + (won ? 1 : 0),
     roundsWon: state.roundsWon + roundsWon,
     results: [...state.results, { opponent: opponentId, won }],
@@ -567,7 +610,7 @@ function afterSeries(state, { won, results, hand }, cards, opponentId, stage) {
       growth: changes,
       mvp,
       evoProgress,
-      packs: won ? 1 : 0,
+      packs: packWon ? 1 : 0,
       tapes: allTapes,
       flawlessRounds,
       flawlessTapes,
@@ -665,16 +708,14 @@ export function trainingOffer(state, card, target = null) {
 export function isEligibleForEvo(card, evoKey) {
   const evo = EVO_CHIPS[evoKey];
   if (!evo || !card) return { eligible: false, reason: 'Invalid' };
-  if (evo.requirements.maxRating && card.rating > evo.requirements.maxRating) {
-    return { eligible: false, reason: `Max Rating ${evo.requirements.maxRating}` };
-  }
   if (evo.requirements.roles && !evo.requirements.roles.includes(card.role)) {
     return { eligible: false, reason: `Requires ${evo.requirements.roles.join('/')}` };
   }
   if (card.learned?.includes(evo.level2.skill)) {
     return { eligible: false, reason: `Already has ${evo.name}` };
   }
-  return { eligible: true, reason: 'Eligible' };
+  const capped = Boolean(evo.requirements.maxRating && card.rating >= evo.requirements.maxRating);
+  return { eligible: true, reason: capped ? 'Skill only' : 'Eligible', capped };
 }
 
 export function commitEvolution(state, cardId, evoKey) {

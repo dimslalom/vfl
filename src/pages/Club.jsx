@@ -29,8 +29,8 @@ import { FATIGUE_PENALTY_FROM, fatiguePenalty } from '../../shared/src/engine/en
 import { BOARD_SKILLS } from '../engine/board/board';
 import {
   CONTRACT_MAX, DRAFT_PACKS, EVO_CHIPS, SKILL_SESSIONS, STARTERS, STAT_STEP, XP_PER_POINT, clubById, clubCard, clubRoster,
-  clubScore, closeWindow, commitEvolution, draftPack, finishSeries, isEligibleForEvo, isValidClub, moveSquad, newClub, nextMatch, squadCards, standings,
-  trainingOffer, windowOffers, windowTotals,
+  clubScore, closeWindow, commitEvolution, draftPack, evoStatGain, finishSeries, isEligibleForEvo, isValidClub, moveSquad, newClub, nextMatch, squadCards, standings,
+  trainingOffer, windowOffers, windowTotals, xpPerPoint,
 } from '../engine/club/season';
 import { TIER_META } from '../engine/endless/ladder';
 import { pickSeriesMaps } from '../prototype/boardSetup';
@@ -191,7 +191,7 @@ function Ground({ map, className = '', style, children }) {
 
 // A card in its place, with nothing behind it to compete: the role (or IGL) as a
 // label above, and the contract's years left as bars below.
-function Slot({ card, scale, tab, lit, years, note, noteLit, held, onClick, label, isIgl }) {
+function Slot({ card, scale, tab, lit, years, note, noteLit, held, onClick, label, isIgl, tilt = true }) {
   return (
     <div className={styles.slot} data-held={held || undefined}>
       <span className={styles.slotTop}>
@@ -199,7 +199,7 @@ function Slot({ card, scale, tab, lit, years, note, noteLit, held, onClick, labe
         {note && <em data-lit={noteLit || undefined}>{note}</em>}
       </span>
       <div className={styles.slotCard}>
-        <PlayerCard card={card} displayScale={scale} tilt={isIgl} isIgl={isIgl} canDrag={false} onClick={onClick} pressScale={onClick ? 0.97 : 1} />
+        <PlayerCard card={card} displayScale={scale} tilt={tilt} isIgl={isIgl} canDrag={false} onClick={onClick} pressScale={onClick ? 0.97 : 1} />
         {held && <span className={styles.brackets} aria-hidden="true"><i /><i /><i /><i /></span>}
       </div>
       {years != null && (
@@ -216,7 +216,7 @@ function Slot({ card, scale, tab, lit, years, note, noteLit, held, onClick, labe
 function Card({ card, scale, onClick, selected, children, dim, highlight }) {
   return (
     <div className={styles.card} data-dim={dim || undefined}>
-      <PlayerCard card={card} displayScale={scale} tilt={false} canDrag={false} onClick={onClick} selected={selected} pressScale={onClick ? 0.97 : 1} highlightStat={highlight} />
+      <PlayerCard card={card} displayScale={scale} tilt canDrag={false} onClick={onClick} selected={selected} pressScale={onClick ? 0.97 : 1} highlightStat={highlight} />
       {children}
     </div>
   );
@@ -672,7 +672,8 @@ function PlayerReadout({ state, card }) {
   const dev = state.dev?.[card.id];
   const fatigue = dev?.f ?? 0;
   const penalty = fatiguePenalty(dev) + clubFatigueExtra(dev);
-  const xp = Math.round(((state.xp?.[card.id] ?? 0) / XP_PER_POINT) * 100);
+  const targetXp = xpPerPoint(card?.rating ?? 75);
+  const xp = Math.round(((state.xp?.[card.id] ?? 0) / targetXp) * 100);
   return (
     <>
       <LedgerRow label="Fatigue"><span className={styles.readout}>{penalty > 0 && <em>−{penalty.toFixed(1)}</em>}<Meter value={fatigue} max={100} bad={fatigue > FATIGUE_PENALTY_FROM} label={`Fatigue ${fatigue} of 100`} /></span></LedgerRow>
@@ -709,7 +710,7 @@ function Squad({ state, go, onMove, onBack, onVault, size }) {
           card={card}
           displayScale={cardScale}
           isIgl={position === 0}
-          tilt={position === 0}
+          tilt
           canDrag={false}
           onClick={() => tap(position)}
         />
@@ -722,7 +723,7 @@ function Squad({ state, go, onMove, onBack, onVault, size }) {
       <>
         <div className={styles.eafcSpotlight}>
           <span className={styles.eafcSpotlightTag}>{index === 0 ? 'IGL' : index < STARTERS ? 'Starter' : 'Bench'}</span>
-          {!size.phone && <PlayerCard card={player} displayScale={SPOTLIGHT_SCALE} tilt={false} canDrag={false} />}
+          {!size.phone && <PlayerCard card={player} displayScale={SPOTLIGHT_SCALE} tilt canDrag={false} />}
           <b className={styles.eafcSpotlightName}>{player.player}</b>
         </div>
         <div className={styles.eafcLedgerWrap}>
@@ -858,7 +859,7 @@ function OpenPack({ state, onChoose, size }) {
               <div key={card.id} className={`${styles.dealt} ${styles.pickCard}`} data-on={picked === card.id || undefined} style={{ '--deal': index }}>
                 <span className={styles.guarantee}>{opening.guaranteed && cardById.get(card.id).rating >= GOLD_RATING ? 'Guaranteed gold' : ''}</span>
                 <div className={styles.slotCard}>
-                  <PlayerCard card={card} displayScale={offerScale} tilt={false} canDrag={false} onClick={() => !passing && setPicked(card.id)} />
+                  <PlayerCard card={card} displayScale={offerScale} tilt canDrag={false} onClick={() => !passing && setPicked(card.id)} />
                   {picked === card.id && <span className={styles.brackets} aria-hidden="true"><i /><i /><i /><i /></span>}
                 </div>
               </div>
@@ -873,7 +874,7 @@ function OpenPack({ state, onChoose, size }) {
                 return (
                   <div key={card.id} className={styles.windowSlot} data-swap={isSwap || undefined}>
                     <div className={styles.slotCard}>
-                      <PlayerCard card={card} displayScale={squadScale} tilt={false} canDrag={false} pressScale={0.97} onClick={() => { if (passing) return; playUiSound('select'); setSwapOutId(card.id); }} />
+                      <PlayerCard card={card} displayScale={squadScale} tilt canDrag={false} pressScale={0.97} onClick={() => { if (passing) return; playUiSound('select'); setSwapOutId(card.id); }} />
                       {isSwap && <span className={styles.brackets} data-swap="true" aria-hidden="true"><i /><i /><i /><i /></span>}
                     </div>
                   </div>
@@ -1114,13 +1115,14 @@ function previewEvoCard(baseCard, evoDef, targetLevel = 2) {
   if (!evoDef) return baseCard;
   const l1Stats = evoDef.level1?.stats ?? {};
   const l2Stats = targetLevel === 2 ? (evoDef.level2?.stats ?? {}) : {};
-  const addStats = {};
+  const desiredStats = {};
   for (const [k, v] of Object.entries(l1Stats)) {
-    addStats[k] = (addStats[k] ?? 0) + v;
+    desiredStats[k] = (desiredStats[k] ?? 0) + v;
   }
   for (const [k, v] of Object.entries(l2Stats)) {
-    addStats[k] = (addStats[k] ?? 0) + v;
+    desiredStats[k] = (desiredStats[k] ?? 0) + v;
   }
+  const addStats = evoStatGain(baseCard.rating, evoDef.requirements?.maxRating, desiredStats);
   const stats = { ...(baseCard.stats ?? {}) };
   for (const [k, v] of Object.entries(addStats)) {
     stats[k] = (stats[k] ?? baseCard[k] ?? 0) + v;
@@ -1219,20 +1221,20 @@ export function Train({ state, go, onTape, onEvo, onBack, size, initialFocus = n
             <div className={styles.trainingCompare} data-drill={drilling || undefined}>
               <div className={styles.trainingBefore}>
                 <span className={styles.eafcSpotlightTag}>Before</span>
-                <PlayerCard card={subject} displayScale={90 / 400} tilt={false} canDrag={false} highlightStat={highlight} />
+                <PlayerCard card={subject} displayScale={90 / 400} tilt canDrag={false} highlightStat={highlight} />
               </div>
               <span className={styles.trainingArrow} aria-hidden="true">→</span>
               <div>
                 <span className={styles.eafcSpotlightTag}>After</span>
                 {after.evoTheme
-                  ? <EvoShowcase card={after} displayScale={126 / 400} tilt={false} highlightStat={highlight} />
-                  : <PlayerCard card={after} displayScale={126 / 400} tilt={false} canDrag={false} highlightStat={highlight} />}
+                  ? <EvoShowcase card={after} displayScale={126 / 400} tilt highlightStat={highlight} />
+                  : <PlayerCard card={after} displayScale={126 / 400} tilt canDrag={false} highlightStat={highlight} />}
               </div>
             </div>
           ) : (
             <>
               <span className={styles.eafcSpotlightTag}>{who < STARTERS ? (who === 0 ? 'IGL' : 'Starter') : 'Bench'}</span>
-              {!size.phone && <PlayerCard card={subject} displayScale={SPOTLIGHT_SCALE} tilt={false} canDrag={false} />}
+              {!size.phone && <PlayerCard card={subject} displayScale={SPOTLIGHT_SCALE} tilt canDrag={false} />}
             </>
           )}
           <b className={styles.eafcSpotlightName}>{subject.player}</b>
@@ -1255,6 +1257,7 @@ export function Train({ state, go, onTape, onEvo, onBack, size, initialFocus = n
             <>
               <div className={styles.eafcLedger}>
                 <LedgerRow label="Evolution">{evo.name}</LedgerRow>
+                {eligible?.capped && <LedgerRow label={t('Rating cap')}>{`${subject.rating} / ${evo.requirements.maxRating} (${t('Skill only')})`}</LedgerRow>}
                 {nextGoal && <LedgerRow label="Progress">{progress} / {nextGoal.count}</LedgerRow>}
               </div>
               {nextGoal && <span className={styles.plain}>{nextGoal.label}</span>}
@@ -1274,7 +1277,7 @@ export function Train({ state, go, onTape, onEvo, onBack, size, initialFocus = n
         <div className={styles.eafcCardsRow}>
           {squad.map((item, index) => (
             <div className={styles.windowSlot} key={item.id}>
-              <PlayerCard card={item} displayScale={playerScale} tilt={false} canDrag={false} onClick={drilling ? undefined : () => {
+              <PlayerCard card={item} displayScale={playerScale} tilt canDrag={false} onClick={drilling ? undefined : () => {
                 if (isActive) setPicked(tapes[0]?.id ?? evos[0]?.id ?? null);
                 setWho(index);
               }} />
@@ -1380,7 +1383,7 @@ export function Result({ state, onContinue, size }) {
             {last.growth.map(row => (
               <li key={row.id}>
                 <span>{cardById.get(row.id)?.player}</span>
-                <meter min={0} max={XP_PER_POINT} value={row.pct} aria-label={`Growth to next overall for ${cardById.get(row.id)?.player}`} />
+                <meter min={0} max={row.targetXp ?? XP_PER_POINT} value={row.pct} aria-label={`Growth to next overall for ${cardById.get(row.id)?.player}`} />
                 <b>+{row.gain} XP</b>
               </li>
             ))}
@@ -1402,9 +1405,9 @@ export function Result({ state, onContinue, size }) {
           <div className={styles.evoMoment} role="dialog" aria-modal="true" aria-label={`${evo.name}, ${stage}`}>
             <span className={styles.evoStage} style={{ color: art.metal[1] }}>{stage}</span>
             <h2 className={styles.evoName}>{evo.name}</h2>
-            {evolved && <EvoShowcase card={evolved} displayScale={scale * 1.25} tilt={false} />}
+            {evolved && <EvoShowcase card={evolved} displayScale={scale * 1.25} tilt />}
             <div className={styles.evoGains}>
-              {Object.entries(done.gainedStats ?? {}).map(([key, value]) => (
+              {Object.entries(done.gainedStats ?? {}).filter(([, value]) => value > 0).map(([key, value]) => (
                 <span key={key} className={styles.evoGain}><b>{STAT_LABELS[key]}</b><em className={styles.plus}>+{value}</em></span>
               ))}
             </div>
@@ -1591,7 +1594,7 @@ function League({ state, go, onBack, onChallenge, size }) {
                 <h2 className={styles.inspectorName}>{selectedClub.name}</h2>
                 {!size?.phone && (
                   <div className={styles.inventorySpotlightArt}>
-                    <PlayerCard card={selectedClub.starCard} displayScale={SPOTLIGHT_SCALE} tilt={false} canDrag={false} />
+                    <PlayerCard card={selectedClub.starCard} displayScale={SPOTLIGHT_SCALE} tilt canDrag={false} />
                   </div>
                 )}
                 <div className={styles.ledger}>
@@ -1704,7 +1707,7 @@ function Review({ state, onNext, size }) {
           const delta = changes.get(card.id)?.delta ?? 0;
           return (
             <div key={card.id} className={styles.handCard}>
-              <PlayerCard card={card} displayScale={scale * 0.6} tilt={false} canDrag={false} />
+              <PlayerCard card={card} displayScale={scale * 0.6} tilt canDrag={false} />
               <b className={styles.delta} data-delta={delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat'}>{delta > 0 ? `+${delta}` : delta}</b>
             </div>
           );
@@ -1724,7 +1727,7 @@ function MarketCard({ item, taken, picked, badge, onPick, scale }) {
     <div className={styles.marketItem} data-on={picked || undefined} data-taken={taken || undefined}>
       <div className={styles.slotCard}>
         {badge && <span className={styles.cardBadge} data-kind={badge.kind}>{badge.text}</span>}
-        <PlayerCard card={item.card} displayScale={scale} tilt={false} canDrag={false} onClick={onPick} pressScale={0.97} />
+        <PlayerCard card={item.card} displayScale={scale} tilt canDrag={false} onClick={onPick} pressScale={0.97} />
         {picked && <span className={styles.brackets} aria-hidden="true"><i /><i /><i /><i /></span>}
       </div>
     </div>
@@ -1860,7 +1863,7 @@ function Window({ state, onClose, size }) {
         <>
           <div className={styles.eafcSpotlight}>
             <span className={styles.eafcSpotlightTag}>{target.club ? target.club.name : target.trial ? 'Trialist' : 'Free agent'}</span>
-            {!phone && <PlayerCard card={target.card} displayScale={SPOTLIGHT_SCALE} tilt={false} canDrag={false} />}
+            {!phone && <PlayerCard card={target.card} displayScale={SPOTLIGHT_SCALE} tilt canDrag={false} />}
             <b className={styles.eafcSpotlightName}>{target.card.player}</b>
           </div>
           <div className={styles.eafcLedgerWrap}>
@@ -1910,7 +1913,7 @@ function Window({ state, onClose, size }) {
                     <PlayerCard
                       card={card}
                       displayScale={squadScale}
-                      tilt={false}
+                      tilt
                       canDrag={false}
                       pressScale={0.97}
                       onClick={() => {
@@ -1938,7 +1941,7 @@ function Window({ state, onClose, size }) {
               <div key={card.id} className={styles.windowSlot} data-new="true">
                 <div className={styles.slotCard}>
                   <span className={styles.cardBadge} data-kind="signed">SIGNED</span>
-                  <PlayerCard card={card} displayScale={squadScale} tilt={false} canDrag={false} pressScale={0.97} onClick={() => toggleBuy(card.id)} />
+                  <PlayerCard card={card} displayScale={squadScale} tilt canDrag={false} pressScale={0.97} onClick={() => toggleBuy(card.id)} />
                   <span className={styles.brackets} aria-hidden="true"><i /><i /><i /><i /></span>
                 </div>
                 <span className={styles.years}>
@@ -1953,7 +1956,7 @@ function Window({ state, onClose, size }) {
                   {isGhost ? (
                     <div className={styles.slotCard}>
                       <span className={styles.cardBadge} data-kind="signed">NEXT</span>
-                      <PlayerCard card={target.card} displayScale={squadScale} tilt={false} canDrag={false} />
+                      <PlayerCard card={target.card} displayScale={squadScale} tilt canDrag={false} />
                     </div>
                   ) : (
                     <BenchOpen scale={squadScale} />
@@ -1982,7 +1985,7 @@ function Window({ state, onClose, size }) {
           <div className={styles.expiring}>
             {offers.mine.map(item => (
               <div className={styles.expiringRow} key={item.card.id}>
-                <PlayerCard card={item.card} displayScale={cardScale} tilt={false} canDrag={false} />
+                <PlayerCard card={item.card} displayScale={cardScale} tilt canDrag={false} />
                 <div className={styles.decide}>
                   {item.suitor && <span className={styles.suitor}><Crest club={clubById(state, item.suitor.id)} size={22} /><span>wants them</span></span>}
                   <button type="button" className={styles.small} data-on={own[item.card.id] === 'keep' || undefined} disabled={own[item.card.id] !== 'keep' && item.renew > totals.packs} aria-pressed={own[item.card.id] === 'keep'} onClick={() => toggleOwn(item.card.id, 'keep')}>
@@ -2305,6 +2308,7 @@ export default function Club() {
         onLeave={() => show('home')}
         fixed="full"
         three
+        hintsOn={prefs.hints && state.year === 1 && (state.results?.length ?? 0) === 0}
         settings={<MusicControls />}
       />
     );
@@ -2410,7 +2414,7 @@ export default function Club() {
     if (!state.chipOffer || chipView === 'inventory') {
       hubView = withHint(<Inventory state={state} go={goTab} onPick={() => setChipView('pick')} size={size} onBack={() => show('home')} onTraining={(item) => { setTrainingItem(item); show('train'); }} onEquip={(uid, equipped) => { playUiSound('chip_lift'); setState(current => setTacticEquipped(current, uid, equipped)); }} />, 'chips');
     } else {
-      hubView = withHint(<ChipPick key={state.chipOffer.attempt} state={state} go={goTab} onInventory={() => setChipView('inventory')} squad={squadCards(state, allCards).slice(0, STARTERS)} onBack={() => show('home')} onTake={takeChip} onPass={() => { setState(current => chooseChip(current, null)); setScreen('home'); }} onReroll={() => setState(current => rerollChips(current))} />, 'chips', 'chipPick');
+      hubView = withHint(<ChipPick key={state.chipOffer.attempt} state={state} go={goTab} onInventory={() => setChipView('inventory')} squad={squadCards(state, allCards).slice(0, STARTERS)} onBack={() => show('home')} onTake={takeChip} onPass={() => { setState(current => chooseChip(current, null)); setScreen('home'); }} onReroll={() => setState(current => rerollChips(current))} />, 'chipPick', 'chipPick');
     }
   } else if (screen === 'crest') {
     hubView = (
@@ -2439,7 +2443,7 @@ export default function Club() {
   } else if (screen === 'league') {
     hubView = withHint(<League state={state} go={goTab} onBack={() => show('home')} onChallenge={startChallenge} size={size} />, 'league');
   } else if (screen === 'window') {
-    hubView = <Window state={state} size={size} onClose={closeTheWindow} />;
+    hubView = withHint(<Window state={state} size={size} onClose={closeTheWindow} />, 'window');
   } else if (screen === 'review' || !match) {
     hubView = <Review state={state} size={size} onNext={() => { syncClubScore(state, allCards); show('window'); }} />;
   } else {

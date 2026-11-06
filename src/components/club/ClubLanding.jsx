@@ -101,7 +101,7 @@ export default function ClubLanding({ state, account, map = DEFAULT_MAP, due = f
         <div className={styles.cardRow} data-count={cards.length} aria-hidden="true">
           {cards.map((card, index) => (
             <span key={card.id} className={club.dealt} style={{ '--deal': index }}>
-              <PlayerCard card={card} displayScale={scale} tilt={false} canDrag={false} />
+              <PlayerCard card={card} displayScale={scale} tilt canDrag={false} />
             </span>
           ))}
         </div>

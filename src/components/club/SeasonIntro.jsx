@@ -82,7 +82,7 @@ export default function SeasonIntro({ state, map, reducedMotion, onDone }) {
         <div className={styles.five}>
           {starters.map((card, index) => (
             <div key={card.id} className={styles.card} style={{ '--i': index, viewTransitionName: `card-${card.id}` }}>
-              <PlayerCard card={card} displayScale={0.3} tilt={false} canDrag={false} />
+              <PlayerCard card={card} displayScale={0.3} tilt canDrag={false} />
             </div>
           ))}
         </div>

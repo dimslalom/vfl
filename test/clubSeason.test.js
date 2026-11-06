@@ -6,8 +6,8 @@ import { hasSkill } from '../src/engine/board/board.js';
 import { CLUB_SAVE_KEY, loadClub, saveClub } from '../src/lib/clubSave.js';
 import {
   CONTRACT_MAX, LEAGUE_SIZE, SKILL_SESSIONS, STARTERS, WEEKS, clubCard, clubRoster, closeWindow, contractYears,
-  draftPack, finishSeries, isValidClub, moveSquad, newClub, nextMatch, squadCards, standings, trainingOffer,
-  windowOffers, windowTotals,
+  draftPack, finishSeries, isValidClub, moveSquad, newClub, nextMatch, packEarnedFromSeries, squadCards, standings, trainingOffer,
+  windowOffers, windowTotals, xpPerPoint,
 } from '../src/engine/club/season.js';
 
 function draft(seed = 7) {
@@ -196,9 +196,32 @@ test('three matching skill tapes unlock the skill on the board', () => {
 test('series give starters growth, and a full bar raises the rating', () => {
   let state = fresh();
   const id = state.squad[0];
-  state = finishSeries({ ...state, xp: { [id]: 149 } }, series(true), allCards);
+  const card = allCards.find(c => c.id === id);
+  const needed = xpPerPoint(clubCard(state, card).rating);
+  state = finishSeries({ ...state, xp: { [id]: needed - 1 } }, series(true), allCards);
   assert.equal(state.dev[id].d, 1);
   assert.ok(state.last.growth.some(row => row.id === id));
+});
+
+test('packEarnedFromSeries awards packs on sweeps, derbies, and playoffs, but not regular 2-1 wins', () => {
+  const regularWeekState = { phase: 'league', week: 1 };
+  const derbyWeekState = { phase: 'league', week: 4 };
+  const playoffState = { phase: 'playoffs', week: 9 };
+
+  const sweep = { won: true, results: [{ winA: true }, { winA: true }] };
+  const regular21 = { won: true, results: [{ winA: true }, { winA: false }, { winA: true }] };
+  const lost = { won: false, results: [{ winA: false }, { winA: false }] };
+
+  // 2-0 sweep always awards a pack
+  assert.equal(packEarnedFromSeries(regularWeekState, sweep, 'Week 2'), true);
+  // 2-1 non-derby regular league win does NOT award a pack
+  assert.equal(packEarnedFromSeries(regularWeekState, regular21, 'Week 2'), false);
+  // 2-1 derby win awards a pack
+  assert.equal(packEarnedFromSeries(derbyWeekState, regular21, 'Week 5'), true);
+  // Playoff win awards a pack
+  assert.equal(packEarnedFromSeries(playoffState, regular21, 'Semifinal'), true);
+  // Losses never award packs
+  assert.equal(packEarnedFromSeries(regularWeekState, lost, 'Week 2'), false);
 });
 
 test('growth reaches the stats the board scores', () => {

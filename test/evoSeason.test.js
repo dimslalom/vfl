@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import allCards from '../shared/src/data/cards.json' with { type: 'json' };
 import {
-  STARTERS, clubCard, commitEvolution, draftPack, finishSeries, isEligibleForEvo, newClub,
+  STARTERS, clubCard, commitEvolution, draftPack, evoStatGain, finishSeries, isEligibleForEvo, newClub,
 } from '../src/engine/club/season.js';
 import { chooseChip } from '../src/engine/club/rewards.js';
 
@@ -50,8 +50,24 @@ test('isEligibleForEvo validates rating caps and role restrictions', () => {
 
   // Glacier Shield requires maxRating 80 and Sentinel/Controller
   assert.equal(isEligibleForEvo(sentinel75, 'glacier').eligible, true);
+  assert.equal(isEligibleForEvo(sentinel75, 'glacier').capped, false);
+
   assert.equal(isEligibleForEvo(duelist75, 'glacier').eligible, false); // Role mismatch
-  assert.equal(isEligibleForEvo(sentinel85, 'glacier').eligible, false); // Rating too high
+
+  // Under soft rating ceiling, a player above maxRating is still eligible (skill only)
+  assert.equal(isEligibleForEvo(sentinel85, 'glacier').eligible, true);
+  assert.equal(isEligibleForEvo(sentinel85, 'glacier').capped, true);
+  assert.equal(isEligibleForEvo(sentinel85, 'glacier').reason, 'Skill only');
+});
+
+test('evoStatGain caps stat boosts for high-rated players while granting full boosts below ceiling', () => {
+  const stats = { positioning: 1, mentality: 1 };
+  // Under ceiling: full stats
+  assert.deepEqual(evoStatGain(75, 80, stats), stats);
+  // Above ceiling: zero stats (skill only)
+  assert.deepEqual(evoStatGain(85, 80, stats), { positioning: 0, mentality: 0 });
+  // Partial headroom: e.g. 79.8 rating with 80 ceiling
+  assert.deepEqual(evoStatGain(80, 80, stats), { positioning: 0, mentality: 0 });
 });
 
 test('commitEvolution consumes an Evo and starts Level 1 without a training slot', () => {

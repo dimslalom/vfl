@@ -40,23 +40,48 @@
 @media (hover: hover) { .link:hover { background: var(--plate-hi); } }
 
 /* ── primer ──────────────────────────────────────────────────────────────── */
-.step { width: min(640px, 100%); display: flex; flex-direction: column; align-items: center; gap: var(--sp-5); margin: auto 0; text-align: center; }
-.step h2 { margin: 0; font-size: var(--fs-heading); line-height: 1.2; }
-.step p { max-width: 44ch; margin: 0; color: var(--muted); }
-.piece { min-height: 150px; display: flex; align-items: flex-end; justify-content: center; }
-.pips { display: flex; gap: 4px; }
-.pips i { width: 28px; height: 6px; background: var(--plate-inset); }
-.pips i[data-on] { background: var(--ink); }
-.weeks { display: grid; grid-template-columns: repeat(6, 64px); gap: 2px; margin: 0; padding: 0; list-style: none; }
-.weeks li { min-height: 64px; padding: var(--sp-2); display: flex; flex-direction: column; justify-content: space-between; background: var(--plate); text-align: left; }
-.weeks li[data-now] { background: var(--ink); color: var(--bg); }
-.weeks li[data-won] { background: var(--win); color: var(--win-ink); }
-.weeks small { font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
-.weeks b { font-size: var(--fs-label); }
-.ladder { width: 260px; display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
-.ladder li { min-height: 44px; padding: 0 var(--sp-3); display: flex; align-items: center; justify-content: space-between; background: var(--plate); font-weight: 700; }
-.ladder li[data-here] { background: var(--ink); color: var(--bg); }
-.ladder li small { font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
+.step { width: min(680px, 100%); display: flex; flex-direction: column; align-items: center; gap: var(--sp-3); margin: auto 0; text-align: center; }
+.stepKicker { font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--win); }
+.stepTitle { margin: 0; font-size: var(--fs-heading); font-weight: 700; line-height: 1.2; text-transform: uppercase; letter-spacing: -.01em; color: var(--ink); }
+.stepLead { max-width: 50ch; margin: 0; color: var(--muted); font-size: var(--fs-body); line-height: 1.45; }
+.piece { min-height: 160px; width: 100%; display: flex; align-items: center; justify-content: center; margin: var(--sp-1) 0; }
+.pips { display: flex; gap: 4px; margin-top: var(--sp-2); }
+.pips i { width: 32px; height: 4px; background: var(--plate-inset); }
+.pips i[data-on] { background: var(--win); }
+
+/* Step 1: Starting five */
+.primerSquad { display: flex; flex-direction: column; align-items: center; width: 100%; }
+.primerCardRow { display: flex; align-items: flex-end; justify-content: center; gap: var(--sp-2); perspective: 1000px; }
+.primerCardWrap { display: flex; flex-direction: column; align-items: center; filter: var(--shadow-rest); }
+.primerIglBadge { font: 700 var(--fs-nano)/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; background: var(--surface-alt); color: var(--win); padding: 3px 8px; clip-path: polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 5px 100%, 0 calc(100% - 5px)); border-bottom: 2px solid var(--win); margin-bottom: 4px; }
+
+/* Step 2: Board lanes */
+.primerBoard { width: min(540px, 100%); display: flex; flex-direction: column; gap: var(--sp-2); }
+.primerLanes { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2); }
+.primerLane { background: var(--plate); padding: var(--sp-2) var(--sp-3); text-align: left; display: flex; flex-direction: column; gap: var(--sp-1); border: 1px solid var(--line-bracket); }
+.primerLaneTag { font: 700 var(--fs-label)/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink); }
+.primerLane small { font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.primerSplitBar { width: 100%; height: 6px; background: var(--opponent); overflow: hidden; position: relative; margin-top: 2px; }
+.primerSplitBar span { display: block; height: 100%; background: var(--accent); }
+.primerRotateCallout { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); padding: 8px 14px; background: var(--plate); border: 1px solid var(--line-bracket); font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink); clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px)); }
+.primerRotatePip { width: 6px; height: 6px; background: var(--win); flex: none; }
+
+/* Step 3: Ladder */
+.primerLadderWrap { width: min(380px, 100%); display: flex; justify-content: center; }
+.primerLadder { width: 100%; display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.primerLadder li { min-height: 42px; padding: 0 var(--sp-3); display: flex; align-items: center; justify-content: space-between; background: var(--plate); border: 1px solid var(--line-bracket); font-weight: 700; }
+.primerLadder li[data-here] { border-left: 3px solid var(--win); background: var(--plate-hi); }
+.tierName { font-size: var(--fs-body); color: var(--ink); }
+.tierBadge { font: 700 var(--fs-nano)/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; background: var(--win-soft); color: var(--win); padding: 3px 8px; }
+.tierZone { font: 700 var(--fs-nano)/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--gold); }
+.tierDanger { font: 700 var(--fs-nano)/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+
+/* Shared briefing telemetry */
+.primerTelemetry { width: min(600px, 100%); display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; margin-top: var(--sp-1); }
+.telemetryCard { background: var(--plate); padding: var(--sp-2) var(--sp-3); display: flex; flex-direction: column; gap: 3px; border: 1px solid var(--line-bracket); text-align: left; }
+.telemetryLabel { font: 700 var(--fs-nano)/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.telemetryVal { font-size: var(--fs-micro); color: var(--ink); font-weight: 700; }
+
 .stepAct { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3); }
 
 /* ── settings ────────────────────────────────────────────────────────────── */
@@ -107,31 +132,89 @@
 @media (hover: hover) { .signin:hover { background: var(--plate-hi); } }
 @media (prefers-reduced-motion: reduce) { .sync { animation: none; } }
 
-/* ── hint ────────────────────────────────────────────────────────────────── */
-/* One tip, solid ink like the club menu, under the HUD so it never covers Play. */
+/* ── hint (broadcast HUD advisory) ───────────────────────────────────────── */
 .hint {
   position: fixed;
   z-index: 62;
   top: calc(max(var(--sp-6), env(safe-area-inset-top)) + 64px);
   left: 50%;
-  width: min(520px, calc(100vw - 2 * var(--sp-3)));
+  width: min(480px, calc(100vw - 2 * var(--sp-3)));
   padding: var(--sp-3) var(--sp-4);
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
   box-sizing: border-box;
   transform: translateX(-50%);
-  background: var(--ink);
-  color: var(--bg);
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line-bracket);
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.6);
   text-align: left;
   animation: hintIn .24s cubic-bezier(.22, 1, .36, 1) both;
 }
-.hint p { margin: 0; font-size: var(--fs-body); line-height: 1.4; }
-.hint > span { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-2); }
-.hint small { font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; }
-.hint button { min-height: var(--tap-min-secondary, 28px); padding: var(--sp-1) var(--sp-3); border: 0; background: transparent; color: var(--bg); font: inherit; font-size: var(--fs-label); font-weight: 800; cursor: pointer; }
-.hint button[data-main] { background: var(--bg); color: var(--ink); }
+.hintHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.hintKicker {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font: 700 var(--fs-micro)/1 var(--font-mono);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--win);
+}
+.hintPip {
+  width: 6px;
+  height: 6px;
+  background: var(--win);
+  flex: none;
+}
+.hintOff {
+  background: transparent;
+  border: 0;
+  padding: 4px;
+  color: var(--muted);
+  font: 700 var(--fs-nano)/1 var(--font-mono);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color .15s ease;
+}
+@media (hover: hover) { .hintOff:hover { color: var(--ink); } }
+.hintBody {
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: 1.45;
+  color: var(--ink);
+}
+.hintFoot {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: 2px;
+}
+.hintDismiss {
+  min-height: var(--tap-min-secondary, 28px);
+  padding: 6px 18px;
+  border: 0;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: 700 var(--fs-micro)/1 var(--font-mono);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  clip-path: polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 7px 100%, 0 calc(100% - 7px));
+  transition: opacity .15s ease;
+}
+@media (hover: hover) { .hintDismiss:hover { opacity: .92; } }
+
 @keyframes hintIn { from { opacity: 0; transform: translate(var(--hint-x, -50%), -8px); } to { opacity: 1; transform: translateX(var(--hint-x, -50%)); } }
+
 /* On a wide screen each menu's tip sits in that menu's own empty space, never over its cards or table. */
 @media (min-width: 760px) {
   .hint[data-at='squad'], .hint[data-at='league'], .hint[data-at='train'] { --hint-x: 0; left: auto; right: max(var(--sp-10), env(safe-area-inset-right)); width: 380px; transform: none; }
@@ -139,7 +222,9 @@
   .hint[data-at='vault'] { top: auto; bottom: max(var(--sp-6), env(safe-area-inset-bottom)); }
   .hint[data-at='chips'] { --hint-x: 0; top: auto; bottom: max(var(--sp-6), env(safe-area-inset-bottom)); left: auto; right: max(var(--sp-10), env(safe-area-inset-right)); width: 380px; transform: none; }
   .hint[data-at='chipPick'] { --hint-x: 0; top: auto; bottom: max(var(--sp-6), env(safe-area-inset-bottom)); left: max(var(--sp-10), env(safe-area-inset-left)); width: 380px; transform: none; }
+  .hint[data-at='window'] { --hint-x: 0; top: auto; bottom: max(var(--sp-6), env(safe-area-inset-bottom)); left: auto; right: max(var(--sp-10), env(safe-area-inset-right)); width: 380px; transform: none; }
 }
+
 /* On a phone the menus' header holds their tabs, so their tips sit at the bottom instead. */
 @media (max-width: 759px) {
   .hint[data-at]:not([data-at='home']) { top: auto; bottom: max(var(--sp-3), env(safe-area-inset-bottom)); }
@@ -156,8 +241,8 @@
   .go { align-items: stretch; text-align: center; }
   .go > button { width: 100%; min-width: 0; }
   .links { justify-content: center; }
-  .weeks { grid-template-columns: repeat(6, minmax(0, 1fr)); width: 100%; }
-  .weeks li { min-height: 52px; padding: var(--sp-1); }
+  .primerTelemetry { grid-template-columns: 1fr; }
+  .primerLanes { grid-template-columns: 1fr; }
   .settings li { min-height: 64px; padding: var(--sp-3); }
   .hint { top: calc(max(var(--sp-2), env(safe-area-inset-top)) + 56px); }
   .syncPair { grid-template-columns: 1fr; }

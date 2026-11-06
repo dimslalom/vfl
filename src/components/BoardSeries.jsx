@@ -168,7 +168,7 @@ function Pips({ total, won, side }) {
 // intro: { you: { club, cards }, them: { club, cards }, stage } plays the match
 // intro over the board while it loads, then drops the 3D camera into the first deal.
 // settings: controls shown in a panel behind the gear beside Leave (the Club passes its music controls).
-export default function BoardSeries({ squad, opponent, opponentName, bestOf, seed, hand, onDone, onLeave, doneLabel = 'Continue', fixed = false, three = false, arena = 'tint', mapNames = null, intro = null, settings = null }) {
+export default function BoardSeries({ squad, opponent, opponentName, bestOf, seed, hand, onDone, onLeave, doneLabel = 'Continue', fixed = false, three = false, arena = 'tint', mapNames = null, intro = null, settings = null, hintsOn = false }) {
   const hostRef = useRef(null);
   const stageRef = useRef(null);
   const chipHostRef = useRef(null);
@@ -455,6 +455,20 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
         </ul>
       )}
       <div className={styles.bar} ref={barRef}>
+        {hintsOn && phase === 'place' && (
+          <div className={styles.boardAdvisory}>
+            <span className={styles.advisoryPip} aria-hidden="true" />
+            <span className={styles.advisoryTag}>{t('Lanes')}</span>
+            <span>{t('Place your five players across A, Mid and B. Match player stats to lane requirements.')}</span>
+          </div>
+        )}
+        {hintsOn && phase === 'rotate' && (
+          <div className={styles.boardAdvisory}>
+            <span className={styles.advisoryPip} aria-hidden="true" />
+            <span className={styles.advisoryTag}>{t('Rotate')}</span>
+            <span>{t('Rival revealed. Use your IGL rotate to reposition a player and counter their matchups.')}</span>
+          </div>
+        )}
         {phase === 'place' && (
           <button type="button" className={styles.primary} disabled={!legal} onClick={() => stageRef.current?.lockIn()}>
             {legal ? 'Lock in' : placed < 5 ? `${placed}/5 placed` : 'Fill every lane'}
@@ -465,8 +479,8 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
             {rotated ? 'Rotate and go' : 'Go without rotating'}
           </button>
         )}
-        {phase === 'rotate' && !three && <p className={styles.hint}>{moves === 2 ? 'Mastermind IGL: move two players' : 'IGL rotate: move one player'}</p>}
-        {phase === 'resolve' && <p className={styles.hint}>Tap to skip</p>}
+        {phase === 'rotate' && !three && <p className={styles.hint}>{moves === 2 ? t('Mastermind IGL: move two players') : t('IGL rotate: move one player')}</p>}
+        {phase === 'resolve' && <p className={styles.hint}>{t('Tap to skip')}</p>}
       </div>
       {outcome && outcome.lanes?.length === 3 && outcome.youWon === 3 && (
         <div className={styles.flawlessBanner} role="status" aria-label={t('FLAWLESS')}>

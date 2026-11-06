@@ -14,7 +14,7 @@ import help from './ChipHelp.module.css';
 import styles from './EvoChip.module.css';
 
 const statGain = stats => Object.entries(stats).map(([key, value]) => `+${value} ${STAT_LABELS[key]}`).join(', ');
-const evoTakes = evo => `${evo.requirements.roles ? evo.requirements.roles.join(' or ') : 'Any role'}, ${evo.requirements.maxRating} or lower`;
+const evoTakes = evo => `${evo.requirements.roles ? evo.requirements.roles.join(' or ') : 'Any role'}, ${evo.requirements.maxRating} ceiling`;
 
 const HEX = [[50, 3], [93, 25], [93, 75], [50, 97], [7, 75], [7, 25]];
 const hex = (k = 1, dy = 0) => HEX.map(([x, y]) => `${(50 + (x - 50) * k).toFixed(1)},${(50 + (y - 50) * k + dy).toFixed(1)}`).join(' ');

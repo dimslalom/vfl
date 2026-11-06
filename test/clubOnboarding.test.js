@@ -52,6 +52,29 @@ test('tips show once per screen, only in the first week', () => {
   assert.equal(hintFor(prefs, null, 'home'), null);
 });
 
+test('state-aware hints trigger when conditions are met', () => {
+  const prefs = loadOnboarding(memory());
+  // Training tapes trigger
+  const stateWithTapes = { ...week(1, 3), trainingTapes: ['aim_1'] };
+  assert.equal(hintFor(prefs, stateWithTapes, 'home'), 'home_tapes');
+  assert.equal(hintFor(prefs, stateWithTapes, 'train'), 'train_active');
+
+  // Fatigue trigger
+  const stateWithFatigue = {
+    ...week(1, 3),
+    squad: ['p1', 'p2'],
+    fatigue: { p1: 35 },
+  };
+  assert.equal(hintFor(prefs, stateWithFatigue, 'squad'), 'squad_fatigue');
+
+  // Vault packs trigger
+  const stateWithPacks = { ...week(1, 3), packs: [{ kind: 'silver' }] };
+  assert.equal(hintFor(prefs, stateWithPacks, 'vault'), 'vault_packs');
+
+  // Window trigger
+  assert.equal(hintFor(prefs, week(1, 5), 'window'), 'window');
+});
+
 test('show tips again brings back the tips and the primer', () => {
   const seen = { primer: true, hints: true, primerSeen: true, seen: ['home', 'vault'] };
   assert.deepEqual(resetHints(seen), { primer: true, hints: true, primerSeen: false, seen: [] });

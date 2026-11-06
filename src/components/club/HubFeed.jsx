@@ -64,7 +64,7 @@ export function Scout({ state, cards, cardScale, children }) {
           <div className={styles.cards} aria-label={t('Their best')}>
             {shown.map(card => (
               <span key={card.id} data-top={card.id === best[0].id || undefined}>
-                <PlayerCard card={card} displayScale={card.id === best[0].id ? cardScale * 1.12 : cardScale} tilt={false} canDrag={false} />
+                <PlayerCard card={card} displayScale={card.id === best[0].id ? cardScale * 1.12 : cardScale} tilt canDrag={false} />
               </span>
             ))}
           </div>

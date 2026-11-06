@@ -19,7 +19,7 @@ function Side({ label, state, onKeep, keepLabel }) {
         <span className={club.tag}>{summary.titles === 1 ? t('1 title') : t('{n} titles', { n: summary.titles })}</span>
       </span>
       <span className={styles.cardRow} aria-hidden="true">
-        {summary.starters.map(card => <PlayerCard key={card.id} card={card} displayScale={0.14} tilt={false} canDrag={false} />)}
+        {summary.starters.map(card => <PlayerCard key={card.id} card={card} displayScale={0.14} tilt canDrag={false} />)}
       </span>
       <span className={styles.syncKeep}>{keepLabel}</span>
     </button>
