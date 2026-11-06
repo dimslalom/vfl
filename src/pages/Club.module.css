@@ -1064,7 +1064,7 @@ button.handSlot:not(:disabled) { cursor: pointer; }
 .passFor[data-passing] { opacity: 1; }
 @media (hover: hover) { .vaultKind:hover .tapeCard { transform: perspective(700px) rotateY(-12deg) rotateX(4deg); } }
 
-/* League bracket: two semifinals feeding a final, housed in clean 1A match pods. */
+/* League bracket: two semifinals feeding a final, housed in plate pods with tree lines. */
 .bracket { width: min(720px, 100%); display: flex; flex-direction: column; gap: var(--sp-2); }
 .bracketHead { display: flex; align-items: baseline; gap: var(--sp-3); flex-wrap: wrap; }
 .bracketGrid { display: grid; grid-template-columns: minmax(0, 1fr) 36px minmax(0, 1fr); align-items: center; }
@@ -1072,9 +1072,8 @@ button.handSlot:not(:disabled) { cursor: pointer; }
 .match { display: flex; flex-direction: column; gap: var(--sp-1); }
 .matchHead { display: flex; align-items: baseline; justify-content: space-between; padding: 0 var(--sp-1); font-size: var(--fs-label); font-weight: 700; color: var(--muted); }
 .matchHead small { font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .08em; }
-.matchPod { margin: 0; padding: 0; list-style: none; background: var(--surface); border: 1px solid var(--line-bracket); }
-.bracketRow { min-height: 44px; padding: 0 var(--sp-3); display: grid; grid-template-columns: 20px 24px minmax(0, 1fr); align-items: center; gap: var(--sp-2); box-sizing: border-box; }
-.bracketRow:not(:last-child) { border-bottom: 1px solid var(--line-bracket); }
+.matchPod { margin: 0; padding: 0; list-style: none; background: var(--plate-inset); border: 0; display: flex; flex-direction: column; gap: 1px; }
+.bracketRow { min-height: 44px; padding: 0 var(--sp-3); display: grid; grid-template-columns: 20px 24px minmax(0, 1fr); align-items: center; gap: var(--sp-2); background: var(--plate-inset); border: 0; box-sizing: border-box; }
 .bracketRow[data-you] { background: var(--win-soft); }
 .bracketRow[data-you] .bracketClubName { color: var(--win); }
 .bracketRow[data-you] .bracketSeed { color: var(--win); }
@@ -1084,13 +1083,13 @@ button.handSlot:not(:disabled) { cursor: pointer; }
 .bracketClubName { font-size: var(--fs-body); font-weight: 700; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* Pending final match slots */
-.bracketRow[data-pending] { opacity: .6; }
-.pendingMark { width: 24px; height: 24px; border: 1px dashed var(--line-bracket); box-sizing: border-box; }
+.bracketRow[data-pending] { opacity: .5; }
+.pendingMark { width: 24px; height: 24px; border-radius: 50%; background: rgba(255, 255, 255, 0.05); border: 0; }
 .pendingClubName { font-size: var(--fs-annotation); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* Orthogonal connector lines */
-.joiner { align-self: stretch; margin: 34px 0 20px; border: 1px solid var(--line-bracket); border-left: 0; position: relative; }
-.joiner::after { content: ''; position: absolute; left: 100%; top: 50%; width: 18px; border-top: 1px solid var(--line-bracket); }
+/* The one stroke with meaning: tournament bracket progression */
+.joiner { align-self: stretch; margin: 34px 0 20px; border: 2px solid var(--line-bracket); border-left: 0; position: relative; }
+.joiner::after { content: ''; position: absolute; left: 100%; top: 50%; width: 18px; border-top: 2px solid var(--line-bracket); }
 .match[data-final] { padding-left: 18px; }
 
 @media (max-width: 759px) {
@@ -1568,7 +1567,7 @@ button.handSlot[data-droppable] { box-shadow: inset 0 0 0 1px var(--accent); }
 .managementGround.packed .managementBottom { align-self: start; }
 .actPair .primary:disabled { box-shadow: inset 0 0 0 1px var(--line-bracket); }
 
-/* League: the table and the playoffs side by side in cohesive 1A HUD plates. */
+/* League: the table and the playoffs side by side on plates. */
 .leagueBody { width: min(1200px, 100%); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: var(--sp-10); }
 .leagueTable { min-width: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
 .leagueTable .table, .leagueBody .bracket { width: 100%; }
@@ -1582,10 +1581,12 @@ button.handSlot[data-droppable] { box-shadow: inset 0 0 0 1px var(--accent); }
   margin: 0;
   padding: 0;
   list-style: none;
-  background: var(--surface);
-  border: 1px solid var(--line-bracket);
+  background: none;
+  border: 0;
   filter: none;
-  gap: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .leagueTable .table li {
@@ -1596,13 +1597,9 @@ button.handSlot[data-droppable] { box-shadow: inset 0 0 0 1px var(--accent); }
   grid-template-columns: 24px 32px minmax(0, 1fr) 44px 36px;
   gap: var(--sp-3);
   align-items: center;
-  background: none;
-  border-bottom: 1px solid var(--line-bracket);
+  background: var(--plate-inset);
+  border: 0;
   box-sizing: border-box;
-}
-
-.leagueTable .table li:last-child {
-  border-bottom: none;
 }
 
 .leagueTable .table li[data-you] {
@@ -1624,8 +1621,8 @@ button.handSlot[data-droppable] { box-shadow: inset 0 0 0 1px var(--accent); }
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--surface-alt);
-  border-bottom: 1px solid var(--line-bracket);
+  background: none;
+  border: 0;
   color: var(--muted);
   font: 700 var(--fs-nano)/1 var(--font-mono);
   letter-spacing: .12em;
