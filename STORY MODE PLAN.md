@@ -1,6 +1,6 @@
 # Story mode plan
 
-Status: planning. Only the squad switcher shell is built (Story squad shows greyed, "Coming soon").
+Status: built across all six phases.
 
 ## 1. Goal
 
@@ -167,12 +167,12 @@ Rich clubs are not forced into option 1. Broke clubs feel the squeeze.
 
 ## 8. Phases
 
-1. **Switcher (done, shell only).** Greyed Story squad with "Coming soon".
-2. **Slots and selection.** Save slots, selectable Story squad, empty story save.
-3. **Story engine.** Director, memory, storylet evaluation, hooks in `finishSeries` and the transfer window.
-4. **Act I.** Briefings, poach dilemmas, debriefs, first cutscenes, dialogue UI.
-5. **Acts II and III, chronicle, dynasty eras.**
-6. **Live packs.** Publish the first crisis storyline to prove the update path.
+1. **Switcher (done).** Selectable Club squad and Story squad plates with keyboard and touch switching.
+2. **Slots and selection (done).** Separate `vfl-club-save` and `vfl-story-save` slots in [clubSave.js](src/lib/clubSave.js).
+3. **Story engine (done).** Director, memory, storylet evaluation, and hooks in [storyDirector.js](src/engine/story/storyDirector.js) and [storyMemory.js](src/engine/story/storyMemory.js).
+4. **Act I (done).** Opening cutscene, briefings, poach dilemmas, debriefs, and dialogue UI in [StoryViews.jsx](src/components/club/StoryViews.jsx).
+5. **Acts II and III, chronicle, dynasty eras (done).** Full campaign acts, four-axis Era Chronicle, and unending Dynasty Eras in [originCampaign.js](src/engine/story/storylines/originCampaign.js).
+6. **Live packs (done).** Financial crisis ([crisisFinancial.js](src/engine/story/storylines/crisisFinancial.js)), leaked VOD scandal ([crisisScandal.js](src/engine/story/storylines/crisisScandal.js)), and mid-season showmatch ([tourInvitational.js](src/engine/story/storylines/tourInvitational.js)).
 
 Each phase: `npm test`, `npx eslint` on touched files, check 1440x900 and 375x812, add es and pt strings.
 
@@ -184,3 +184,22 @@ Each phase: `npm test`, `npx eslint` on touched files, check 1440x900 and 375x81
 - Does the Story squad share packs or reputation with the Club squad? Recommended: fully separate saves.
 - Should story choices cost real-money-free resources only (packs, reputation, fatigue)? Recommended: yes.
 - Version handling for storylines edited after players started them (`version` field, migrate or finish on the old version).
+
+## 10. Illustrated reels (built)
+
+Story beats with rendered art play as a reel instead of the portrait dialogue. Portraits stay in dialogue scenes.
+
+- A scene opts in with `reel: [{ art, cam, speaker, line }]` and an `art` on each choice. `StoryDialogue` in [StoryViews.jsx](src/components/club/StoryViews.jsx) hands those to `StoryReel`; scenes without `reel` are unchanged.
+- Art is pre-rendered by Blender: `tools/blender/human.py -- out.png <scene>` (MPFB people, modelled sets), then `tools/blender/frames.py` applies the duotone and writes `public/assets/story/<scene>.webp`.
+- Scenes are cast by role, so the art is generic silhouettes; names, rivals and numbers live in the captions and choices.
+- Scenes so far: arena, board, corridor, sell, cut, crowd (used by the financial crisis pack). A new location is one new `scene_*` function.
+- Next: opening and act-transition reels, per-rival colour variants.
+
+## 11. Story text rework (built)
+
+- **In-match barks** ([barks.js](src/engine/story/barks.js)): one line, no clicking, fades after about 4s. Rules from `buildBoardComms` are matched against board facts (round start or end, decider, facing elimination, levelled, sweep); the highest-scoring match wins, then cools down for 12 picks. Nemesis and bogey-team lines outrank everything. No match means silence.
+- **Portrait dialogue**: one speaker portrait, their line, replies as title plus gain and cost signals. Confirm plays your line as its own beat before the choice applies.
+- **HUD**: Trust and Pressure have meters with a notch where they start to matter, and the header previews the picked choice's change before you commit.
+- **Milestone cutscenes** are reels: art per frame in `MILESTONE_ART` (originCampaign.js), scenes cafe, locker, walk, stage, press, trophy, lift, empty.
+- **Results**: the post-match line is a pull quote and only appears for story memory (evo breakthrough, nemesis, a broken losing streak).
+- **Era Chronicle**: a magazine-cover layout over the season's last image, each axis with one fact from the save.

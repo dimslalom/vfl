@@ -903,7 +903,7 @@ function settleYear(state, cards) {
   let movement = 'hold';
   if (placement <= 2 && state.tier < TIERS.length - 1) movement = 'promote';
   else if (bottom && state.tier > 0) movement = 'relegate';
-  else if (lastPlaces >= SACKED_AFTER) movement = 'sacked';
+  else if (lastPlaces >= SACKED_AFTER && !state.story) movement = 'sacked';
   else if (lastPlaces) movement = 'warned';
   const before = squadCards(state, cards);
 
@@ -951,7 +951,7 @@ function settleYear(state, cards) {
 
 // ── transfer window ─────────────────────────────────────────────────────────
 
-function trialists(state, cards, excluded = []) {
+export function trialists(state, cards, excluded = []) {
   const inLeague = new Set(state.clubs.flatMap(club => club.roster));
   const skip = new Set([...state.squad, ...excluded]);
   const order = card => hash(state.seed, state.year, 'trial', card.id) % 997;

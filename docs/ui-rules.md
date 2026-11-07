@@ -23,7 +23,7 @@ Each rule is checkable. Run section 10 against your diff before you finish.
 5. **Never say a fact twice on one screen.** If the rival is in the season road and in the match block, it must not also have a third label. If the pack count is in the header, a tile must not also show it.
 6. **No gradients, glows or soft decorative shadows.** The only soft shadows are on physical objects (cards, packs, tapes, chips) via `--shadow-rest` and `--shadow-lift`. Panels and text never cast a shadow.
 7. **No rounded rectangles.** Containers are right angles. Interactive plates use the notch (`clip-path` cut corners). Round shapes are only for things that are round in the game: chips, pips, the swap selection corners.
-8. **No coloured left or side borders** on cards or rows to show status. Status goes in a chip, a fill or the text colour.
+8. **No one-sided borders** (top, bottom, left or right) on buttons, plates, cards or rows to show status or selection. Status goes in a chip, a fill (`--ink` or `--plate-hi`), selection corners (`SelectionCorners`), or the text colour.
 9. **No boxes inside boxes.** Split a panel with hairline rows (`LedgerRow`) or spacing, never a nested bordered box.
 10. **No hand-mixed grays.** On map art, a surface is `--plate`, `--plate-hi` or `--plate-inset`. A new `color-mix()` of a surface token is a bug.
 11. **No emoji, no glyph icons, no native `<select>`.** Use real game imagery (player cards, crests, pack and tape art) or a drawn SVG. To pick a player, show the player cards and let the user tap one.
@@ -199,7 +199,7 @@ These are the patterns this project borrows from EA FC's Ultimate Team menus. Ap
 |---|---|---|
 | A menu screen | `ManagementScreen` + `ScreenHeader` | `src/pages/Club.jsx` |
 | The five menu tabs | `SECTIONS` (add a menu here, nowhere else) | `src/pages/Club.jsx` |
-| Pack and tape counter | `PackCounter` (pass `value` for a pending total) | `src/pages/Club.jsx` |
+| Pack counter | `PackCounter` (pass `value` for a pending total) | `src/pages/Club.jsx` |
 | A labelled value row | `LedgerRow` | `src/pages/Club.jsx` |
 | A bar readout | `Meter` | `src/pages/Club.jsx` |
 | Contract years | `YearPips` | `src/pages/Club.jsx` |

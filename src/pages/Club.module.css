@@ -797,11 +797,11 @@
    left, the match bottom right), kept to the hierarchy pass: cards brightest,
    tiles low-tone, one green for state, red only for the main action. */
 
-/* Pack counter: one pack and the total value, then skill tapes. */
+/* Pack counter: one pack and the total value. */
 .counter { min-height: var(--tap-min); padding: 0 var(--sp-3); display: inline-flex; align-items: center; gap: var(--sp-4); border: 0; background: var(--plate); color: var(--ink); font: inherit; cursor: pointer; }
 span.counter { cursor: default; }
 .counterPart { display: inline-flex; align-items: center; gap: var(--sp-2); }
-.counterPart img, .counterPart img.tapeCard { width: 20px !important; height: 28px !important; object-fit: contain; filter: none; }
+.counterPart img { width: 20px !important; height: 28px !important; object-fit: contain; filter: none; }
 .counterPart b { font-size: var(--fs-lead); line-height: 1; }
 .counterPart[data-dim] { color: var(--muted); }
 .counter[data-bump] .counterPart:first-child { animation: bump .45s cubic-bezier(.2, .8, .2, 1); }
@@ -1737,3 +1737,9 @@ button.emptyTactic[data-swap-target] { border-color: var(--win); cursor: pointer
   .hud { flex-wrap: wrap; row-gap: var(--sp-2); }
   .hud > .chips { margin-left: auto; }
 }
+
+/* Story pull quote on the result screen: only when the save has something to say */
+.pullQuote { margin: 0; display: grid; justify-items: center; gap: var(--sp-2); text-align: center; animation: settle .4s .3s cubic-bezier(.22, 1, .36, 1) both; }
+.pullQuote p { margin: 0; font: 700 var(--fs-title)/1.3 var(--font-display); color: var(--ink); max-width: 30ch; text-wrap: balance; }
+.pullQuote p::before { content: '\201C'; } .pullQuote p::after { content: '\201D'; }
+.pullQuote cite { font: 700 var(--fs-micro)/1 var(--font-mono); font-style: normal; letter-spacing: .14em; text-transform: uppercase; color: var(--win); }

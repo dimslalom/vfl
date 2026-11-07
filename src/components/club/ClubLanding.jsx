@@ -1,7 +1,8 @@
-import { useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import PlayerCard from '../../../shared/src/components/PlayerCard';
 import { assetPath } from '../../../shared/src/lib/utils';
 import { LEAGUE_SIZE } from '../../engine/club/season';
+import { storyActLabel } from '../../engine/story/storyMemory';
 import { signInHref } from '../../lib/account';
 import { t } from '../../lib/i18n';
 import ClubLogo from '../ClubLogo';
@@ -54,17 +55,28 @@ function Place({ pos }) {
   );
 }
 
-// Which squad the landing shows. The story squad is on its way: it sits to the
-// right, greyed and labelled, and cannot be picked yet.
-function SquadSwitcher() {
+// Which squad the landing shows: Club squad on the left, Story squad on the right.
+function SquadSwitcher({ slot, onSlotChange, storyPip }) {
   return (
     <div className={styles.squads} role="group" aria-label={t('Squads')}>
-      <button type="button" className={styles.squad} aria-pressed="true" data-on>
+      <button
+        type="button"
+        className={styles.squad}
+        aria-pressed={slot === 'club'}
+        data-on={slot === 'club' || undefined}
+        onClick={() => onSlotChange('club')}
+      >
         <b>{t('Club squad')}</b>
       </button>
-      <button type="button" className={styles.squad} aria-disabled="true" data-soon tabIndex={-1}>
+      <button
+        type="button"
+        className={`${styles.squad} ${styles.flagged}`}
+        aria-pressed={slot === 'story'}
+        data-on={slot === 'story' || undefined}
+        onClick={() => onSlotChange('story')}
+      >
+        {storyPip && <span className={club.pip} role="img" aria-label={t('New storyline')} />}
         <b>{t('Story squad')}</b>
-        <small>{t('Coming soon')}</small>
       </button>
     </div>
   );
@@ -73,13 +85,43 @@ function SquadSwitcher() {
 // Direction A, "Front door": the one shipped in /club. One sentence and one button.
 // A new player reads what the mode is; a returning one sees their own club and Play,
 // taking them into the club hub. Everything else is a quiet link. Discord sign-in is optional.
-export default function ClubLanding({ state, account, map = DEFAULT_MAP, due = false, onContinue, onFound, onPrimer, onSettings }) {
+export default function ClubLanding({
+  state,
+  slot,
+  onSlotChange,
+  storyPip = false,
+  account,
+  map = DEFAULT_MAP,
+  due = false,
+  onContinue,
+  onFound,
+  onPrimer,
+  onSettings,
+}) {
+  const [localSlot, setLocalSlot] = useState('club');
+  const activeSlot = slot ?? localSlot;
+  const changeSlot = onSlotChange ?? setLocalSlot;
+  const isStory = activeSlot === 'story';
+  const touchStartX = useRef(null);
+
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if (event.target?.tagName === 'INPUT' || event.target?.tagName === 'TEXTAREA') return;
+      if (event.key === 'ArrowRight' && activeSlot !== 'story') changeSlot('story');
+      if (event.key === 'ArrowLeft' && activeSlot !== 'club') changeSlot('club');
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [activeSlot, changeSlot]);
+
   const summary = clubSummary(state);
   const returning = Boolean(summary);
   const cards = returning ? summary.starters : CLIMB;
   const scale = useCardScale(cards.length);
   const isPlayingSeason = returning && (summary.phase === 'league' || summary.phase === 'playoffs');
-  const actionLabel = isPlayingSeason ? t('Play') : t('Continue');
+  const actionLabel = isPlayingSeason ? t('Play') : isStory ? t('Resume story') : t('Continue');
+  const actLabel = isStory && returning ? storyActLabel(state) : '';
+
   return (
     <div className={club.stage}>
       <header className={club.hud}>
@@ -91,6 +133,7 @@ export default function ClubLanding({ state, account, map = DEFAULT_MAP, due = f
               <span className={club.tagRow}>
                 <span className={club.tag} data-solid>{t(summary.tier)}</span>
                 <span className={club.tag}>{t('Year {n}', { n: summary.year })}</span>
+                {actLabel && <span className={club.tag}>{actLabel}</span>}
               </span>
             )}
           </div>
@@ -98,11 +141,29 @@ export default function ClubLanding({ state, account, map = DEFAULT_MAP, due = f
         <div className={club.chips}><LanguagePicker /></div>
       </header>
 
-      <main className={`${club.ground} ${styles.landing}`} style={{ '--map': `url(${assetPath(map)})` }}>
-        <SquadSwitcher />
+      <main
+        className={`${club.ground} ${styles.landing}`}
+        style={{ '--map': `url(${assetPath(map)})` }}
+        onTouchStart={(event) => { touchStartX.current = event.touches?.[0]?.clientX ?? null; }}
+        onTouchEnd={(event) => {
+          const endX = event.changedTouches?.[0]?.clientX;
+          if (touchStartX.current == null || endX == null) return;
+          const dx = endX - touchStartX.current;
+          touchStartX.current = null;
+          if (dx < -40 && activeSlot !== 'story') changeSlot('story');
+          if (dx > 40 && activeSlot !== 'club') changeSlot('club');
+        }}
+      >
+        <SquadSwitcher slot={activeSlot} onSlotChange={changeSlot} storyPip={storyPip} />
         <div className={styles.intro}>
-          <span className={styles.kicker}>{returning ? t('Your club') : t('VCT card game')}</span>
-          <h1 className={styles.headline}>{returning ? summary.name : t('Run a club')}</h1>
+          <span className={styles.kicker}>
+            {returning
+              ? (isStory ? actLabel || t('Story mode') : t('Your club'))
+              : (isStory ? t('Story mode') : t('VCT card game'))}
+          </span>
+          <h1 className={styles.headline}>
+            {returning ? summary.name : (isStory ? t('From the ground up') : t('Run a club'))}
+          </h1>
           {returning ? (
             (summary.pos || summary.titles > 0) && (
               <span className={styles.tags}>
@@ -111,7 +172,11 @@ export default function ClubLanding({ state, account, map = DEFAULT_MAP, due = f
               </span>
             )
           ) : (
-            <p className={styles.lead}>{t('Draft five pros, win a six-club league, and climb three tiers. Finish last twice and the board sacks you.')}</p>
+            <p className={styles.lead}>
+              {isStory
+                ? t('Take five unknowns through three cutthroat acts into Champions. Every win, loss and poach shapes the story.')
+                : t('Draft five pros, win a six-club league, and climb three tiers. Finish last twice and the board sacks you.')}
+            </p>
           )}
         </div>
 
@@ -142,7 +207,11 @@ export default function ClubLanding({ state, account, map = DEFAULT_MAP, due = f
         </nav>
         <div className={styles.go}>
           <AccountLine account={account} />
-          {!returning && <button type="button" className={club.primary} autoFocus onClick={onFound}>{t('Create your club')}</button>}
+          {!returning && (
+            <button type="button" className={club.primary} autoFocus onClick={onFound}>
+              {isStory ? t('Begin campaign') : t('Create your club')}
+            </button>
+          )}
           {returning && (
             <button type="button" className={`${club.primary} ${styles.flagged}`} autoFocus onClick={onContinue}>
               {due && <span className={club.pip} role="img" aria-label={t('Needs a look')} />}

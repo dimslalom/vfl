@@ -11,7 +11,7 @@ These are the rules agents break most often. They apply to every UI change:
 1. **No ` · ` between facts, and no em dashes (—)** anywhere: UI, comments, commits or replies.
 2. **Show, don't tell.** Don't add a sentence that explains what the UI already shows. Only first-week tips (`ClubHint`) may give instructions.
 3. **Say each fact once per screen.**
-4. **No gradients, glows, rounded rectangles, coloured side borders, nested boxes, emoji or native `<select>`.**
+4. **No gradients, glows, rounded rectangles, one-sided borders (including bottom or side stroke borders on buttons or plates), nested boxes, emoji or native `<select>`.**
 5. **Tokens only.** Use `--fs-*` and colour tokens from `DESIGN.md`; never write a literal font size or colour.
 6. **Reuse the club pieces in `src/pages/Club.jsx`:** `ManagementScreen`, `ScreenHeader`, `ItemChoice`, `LedgerRow`, `Meter`, `YearPips`, `PlayerReadout`, `PackCounter`. Use the shared sizes `tapeItemScale`, `itemArtSize` and `SPOTLIGHT_SCALE`; never write a new scale number for an item.
 7. **Consistency across screens is a hard requirement.** Switching menus must not move the header, tabs or inspector by even 1px, and the same object must render at the same size on every screen.

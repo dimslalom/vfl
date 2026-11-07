@@ -29,48 +29,52 @@ function RankBars({ index }) {
   );
 }
 
-/** Where the season road sits: rank, rating, the way to the next rank, form, First Win. */
+const SEGMENTS = 10;
+
+/**
+ * Where the season road sits, as one plate: rank, rating, the ten-step track to
+ * the next rank, the last five results, First Win. Each cell holds a mono label
+ * over one value; hairlines split the cells.
+ */
 export function RankStrip({ rating, delta, off }) {
-  if (!rating) {
-    return (
-      <section className={styles.strip} aria-label={t('Rank')} data-off={off || undefined} inert={off}>
-        <div className={styles.rank}>
-          <span className={styles.label}>{t('Rank')}</span>
-          <b>{t('Unranked')}</b>
-        </div>
-      </section>
-    );
-  }
-  const { rank } = rating;
-  const form = rating.form.padStart(5, '-').split('');
+  const rank = rating?.rank;
+  const progress = rank ? rank.progress : 0;
+  const form = (rating?.form ?? '').padStart(5, '-').split('');
   return (
     <section className={styles.strip} aria-label={t('Rank')} data-off={off || undefined} inert={off}>
-      <div className={styles.rank}>
+      <div className={styles.cell}>
         <span className={styles.label}>{t('Rank')}</span>
-        <b>{rank.name}</b>
-        <RankBars index={rank.index} />
+        <b className={styles.rankName}>{rank ? rank.name : t('Unranked')}</b>
       </div>
-      <div className={styles.rating}>
+      <div className={styles.cell}>
         <span className={styles.label}>{t('Rating')}</span>
-        <b>{rating.rating}</b>
-        {delta ? <em data-sign={Math.sign(delta)}>{delta > 0 ? `+${delta}` : delta}</em> : null}
-      </div>
-      <div className={styles.next}>
-        <span className={styles.label}>{rank.next ?? rank.name}</span>
-        <span className={styles.meter} role="meter" aria-valuemin={0} aria-valuemax={1} aria-valuenow={rank.progress} aria-label={rank.next ? t('{n} to {rank}', { n: rank.toNext, rank: rank.next }) : rank.name}>
-          <i style={{ transform: `scaleX(${rank.progress})` }} />
+        <span className={styles.ratingValue}>
+          <b>{rating ? rating.rating : '–'}</b>
+          {delta ? <em data-sign={Math.sign(delta)}>{delta > 0 ? `+${delta}` : delta}</em> : null}
         </span>
-        {rank.next && <small>{t('{n} to go', { n: rank.toNext })}</small>}
       </div>
-      <div className={styles.form}>
+      <div className={`${styles.cell} ${styles.track}`}>
+        <span className={styles.trackEnds}>
+          <span className={styles.label}>{rank ? rank.name : RANKS[0]}</span>
+          {rank?.next && <span className={styles.label}>{t('{n} to {rank}', { n: rank.toNext, rank: rank.next })}</span>}
+        </span>
+        <span className={styles.segments} role="meter" aria-valuemin={0} aria-valuemax={1} aria-valuenow={progress} aria-label={rank?.next ? t('{n} to {rank}', { n: rank.toNext, rank: rank.next }) : (rank?.name ?? t('Unranked'))}>
+          {Array.from({ length: SEGMENTS }, (_, i) => (
+            <i key={i}><b style={{ transform: `scaleX(${Math.min(1, Math.max(0, progress * SEGMENTS - i))})` }} /></i>
+          ))}
+        </span>
+      </div>
+      <div className={styles.cell}>
         <span className={styles.label}>{t('Form')}</span>
-        <span className={styles.pips} role="img" aria-label={rating.form ? rating.form.split('').map(r => (r === 'W' ? t('Won') : t('Lost'))).join(', ') : t('No games yet')}>
-          {form.map((result, index) => <i key={index} data-result={result === '-' ? undefined : result} />)}
+        <span className={styles.form} role="img" aria-label={rating?.form ? rating.form.split('').map(r => (r === 'W' ? t('Won') : t('Lost'))).join(', ') : t('No games yet')}>
+          {form.map((result, index) => (
+            <i key={index} data-result={result === '-' ? undefined : result}>{result === '-' ? '' : result}</i>
+          ))}
         </span>
       </div>
-      <div className={styles.firstWin} data-ready={rating.firstWinReady || undefined}>
+      <div className={`${styles.cell} ${styles.firstWin}`} data-ready={rating?.firstWinReady || undefined}>
         <span className={styles.label}>{t('First win')}</span>
-        <b>{rating.firstWinReady ? t('+1 pack') : t('Claimed')}</b>
+        <b>{!rating ? '–' : rating.firstWinReady ? t('+1 pack') : t('Claimed')}</b>
       </div>
     </section>
   );

@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;700&display=swap">
+<title>Story Text Mockups</title>
+<style>
+:root{--ink:#ece8e1;--muted:#8a8f9e;--bg:#0f1923;--sunken:#090d16;--accent:#ff4655;--win:#00c8a0;--inset:#2b3145;--rival:#3fb6ff;
+  --display:"Familjen Grotesk",system-ui,sans-serif;--mono:ui-monospace,Menlo,monospace;
+  --notch:polygon(0 0,calc(100% - 9px) 0,100% 9px,100% 100%,9px 100%,0 calc(100% - 9px))}
+*{box-sizing:border-box;margin:0}
+body{background:var(--sunken);color:var(--ink);font:400 15px/1.45 var(--display);min-height:100vh}
+.switch{display:flex;gap:2px;justify-content:center;padding:16px}
+.switch button{border:0;background:var(--bg);color:var(--muted);font:700 13px/1 var(--display);padding:12px 18px;cursor:pointer;clip-path:var(--notch)}
+.switch button[aria-pressed=true]{background:var(--ink);color:var(--sunken)}
+.stage{position:relative;width:min(100vw - 32px,(100vh - 90px)*16/9);aspect-ratio:16/9;margin:0 auto;overflow:hidden;background:var(--sunken)}
+.view{position:absolute;inset:0;display:none}.view.on{display:block}
+.art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.scrim{position:absolute;inset:0;pointer-events:none;background:linear-gradient(to bottom,rgb(9 13 22/.7),transparent 18%,transparent 58%,rgb(9 13 22/.95) 92%)}
+.hud{position:absolute;top:20px;left:28px;right:28px;display:flex;justify-content:space-between;align-items:center;z-index:3;font:700 10px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.next{border:0;background:var(--accent);color:#fff;font:700 14px/1 var(--display);letter-spacing:.1em;text-transform:uppercase;padding:14px 22px;clip-path:var(--notch);cursor:pointer}
+.ghost{border:0;background:transparent;color:var(--muted);font:700 13px/1 var(--display);cursor:pointer;padding:8px}
+
+/* ---------- B: film subtitles ---------- */
+.sub{position:absolute;left:50%;bottom:96px;transform:translateX(-50%);width:min(88%,40em);text-align:center;z-index:2}
+.sub .who{display:block;font:700 12px/1 var(--display);letter-spacing:.04em;margin-bottom:10px;color:var(--muted)}
+.sub .who[data-team=rival]{color:var(--rival)}
+.sub .who[data-team=board]{color:var(--ink)}
+.sub p{font:500 clamp(18px,2.2vw,26px)/1.35 var(--display);text-wrap:balance}
+.sub p .c{opacity:0;animation:ch .01s calc(var(--i) * 14ms) forwards}@keyframes ch{to{opacity:1}}
+.bfoot{position:absolute;right:28px;bottom:24px;z-index:3;display:flex;gap:12px;align-items:center}
+.ticks{display:flex;gap:4px}.ticks i{width:12px;height:2px;background:var(--inset)}.ticks i.on{background:var(--muted)}
+
+/* ---------- C: single decision card ---------- */
+.card{position:absolute;inset:0}
+.card .art{transition:opacity .25s}
+.cardText{position:absolute;left:6%;bottom:11%;z-index:2;width:min(46ch,60%)}
+.cardText .k{font:700 11px/1 var(--mono);color:var(--muted);letter-spacing:.14em;text-transform:uppercase}
+.cardText h2{font:700 clamp(28px,3.6vw,48px)/1.05 var(--display);margin:10px 0 14px;text-wrap:balance}
+.cardText p{color:var(--muted);font-size:15px;max-width:40ch;margin-bottom:16px}
+.sig{display:flex;gap:16px;flex-wrap:wrap}
+.sig span{display:inline-flex;align-items:center;gap:8px;font:700 14px/1 var(--display)}
+.sig svg{width:16px;height:16px;flex:none}
+.sig .g{color:var(--win)}.sig .c{color:var(--accent)}
+.tabs{position:absolute;right:28px;bottom:84px;z-index:3;display:grid;gap:2px;width:min(300px,30%)}
+.tab{position:relative;display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center;border:0;background:rgb(15 25 35/.72);color:var(--muted);text-align:left;font:700 14px/1.2 var(--display);padding:12px 14px;cursor:pointer}
+.tab kbd{font:700 11px/1 var(--mono)}
+.tab[aria-pressed=true]{background:var(--ink);color:var(--sunken)}
+.cfoot{position:absolute;right:28px;bottom:24px;z-index:3;display:flex;gap:12px}
+
+/* ---------- A: story column ---------- */
+.colArt{position:absolute;inset:0 34% 0 0}
+.colArt .art{transition:opacity .25s}
+.col{position:absolute;inset:0 0 0 66%;background:var(--bg);display:flex;flex-direction:column;padding:56px 28px 24px;z-index:2}
+.log{flex:1;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;gap:18px}
+.entry{animation:in .3s ease-out both}
+.entry.old{opacity:.38}
+.entry .who{font:700 12px/1 var(--display);color:var(--muted);margin-bottom:6px}
+.entry .who[data-team=rival]{color:var(--rival)}
+.entry p{font:400 16px/1.5 var(--display);max-width:38ch}
+.opts{display:grid;gap:2px;margin-top:6px}
+.opt{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;border:0;background:transparent;color:var(--ink);text-align:left;font:inherit;padding:10px 0;cursor:pointer}
+.opt kbd{font:700 12px/1.5 var(--mono);color:var(--muted)}
+.opt b{font:700 16px/1.35 var(--display);color:var(--muted)}
+.opt .sig{grid-column:2;gap:12px}.opt .sig span{font-size:12px}
+.opt[aria-pressed=true] b{color:var(--ink)}
+.opt[aria-pressed=true] kbd{color:var(--win)}
+.afoot{display:flex;justify-content:space-between;align-items:center;margin-top:16px}
+@keyframes in{from{opacity:0;transform:translateY(8px)}}
+@media (max-width:700px){
+  .stage{width:100vw;aspect-ratio:9/16}
+  .colArt{inset:0 0 52% 0}.col{inset:48% 0 0 0;padding:20px}
+  .tabs{left:16px;right:16px;width:auto;bottom:76px;grid-template-columns:repeat(3,1fr)}.tab span{display:none}
+  .cardText{left:16px;right:16px;width:auto;bottom:150px}
+}
+</style>
+</head>
+<body>
+<div class="switch">
+  <button data-v="bc" aria-pressed="true">B + C: subtitles and decision card</button>
+  <button data-v="a" aria-pressed="false">A: story column</button>
+</div>
+<div class="stage">
+  <section class="view on" id="bc">
+    <img class="art" id="bcArt" src="/assets/story/arena.webp" alt="">
+    <div class="scrim"></div>
+    <div class="hud"><span>Act II</span><span class="ticks" id="bcTicks"></span></div>
+    <div class="sub" id="bcSub"><span class="who" id="bcWho"></span><p id="bcLine"></p></div>
+    <div class="card" id="bcCard" hidden>
+      <div class="cardText">
+        <span class="k" id="cK"></span>
+        <h2 id="cTitle"></h2>
+        <p id="cBody"></p>
+        <div class="sig" id="cSig"></div>
+      </div>
+      <div class="tabs" id="cTabs"></div>
+    </div>
+    <div class="bfoot" id="bcFoot"><button class="ghost" id="bcBack">Back</button><button class="next" id="bcNext">Next</button></div>
+  </section>
+
+  <section class="view" id="a">
+    <div class="colArt"><img class="art" id="aArt" src="/assets/story/arena.webp" alt=""><div class="scrim"></div></div>
+    <div class="hud"><span>Act II</span><span></span></div>
+    <aside class="col">
+      <div class="log" id="aLog"></div>
+      <div class="afoot"><button class="ghost" id="aBack">Back</button><button class="next" id="aNext">Next</button></div>
+    </aside>
+  </section>
+</div>
+<script>
+const ART = n => `/assets/story/${n}.webp`;
+const ICON = {
+  pack:'<svg viewBox="0 0 16 16"><rect x="3" y="1" width="10" height="14" fill="currentColor"/></svg>',
+  out:'<svg viewBox="0 0 16 16"><circle cx="8" cy="5" r="3" fill="currentColor"/><rect x="3" y="9" width="10" height="6" fill="currentColor"/></svg>',
+  up:'<svg viewBox="0 0 16 16"><path d="M8 2 15 12H1z" fill="currentColor"/></svg>',
+  down:'<svg viewBox="0 0 16 16"><path d="M8 14 1 4h14z" fill="currentColor"/></svg>',
+};
+const FRAMES = [
+  { art:'arena', who:'02:14', team:'', line:'The sign over the arena went dark at 2 a.m. The title sponsor filed before sunrise.' },
+  { art:'board', who:'Board', team:'board', line:'Three weeks of capital left. Someone on this roster gets sold, or the doors close.' },
+  { art:'corridor', who:'BOOM Esports', team:'rival', line:'Starting role for Coconut, double the salary. Your manager already knows we are here.' },
+];
+const CHOICES = [
+  { art:'sell', verb:'Sell Coconut', body:'BOOM pays now. The doors stay open, and your best player wears their colours next time you meet.', sig:[['g','pack','+3 Silver packs'],['c','out','Coconut leaves']] },
+  { art:'cut', verb:'Cut the analysts', body:'Nobody leaves the roster. The squad grinds the split with no staff behind them.', sig:[['g','up','+10 Trust'],['c','down','+15 Fatigue']] },
+  { art:'crowd', verb:'Crowdfund it', body:'Take it to the fans and sign an independent jersey partner before lock.', sig:[['g','up','+15 Trust'],['c','down','+20 Pressure']] },
+];
+const sig = s => s.map(([k,i,t]) => `<span class="${k}">${ICON[i]}${t}</span>`).join('');
+
+/* ---- B + C ---- */
+let bi = 0, bp = 0;
+const $ = id => document.getElementById(id);
+FRAMES.concat([0]).forEach(() => $('bcTicks').append(document.createElement('i')));
+function typeLine(el, text){
+  el.innerHTML = [...text].map((c, i) => `<span class="c" style="--i:${i}">${c}</span>`).join('');
+}
+function bc(){
+  [...$('bcTicks').children].forEach((t,j) => t.classList.toggle('on', j <= bi));
+  const deciding = bi >= FRAMES.length;
+  $('bcSub').hidden = deciding; $('bcCard').hidden = !deciding;
+  $('bcNext').textContent = deciding ? 'Confirm' : 'Next';
+  if (!deciding){ const f = FRAMES[bi]; $('bcArt').src = ART(f.art); $('bcWho').textContent = f.who; $('bcWho').dataset.team = f.team; typeLine($('bcLine'), f.line); return; }
+  const c = CHOICES[bp]; $('bcArt').src = ART(c.art);
+  $('cK').textContent = `Choice ${bp + 1} of 3`; $('cTitle').textContent = c.verb; $('cBody').textContent = c.body; $('cSig').innerHTML = sig(c.sig);
+  $('cTabs').innerHTML = CHOICES.map((x,j) => `<button class="tab" aria-pressed="${j===bp}" data-j="${j}"><kbd>${j+1}</kbd><span>${x.verb}</span></button>`).join('');
+  $('cTabs').querySelectorAll('.tab').forEach(b => b.onclick = () => { bp = +b.dataset.j; bc(); });
+}
+$('bcNext').onclick = () => { if (bi < FRAMES.length) { bi++; bc(); } };
+$('bcBack').onclick = () => { bi = Math.max(0, bi - 1); bc(); };
+
+/* ---- A ---- */
+let ai = 0, ap = 0;
+function a(){
+  const deciding = ai >= FRAMES.length;
+  $('aArt').src = ART(deciding ? CHOICES[ap].art : FRAMES[ai].art);
+  const shown = FRAMES.slice(0, Math.min(ai + 1, FRAMES.length));
+  let html = shown.map((f,j) => `<div class="entry${j < shown.length - 1 || deciding ? ' old' : ''}"><div class="who" data-team="${f.team}">${f.who}</div><p>${f.line}</p></div>`).join('');
+  if (deciding) html += `<div class="opts entry">${CHOICES.map((c,j) => `<button class="opt" aria-pressed="${j===ap}" data-j="${j}"><kbd>${j+1}</kbd><b>${c.verb}</b><span class="sig">${sig(c.sig)}</span></button>`).join('')}</div>`;
+  $('aLog').innerHTML = html;
+  $('aLog').querySelectorAll('.opt').forEach(b => b.onclick = () => { ap = +b.dataset.j; a(); });
+  $('aNext').textContent = deciding ? 'Confirm' : 'Next';
+}
+$('aNext').onclick = () => { if (ai < FRAMES.length) { ai++; a(); } };
+$('aBack').onclick = () => { ai = Math.max(0, ai - 1); a(); };
+
+addEventListener('keydown', e => {
+  const isA = $('a').classList.contains('on'), n = +e.key;
+  if (n >= 1 && n <= 3) { if (isA && ai >= FRAMES.length) { ap = n - 1; a(); } else if (!isA && bi >= FRAMES.length) { bp = n - 1; bc(); } }
+  if (e.key === 'Enter' || e.key === 'ArrowRight') (isA ? $('aNext') : $('bcNext')).click();
+  if (e.key === 'ArrowLeft') (isA ? $('aBack') : $('bcBack')).click();
+});
+document.querySelectorAll('.switch button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.switch button').forEach(x => x.setAttribute('aria-pressed', x === b));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.id === b.dataset.v));
+});
+bc(); a();
+</script>
+</body>
+</html>

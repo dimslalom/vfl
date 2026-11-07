@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { playUiSound } from '../lib/uiSound.js';
 import useReducedMotion from '../../shared/src/lib/useReducedMotion';
 import { BOARD_SKILLS, hasSkill, seriesWinner, winsNeeded } from '../engine/board/board';
@@ -9,6 +9,7 @@ import { chipInfo, chipPlan } from '../chip3d/chipData';
 import { chipCopy, planLine } from '../chip3d/chipCopy';
 import { titleCase } from '../lib/titleCase';
 import { t } from '../lib/i18n';
+import { barkFacts, pickBark } from '../engine/story/barks';
 import MatchIntro from './MatchIntro';
 import { settleMatchMusic, stopMatchMusic } from '../lib/music';
 import { ChipGuideButton, ChipLadder } from '../chip3d/ChipHelp';
@@ -199,7 +200,7 @@ function Pips({ total, won, side }) {
 // intro: { you: { club, cards }, them: { club, cards }, stage } plays the match
 // intro over the board while it loads, then drops the 3D camera into the first deal.
 // settings: controls shown in a panel behind the gear beside Leave (the Club passes its music controls).
-export default function BoardSeries({ squad, opponent, opponentName, bestOf, seed, hand, onDone, onLeave, doneLabel = 'Continue', fixed = false, three = false, arena = 'tint', mapNames = null, intro = null, settings = null, hintsOn = false, initialSlots = null, onStageReady = null, online = null, startScore = null }) {
+export default function BoardSeries({ squad, opponent, opponentName, bestOf, seed, hand, onDone, onLeave, doneLabel = 'Continue', fixed = false, three = false, arena = 'tint', mapNames = null, intro = null, settings = null, hintsOn = false, comms = null, initialSlots = null, onStageReady = null, online = null, startScore = null }) {
   const hostRef = useRef(null);
   const stageRef = useRef(null);
   const chipHostRef = useRef(null);
@@ -489,6 +490,17 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
   const { phase, legal, placed, moves, layout } = state;
   // The finished round stays on screen until the next one is dealt.
   const shownRound = Math.min(score.you + score.them - (outcome ? 1 : 0), bestOf - 1);
+  // One bark per moment that matters: a round starting or a round ending. Silence otherwise.
+  const barkEvent = outcome ? ((outcome.winner === 'you') ? 'round_won' : 'round_lost') : (phase === 'place' ? 'round_start' : null);
+  const barkKey = `${attempt}:${shownRound}:${barkEvent}`;
+  // Picked once per moment; the CSS animation fades it out, so no timer is needed.
+  const bark = useMemo(() => {
+    if (!comms?.rules || !barkEvent || introOn || failed) return null;
+    const facts = barkFacts({ event: barkEvent, round: shownRound, you: score.you, them: score.them, bestOf, champion: outcome?.champion ?? null });
+    const line = pickBark(comms.rules, facts);
+    return line && { ...line, key: barkKey };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- one pick per moment, keyed by barkKey
+  }, [barkKey, introOn]);
   return (
     <div className={styles.series} data-fixed={fixed === true ? 'true' : fixed || undefined} data-layout={layout}>
       <div className={styles.board} key={attempt} ref={hostRef} onClick={() => phase === 'resolve' && stageRef.current?.skip()} />
@@ -546,6 +558,15 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
         <Pips total={winsNeeded(bestOf)} won={score.them} side="them" />
         <span>{opponentName}</span>
       </div>
+      {bark && (
+        <p key={bark.key} className={styles.boardComms} role="status">
+          <span className={styles.commRole}>{bark.role}</span>
+          <span className={styles.commCopy}>
+            <b>{bark.speaker}</b>
+            <span>{bark.text}</span>
+          </span>
+        </p>
+      )}
       {/* On the 3D board each card shows its own live skill; the flat board keeps the list. */}
       {!three && skills.length > 0 && (
         <ul className={styles.skills} aria-label="Your squad's skills">

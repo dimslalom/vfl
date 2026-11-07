@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import allCards from '../../shared/src/data/cards.json';
 import { STAT_KEYS, STAT_LABELS, STAT_LABELS_FULL } from '../../shared/src/data/statFields';
@@ -36,7 +36,14 @@ import { TIER_META } from '../engine/endless/ladder';
 import { pickSeriesMaps } from '../prototype/boardSetup';
 import ClubLogo from '../components/ClubLogo';
 import { LOGO_STYLES, LOGO_TONES, defaultLogoStyle, defaultLogoTone, logoSvg } from '../engine/club/logo';
-import { CLUB_SAVE_KEY, clearClub, loadClub, saveClub } from '../lib/clubSave';
+import {
+  CLUB_SAVE_KEY, STORY_SAVE_KEY, clearClubSlot, loadActiveSlot, loadClubSlot, saveActiveSlot, saveClubSlot,
+} from '../lib/clubSave';
+import {
+  buildBoardComms, dismissChronicle, hasUnseenStoryPack, newStoryClub, onSeriesFinishedStory, onWindowClosedStory, refreshPendingScene, resolveStoryScene, syncStoryOnLoad,
+} from '../engine/story/storyDirector';
+import { isStoryClub, storyActLabel } from '../engine/story/storyMemory';
+import { StoryChronicle, StoryCutscene, StoryDialogue } from '../components/club/StoryViews';
 import ClubLanding from '../components/club/ClubLanding';
 import ClubPrimer from '../components/club/ClubPrimer';
 import ClubSettings from '../components/club/ClubSettings';
@@ -408,25 +415,16 @@ function ClubMenu({ onAbandon, onSettings, onPrimer, onRename, onCrest }) {
   );
 }
 
-// The pack counter: one pack and the club's total pack value, then its skill tapes.
+// The pack counter: one pack and the club's total pack value.
 // The tier split lives in the vault; tapping the counter goes there.
-function PackCounter({ state, onOpen, bump, flyTarget, value: shown, showTapes = true }) {
+function PackCounter({ state, onOpen, bump, flyTarget, value: shown }) {
   const value = shown ?? packValue(state);
-  const tapes = tapeCount(state);
-  const label = showTapes ? `${value} pack value, ${tapes} training ${tapes === 1 ? 'tape' : 'tapes'}` : `${value} pack value`;
+  const label = `${value} pack value`;
   const inner = (
-    <>
-      <span className={styles.counterPart}>
-        <img src={assetPath('/assets/pack3d/pack-icon.webp')} alt="" aria-hidden="true" draggable={false} />
-        <b>{value}</b>
-      </span>
-      {showTapes && (
-        <span className={styles.counterPart} data-dim={tapes === 0 || undefined}>
-          <TapeCard scale={0.05} />
-          <b>{tapes}</b>
-        </span>
-      )}
-    </>
+    <span className={styles.counterPart}>
+      <img src={assetPath('/assets/pack3d/pack-icon.webp')} alt="" aria-hidden="true" draggable={false} />
+      <b>{value}</b>
+    </span>
   );
   return onOpen
     ? <button type="button" className={styles.counter} data-bump={bump || undefined} data-fly-target={flyTarget || undefined} aria-label={`Vault: ${label}`} onClick={onOpen}>{inner}</button>
@@ -516,9 +514,9 @@ function Home({ state, go, onAbandon, onSettings, onPrimer, size, mode = 'season
   );
   return (
     <div className={styles.stage}>
-      <Hud title={state.name} tags={[[tierName(state.tier), true], [`Year ${state.year}`], ...(started ? [[`${ordinal(pos)} in table`]] : [])]} mark={<OwnMark state={state} size={50} />}>
+      <Hud title={state.name} tags={[[tierName(state.tier), true], [`Year ${state.year}`], ...(isStoryClub(state) ? [[storyActLabel(state)]] : []), ...(started ? [[`${ordinal(pos)} in table`]] : [])]} mark={<OwnMark state={state} size={50} />}>
         {onMode && <ModeSwitch mode={mode} onMode={onMode} />}
-        <PackCounter state={state} showTapes={false} onOpen={() => go('vault')} />
+        <PackCounter state={state} onOpen={() => go('vault')} />
         <ClubMenu onAbandon={onAbandon} onSettings={onSettings} onPrimer={onPrimer} onRename={() => go('rename')} onCrest={() => go('crest')} />
       </Hud>
       <Ground className={styles.home} style={{ '--hero-w': `${size.heroWidth}px` }}>
@@ -852,7 +850,6 @@ function OpenPack({ state, onChoose, size }) {
   const [torn, setTorn] = useState(false);
   const [picked, setPicked] = useState(null);
   const [passing, setPassing] = useState(false);
-  const [tapeLanded, setTapeLanded] = useState(false);
   const reducedMotion = useReducedMotion();
   const cards = opening.ids.map(id => clubCard(state, cardById.get(id)));
   const full = state.squad.length >= squadMax(state);
@@ -879,7 +876,7 @@ function OpenPack({ state, onChoose, size }) {
   return (
     <div className={styles.stage}>
       <Hud title={`${PACK_NAMES[opening.kind]} pack`} tags={[['Pick 1 of 3']]}>
-        <PackCounter state={ tapeLanded ? { ...state, tapes: Math.min(TAPE_MAX, (state.tapes ?? 0) + 1) } : state } bump={tapeLanded ? 'tape' : undefined} flyTarget />
+        <PackCounter state={state} />
         {!torn && <button type="button" className={styles.ghost} onClick={() => { playUiSound('pack_open'); setTorn(true); }}>Skip</button>}
       </Hud>
       <Ground className={styles.openGround}>
@@ -925,7 +922,7 @@ function OpenPack({ state, onChoose, size }) {
               <span>Pass</span>
               <b>+1</b>
               {passing ? (
-                <FlyHome delay={0} onLand={() => { playUiSound('vault_bump'); setTapeLanded(true); setTimeout(() => onChoose(null), 220); }}>
+                <FlyHome delay={0} onLand={() => { playUiSound('vault_bump'); setTimeout(() => onChoose(null), 220); }}>
                   <TapeCard scale={0.06} />
                 </FlyHome>
               ) : (
@@ -1407,6 +1404,12 @@ export function Result({ state, onContinue, size }) {
           <div className={styles.moment} data-won={last.won}>{last.won ? 'Victory' : 'Defeat'}</div>
           <b className={styles.score}>{won}–{last.rounds.length - won}</b>
         </div>
+        {state.story?.banter && (
+          <blockquote className={styles.pullQuote}>
+            <p>{state.story.banter.text}</p>
+            <cite>{state.story.banter.speaker}</cite>
+          </blockquote>
+        )}
         <ul className={styles.lootPile} aria-label="Series rewards">
           {last.packs > 0 && <li><PackArt kind="silver" /><b>Silver pack ×{last.packs}</b></li>}
           {last.tactic && <li><ChipDisc chipKey={last.tactic.key} /><b>{chipInfo(last.tactic.key).name}</b></li>}
@@ -2286,8 +2289,8 @@ function isCloudClub(state) {
   return state?.v === 2 && isValidClub(state, allCards);
 }
 
-function readSave() {
-  const { state, damaged } = loadClub();
+function readSlotSave(slot = 'club') {
+  const { state, damaged } = loadClubSlot(slot);
   if (damaged) return { state: null, damaged: true };
   if (state && !isValidClub(state, allCards)) return { state: null, damaged: true };
   return { state, damaged: false };
@@ -2297,8 +2300,34 @@ function readSave() {
 
 export default function Club() {
   const size = useCardScale();
-  const [boot] = useState(readSave);
-  const [state, setState] = useState(boot.state);
+  const [slot, setSlotState] = useState(loadActiveSlot);
+  const [slots, setSlots] = useState(() => ({
+    club: readSlotSave('club'),
+    story: readSlotSave('story'),
+  }));
+  const state = slots[slot].state;
+  const damaged = slots[slot].damaged;
+  const setState = useCallback((updater) => {
+    setSlots((prev) => {
+      const curr = prev[slot].state;
+      const next = typeof updater === 'function' ? updater(curr) : updater;
+      if (next === curr) return prev;
+      return { ...prev, [slot]: { state: next, damaged: false } };
+    });
+  }, [slot]);
+  const setClubSlotState = useCallback((updater) => {
+    setSlots((prev) => {
+      const curr = prev.club.state;
+      const next = typeof updater === 'function' ? updater(curr) : updater;
+      if (next === curr) return prev;
+      return { ...prev, club: { state: next, damaged: false } };
+    });
+  }, []);
+  const switchSlot = useCallback((nextSlot) => {
+    const clean = nextSlot === 'story' ? 'story' : 'club';
+    setSlotState(clean);
+    saveActiveSlot(clean);
+  }, []);
   // Every visit opens on the landing: a new player learns what the mode is, a
   // returning one sees their club and Continue.
   const [screen, setScreen] = useState('landing');
@@ -2328,14 +2357,13 @@ export default function Club() {
   // Where the primer and settings hand back to, since both open from more than one place.
   const [primerNext, setPrimerNext] = useState('start');
   const [settingsBack, setSettingsBack] = useState('landing');
-  const [damaged, setDamaged] = useState(boot.damaged);
   const [saveFailed, setSaveFailed] = useState(false);
   // Coming back from Discord, say once how sign-in went.
   const [notice, setNotice] = useState(() => signinNotice(new URLSearchParams(window.location.search).get('signin')));
   const reducedMotion = useReducedMotion();
   // Optional Discord account: the device save stays the source of truth and the
   // account gets a copy. A club is only valid if every player in it still exists.
-  const sync = useClubSync({ state, setState, isValid: isCloudClub });
+  const sync = useClubSync({ state: slots.club.state, setState: setClubSlotState, isValid: isCloudClub });
 
   // ── online: rating, the ranked queue, and handing a found match to the board ──
   useEffect(() => {
@@ -2413,23 +2441,23 @@ export default function Club() {
 
   useEffect(() => {
     if (!state) return undefined;
-    const saved = saveClub(state);
+    const saved = saveClubSlot(slot, state);
     const report = setTimeout(() => setSaveFailed(!saved));
     return () => clearTimeout(report);
-  }, [state]);
+  }, [slot, state]);
 
   // Another tab moved this club on: follow it, unless a match is on screen.
   useEffect(() => {
     const onStorage = (event) => {
-      if (event.key !== CLUB_SAVE_KEY || screenRef.current === 'match') return;
-      const next = readSave();
-      setState(next.state);
-      setDamaged(next.damaged);
-      setScreen(screenFor(next.state));
+      if ((event.key !== CLUB_SAVE_KEY && event.key !== STORY_SAVE_KEY) || screenRef.current === 'match') return;
+      const targetSlot = event.key === STORY_SAVE_KEY ? 'story' : 'club';
+      const next = readSlotSave(targetSlot);
+      setSlots(prev => ({ ...prev, [targetSlot]: next }));
+      if (targetSlot === slot) setScreen(screenFor(next.state));
     };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
-  }, []);
+  }, [slot]);
 
   function updatePrefs(next) {
     setPrefs(next);
@@ -2473,7 +2501,10 @@ export default function Club() {
   };
 
   function start(seed, name, picks, crest, tone) {
-    setState(newClub({ seed, name, picks, crest, tone, cards: allCards }));
+    const created = slot === 'story'
+      ? newStoryClub({ seed, name, picks, crest, tone, cards: allCards })
+      : newClub({ seed, name, picks, crest, tone, cards: allCards });
+    setState(created);
     setScreen('season');
   }
 
@@ -2482,8 +2513,11 @@ export default function Club() {
       if (!current || current.year !== state.year || current.week !== state.week || current.phase !== state.phase
         || nextMatch(current)?.id !== nextMatch(state)?.id) return current;
       const next = finishSeries(current, outcome, allCards);
-      syncClubScore(next, allCards);
-      return next;
+      const finalNext = isStoryClub(current)
+        ? onSeriesFinishedStory(current, next, outcome, allCards)
+        : next;
+      syncClubScore(finalNext, allCards);
+      return finalNext;
     });
     setScreen('result');
   }
@@ -2521,41 +2555,50 @@ export default function Club() {
 
   function closeTheWindow(decisions) {
     const next = closeWindow(state, decisions, allCards);
-    setState(next);
+    const finalNext = isStoryClub(state) && next !== state
+      ? onWindowClosedStory(state, next, decisions, allCards)
+      : next;
+    setState(finalNext);
     // A closed window opens a new year, and a new year opens with its intro.
-    setScreen(next !== state && next.phase === 'league' && next.week === 0 ? 'season' : 'home');
+    setScreen(finalNext !== state && finalNext.phase === 'league' && finalNext.week === 0 ? 'season' : 'home');
   }
 
   function fresh() {
-    clearClub();
-    sync.forget();
-    setState(null);
-    setDamaged(false);
+    clearClubSlot(slot);
+    if (slot === 'club') sync.forget();
+    setSlots(prev => ({ ...prev, [slot]: { state: null, damaged: false } }));
     setScreen('start');
   }
 
   const alerts = saveFailed && <p className={styles.alert} role="alert">Progress isn't saving on this device</p>;
 
   if (damaged) return <Damaged onReset={fresh} />;
-  if (sync.conflict) return <ClubSyncChoice local={sync.conflict.local} cloud={sync.conflict.cloud} onKeepDevice={sync.keepDevice} onKeepAccount={sync.keepAccount} />;
+  if (sync.conflict && slot === 'club') return <ClubSyncChoice local={sync.conflict.local} cloud={sync.conflict.cloud} onKeepDevice={sync.keepDevice} onKeepAccount={sync.keepAccount} />;
   if (screen === 'landing') {
     const next = state && nextMatch(state);
     const map = next ? pickSeriesMaps(seriesSeed(state, next), next.bestOf)[0]?.image : undefined;
-    const due = state ? pressing(state).length > 0 : false;
+    const due = state ? (pressing(state).length > 0 || hasUnseenStoryPack(state)) : false;
+    const storyState = slots.story.state;
+    const storyPip = storyState ? (pressing(storyState).length > 0 || hasUnseenStoryPack(storyState)) : false;
     return (
       <>
       <ClubLanding
         state={state}
+        slot={slot}
+        onSlotChange={switchSlot}
+        storyPip={storyPip}
         account={sync.account}
         map={map}
         due={due}
         onContinue={() => {
-          const next = screenFor(state);
+          const synced = isStoryClub(state) ? syncStoryOnLoad(state, allCards) : state;
+          if (synced !== state) setState(synced);
+          const nextScreen = screenFor(synced);
           // An invite link, or a match this tab is still in, goes straight back online.
-          if ((linkCode || savedSession()) && next === 'home') {
+          if (slot === 'club' && (linkCode || savedSession()) && nextScreen === 'home') {
             setMode('online');
             show('friendly');
-          } else show(next);
+          } else show(nextScreen);
         }}
         onFound={found}
         onPrimer={() => openPrimer('landing')}
@@ -2612,6 +2655,7 @@ export default function Club() {
         fixed="full"
         three
         hintsOn={prefs.hints && state.year === 1 && (state.results?.length ?? 0) === 0}
+        comms={isStoryClub(state) ? buildBoardComms(state, club, allCards) : null}
         settings={<MusicControls />}
       />
     );
@@ -2744,6 +2788,49 @@ export default function Club() {
   const first = nextMatch(state);
   const activeMap = first ? pickSeriesMaps(seriesSeed(state, first), first.bestOf)[0]?.image : undefined;
 
+  if (isStoryClub(state) && state.story.pendingScene) {
+    const scene = refreshPendingScene(state, allCards) ?? state.story.pendingScene;
+    return (
+      <>
+        <AmbientBroadcast active={true} map={activeMap && assetPath(activeMap)} />
+        {scene.kind === 'cutscene' ? (
+          <StoryCutscene
+            key={scene.id}
+            state={state}
+            scene={scene}
+            cards={allCards}
+            map={activeMap}
+            onDone={() => setState(curr => resolveStoryScene(curr, 0, allCards))}
+          />
+        ) : (
+          <StoryDialogue
+            key={scene.id}
+            state={state}
+            scene={scene}
+            cards={allCards}
+            map={activeMap}
+            onChoose={idx => setState(curr => resolveStoryScene(curr, idx, allCards))}
+          />
+        )}
+      </>
+    );
+  }
+
+  if (isStoryClub(state) && state.story.chronicle && screen === 'review') {
+    return (
+      <>
+        <AmbientBroadcast active={true} map={activeMap && assetPath(activeMap)} />
+        <StoryChronicle
+          state={state}
+          chronicle={state.story.chronicle}
+          cards={allCards}
+          map={activeMap}
+          onContinue={() => setState(curr => dismissChronicle(curr))}
+        />
+      </>
+    );
+  }
+
   let hubView;
   if (screen === 'settings') {
     hubView = (
@@ -2812,10 +2899,21 @@ export default function Club() {
         <Home
           state={state}
           size={size}
-          mode={mode}
-          onMode={(next) => { if (next === 'season') cancelQueue(); setMode(next); }}
-          online={{ account: sync.account, rating, delta: ratingDelta, queue, now: queueNow, onFind: findMatch, onCancel: cancelQueue }}
-          go={(next) => { setNotice(''); show(next); }}
+          // Story mode is its own campaign: no Online face, no ranked, no friendlies.
+          mode={isStoryClub(state) ? 'season' : mode}
+          onMode={isStoryClub(state) ? null : (next) => { if (next === 'season') cancelQueue(); setMode(next); }}
+          online={isStoryClub(state) ? null : { account: sync.account, rating, delta: ratingDelta, queue, now: queueNow, onFind: findMatch, onCancel: cancelQueue }}
+          go={(next) => {
+            setNotice('');
+            if (next === 'match' && isStoryClub(state)) {
+              const synced = syncStoryOnLoad(state, allCards);
+              if (synced !== state && synced.story?.pendingScene) {
+                setState(synced);
+                return;
+              }
+            }
+            show(next);
+          }}
           onAbandon={fresh}
           onSettings={() => openSettings('home')}
           onPrimer={() => openPrimer('home')}

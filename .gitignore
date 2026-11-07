@@ -36,3 +36,5 @@ tools/vlrggapi/.venv/
 __pycache__/
 .pytest_cache/
 scripts/sfx/out/
+tools/blender/.bluser/
+tools/blender/assets/

@@ -9,41 +9,52 @@
 .modes button[data-on] { color: var(--ink); }
 .modes button[data-on]::after { content: ''; position: absolute; left: 0; right: 0; bottom: 6px; height: 3px; background: var(--win); }
 
-/* The rank strip, in the road's slot. */
+/* The rank strip, in the road's slot: one notched plate, cells split by
+   hairlines. Every label on one line, every value on the next. Fixed at the
+   road's 47px so the two faces share the slot without moving anything. */
 .strip {
   grid-area: road;
+  height: 47px;
   display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
-  align-items: stretch;
-  gap: 2px;
+  grid-template-columns: auto auto minmax(160px, 1fr) auto auto;
+  background: var(--plate);
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
 }
-/* Each cell is a season road cell: a top rule, the mono label, then one short
-   value, so the strip is exactly the road's height and nothing below it moves. */
-.strip { gap: var(--sp-1); }
-.strip > div { min-width: 0; padding: var(--sp-2) 0 0; display: flex; flex-direction: column; justify-content: space-between; gap: var(--sp-1); border-top: 2px solid var(--line-bracket); }
-/* 22px: the road's value row is as tall as its club crests. */
-.strip > div > b { min-height: 22px; display: flex; align-items: center; font-size: var(--fs-label); line-height: 1.3; white-space: nowrap; }
-.strip > div > .meter, .strip > div > .pips { align-self: stretch; }
-/* The road's label line height (1), not the hub default, for the same height. */
-.strip .label { line-height: 1; }
-.strip > .rank { min-width: 150px; flex-direction: row; align-items: flex-end; flex-wrap: wrap; column-gap: var(--sp-2); border-top-color: var(--win); }
-.rank .label { flex-basis: 100%; }
-.rating { position: relative; min-width: 112px; }
-.rating b { font-variant-numeric: tabular-nums; }
-.rating em { position: absolute; right: var(--sp-3); bottom: 0; font-style: normal; font-weight: 800; font-size: var(--fs-label); font-variant-numeric: tabular-nums; color: var(--win); }
-.rating em[data-sign='-1'] { color: var(--accent); }
-.strip > .next { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: auto auto; align-items: center; column-gap: var(--sp-2); }
-.next .label { grid-column: 1 / -1; }
-.next small { font-size: var(--fs-micro); color: var(--muted); font-variant-numeric: tabular-nums; }
-.meter { grid-column: 1 / 3; display: block; height: 6px; background: var(--plate-inset); overflow: hidden; }
-.meter i { display: block; height: 100%; background: var(--win); transform-origin: left; transition: transform .4s ease-out; }
-.pips { display: flex; gap: 3px; }
-.pips i { width: 14px; height: 14px; background: var(--plate-inset); }
-.pips i[data-result='W'] { background: var(--win); }
-.pips i[data-result='L'] { background: var(--muted); }
+.cell {
+  min-width: 0;
+  padding: 7px var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: inset -1px 0 var(--line-bracket);
+}
+.cell:last-child { box-shadow: none; }
+.strip .label { line-height: 1; white-space: nowrap; }
+.cell > b, .ratingValue b { font-size: var(--fs-lead); font-weight: 800; line-height: 1; white-space: nowrap; }
+.rankName { color: var(--ink); }
+.ratingValue { display: flex; align-items: baseline; gap: var(--sp-2); }
+.ratingValue b { font-variant-numeric: tabular-nums; }
+.ratingValue em { font-style: normal; font-weight: 800; font-size: var(--fs-label); font-variant-numeric: tabular-nums; color: var(--win); }
+.ratingValue em[data-sign='-1'] { color: var(--accent); }
+
+/* Ten steps of ten rating from this rank to the next. */
+.trackEnds { display: flex; justify-content: space-between; gap: var(--sp-3); }
+.trackEnds .label:last-child { color: var(--ink); }
+.segments { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; height: 12px; }
+.segments i { position: relative; overflow: hidden; background: var(--plate-inset); transform: skewX(-20deg); }
+.segments b { position: absolute; inset: 0; background: var(--win); transform-origin: left; transition: transform .4s ease-out; }
+
+/* The last five results, oldest first: a tile each. */
+.form { display: flex; gap: 3px; }
+.form i { width: 18px; height: 18px; display: grid; place-items: center; background: var(--plate-inset); font: 800 var(--fs-micro)/1 var(--font-mono); font-style: normal; color: var(--bg); }
+.form i[data-result='W'] { background: var(--win); color: var(--win-ink); }
+.form i[data-result='L'] { background: var(--muted); }
+
+/* First Win of the Day: a filled green cell while the pack is waiting. */
+.firstWin { min-width: 112px; }
 .firstWin b { color: var(--muted); }
-.strip > .firstWin[data-ready] { border-top-color: var(--win); }
-.firstWin[data-ready] b { color: var(--win); }
+.firstWin[data-ready] { background: var(--win); }
+.firstWin[data-ready] .label, .firstWin[data-ready] b { color: var(--win-ink); }
 
 .rankBars { display: flex; gap: 2px; }
 .rankBars i { width: 10px; height: 6px; background: var(--plate-inset); }
@@ -72,16 +83,17 @@
 /* Phones: the strip packs into two short rows and the hero goes compact,
    like the Season scout, so the squad and tiles keep their room. */
 @media (max-width: 759px) {
-  .strip { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  /* One row, like the road on a phone, so switching modes moves nothing. */
-  .strip > .next { display: none; }
-  .rank, .rating { min-width: 0; }
-  .rating em, .rank .rankBars, .heroFacts { display: none; }
-  .strip > .rank { min-width: 0; }
-  .pips i { width: 10px; height: 10px; }
+  /* One row on a phone: the track drops out; rank, rating, form and First Win stay. */
+  .strip { grid-template-columns: auto auto minmax(0, 1fr) auto; }
+  .track { display: none; }
+  .cell { padding: 7px var(--sp-2); }
+  .cell > b, .ratingValue b { font-size: var(--fs-label); }
+  .ratingValue em, .heroFacts { display: none; }
+  .form i { width: 12px; height: 12px; font-size: 0; }
+  .firstWin { min-width: 0; }
   .hero { gap: var(--sp-2); }
   .heroRank { flex-direction: row; align-items: center; justify-content: space-between; }
   .heroRank b { font-size: var(--fs-title); }
   .heroFacts dd { font-size: var(--fs-lead); }
 }
-@media (prefers-reduced-motion: reduce) { .meter i { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .segments b { transition: none; } }
