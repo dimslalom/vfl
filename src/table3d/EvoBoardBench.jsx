@@ -9,7 +9,7 @@ import {
 import { SKILL_FX, attachSkillFx, readyPose } from './SkillFx.js';
 import { BOARD_SKILLS } from '../engine/board/board.js';
 import { SPECIALTIES } from '../../shared/src/data/specialties.js';
-import { playUiSound } from '../../shared/src/lib/gameAudio.js';
+import { playUiSound } from '../lib/uiSound.js';
 import { playSkillSound } from '../lib/evoSfx.js';
 import useReducedMotion from '../../shared/src/lib/useReducedMotion.js';
 import styles from './EvoBoardBench.module.css';

@@ -48,6 +48,58 @@
 }
 .primary:disabled { background: var(--surface-alt); color: var(--muted); }
 .hint { margin: 0; font-size: 12px; color: var(--muted); }
+/* A live duel's clock: a dark chrome slab at the top centre of the table. */
+.clock {
+  position: absolute;
+  top: var(--sp-3);
+  left: 50%;
+  z-index: 3;
+  translate: -50% 0;
+  min-width: 112px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: var(--sp-2) var(--sp-4) 10px;
+  background: var(--surface);
+  pointer-events: none;
+}
+.clock small { font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.clock b { font-size: var(--fs-display); font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; color: var(--ink); }
+.clockFill {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: inherit;
+  background: var(--win);
+  transition: clip-path 0.25s linear;
+}
+.clockFill small, .clockFill b { color: var(--win-ink); }
+.clock[data-low] .clockFill { background: var(--accent); }
+.clock[data-low] .clockFill small, .clock[data-low] .clockFill b { color: var(--accent-ink); }
+.series[data-layout='tall'] .clock { top: calc(var(--sp-3) + 52px); min-width: 88px; }
+.series[data-layout='tall'] .clock b { font-size: var(--fs-heading); }
+/* Ready between maps: the time left drains across the button. The face under
+   the fill is the plain dark slab; the fill is red, green once you're ready. */
+.readyButton, .readyButton:disabled { position: relative; background: var(--surface-alt); color: var(--ink); }
+.readyFill {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: var(--accent-ink);
+  pointer-events: none;
+  transition: clip-path 0.25s linear;
+}
+.readyButton[data-you] .readyFill { background: var(--win); color: var(--win-ink); }
+@media (prefers-reduced-motion: reduce) { .readyFill { transition: none; } }
+/* The other club is ready: the Ready button's top edge lights green. */
+.primary[data-ready] { box-shadow: inset 0 3px 0 var(--win), 0 4px 0 var(--slab-edge), 0 7px 0 var(--slab-base); }
+@media (prefers-reduced-motion: reduce) { .clockFill { transition: none; } }
 .boardAdvisory {
   display: inline-flex;
   align-items: center;
@@ -628,12 +680,12 @@
   --slab-light-edge: #b8b3aa;
   --slab-light-base: #2a2e39;
 }
-.head, .tool, .leave, .settingsPanel, .primary, .secondary, .result, .outcome, .flawlessBanner {
+.head, .clock, .tool, .leave, .settingsPanel, .primary, .secondary, .result, .outcome, .flawlessBanner {
   box-shadow: 0 4px 0 var(--slab-edge), 0 7px 0 var(--slab-base);
   transition: translate 90ms ease-out, box-shadow 90ms ease-out, background-color 120ms ease;
 }
-.head, .tools, .primary, .secondary, .result, .outcome, .flawlessBanner { transform: var(--slab-tilt); transform-origin: 50% 100%; }
-.head, .tools, .bar, .result, .outcome, .flawlessBanner { filter: var(--shadow-rest); }
+.head, .clock, .tools, .primary, .secondary, .result, .outcome, .flawlessBanner { transform: var(--slab-tilt); transform-origin: 50% 100%; }
+.head, .clock, .tools, .bar, .result, .outcome, .flawlessBanner { filter: var(--shadow-rest); }
 .head { background: var(--surface); }
 .primary { --slab-edge: var(--slab-red-edge); }
 .primary:disabled { --slab-edge: var(--bg-deep); }

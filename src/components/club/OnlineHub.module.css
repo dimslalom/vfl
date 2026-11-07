@@ -1,0 +1,87 @@
+/* The hub's Online face. Same plates, labels and tokens as the Season hub
+   (Club.module.css); only the road and hero slots hold new content. */
+
+.label { font: 700 var(--fs-micro)/1.2 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+
+/* Season / Online: the screen tabs' grammar, ink and a green underline. */
+.modes { display: flex; align-self: stretch; gap: var(--sp-4); padding: 0 var(--sp-3); background: var(--plate); }
+.modes button { position: relative; min-height: var(--tap-min); padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: var(--fs-body); font-weight: 700; cursor: pointer; }
+.modes button[data-on] { color: var(--ink); }
+.modes button[data-on]::after { content: ''; position: absolute; left: 0; right: 0; bottom: 6px; height: 3px; background: var(--win); }
+
+/* The rank strip, in the road's slot. */
+.strip {
+  grid-area: road;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  align-items: stretch;
+  gap: 2px;
+}
+/* Each cell is a season road cell: a top rule, the mono label, then one short
+   value, so the strip is exactly the road's height and nothing below it moves. */
+.strip { gap: var(--sp-1); }
+.strip > div { min-width: 0; padding: var(--sp-2) 0 0; display: flex; flex-direction: column; justify-content: space-between; gap: var(--sp-1); border-top: 2px solid var(--line-bracket); }
+/* 22px: the road's value row is as tall as its club crests. */
+.strip > div > b { min-height: 22px; display: flex; align-items: center; font-size: var(--fs-label); line-height: 1.3; white-space: nowrap; }
+.strip > div > .meter, .strip > div > .pips { align-self: stretch; }
+/* The road's label line height (1), not the hub default, for the same height. */
+.strip .label { line-height: 1; }
+.strip > .rank { min-width: 150px; flex-direction: row; align-items: flex-end; flex-wrap: wrap; column-gap: var(--sp-2); border-top-color: var(--win); }
+.rank .label { flex-basis: 100%; }
+.rating { position: relative; min-width: 112px; }
+.rating b { font-variant-numeric: tabular-nums; }
+.rating em { position: absolute; right: var(--sp-3); bottom: 0; font-style: normal; font-weight: 800; font-size: var(--fs-label); font-variant-numeric: tabular-nums; color: var(--win); }
+.rating em[data-sign='-1'] { color: var(--accent); }
+.strip > .next { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: auto auto; align-items: center; column-gap: var(--sp-2); }
+.next .label { grid-column: 1 / -1; }
+.next small { font-size: var(--fs-micro); color: var(--muted); font-variant-numeric: tabular-nums; }
+.meter { grid-column: 1 / 3; display: block; height: 6px; background: var(--plate-inset); overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--win); transform-origin: left; transition: transform .4s ease-out; }
+.pips { display: flex; gap: 3px; }
+.pips i { width: 14px; height: 14px; background: var(--plate-inset); }
+.pips i[data-result='W'] { background: var(--win); }
+.pips i[data-result='L'] { background: var(--muted); }
+.firstWin b { color: var(--muted); }
+.strip > .firstWin[data-ready] { border-top-color: var(--win); }
+.firstWin[data-ready] b { color: var(--win); }
+
+.rankBars { display: flex; gap: 2px; }
+.rankBars i { width: 10px; height: 6px; background: var(--plate-inset); }
+.rankBars i[data-on] { background: var(--ink); }
+
+/* The hero: same plate as the Season scout, the queue on its big red button. */
+.hero { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-4); }
+.heroHead { display: flex; justify-content: space-between; }
+.heroRank { display: flex; flex-direction: column; gap: var(--sp-2); }
+.heroRank b { font-size: var(--fs-display); line-height: 1; }
+.heroRank .rankBars i { width: 18px; height: 8px; }
+.heroFacts { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin: 0; }
+.heroFacts div { padding: var(--sp-2) var(--sp-3); background: var(--plate-inset); }
+.heroFacts dd { margin: 0; font-size: var(--fs-title); font-weight: 800; font-variant-numeric: tabular-nums; }
+.heroFacts dt { font: 700 var(--fs-micro)/1.2 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.searching { margin: 0; display: flex; justify-content: space-between; align-items: baseline; }
+.searching span { font-weight: 700; color: var(--win); }
+.searching b { font-size: var(--fs-title); font-variant-numeric: tabular-nums; }
+.heroActions { margin-top: auto; display: flex; flex-direction: column; gap: var(--sp-2); }
+.heroActions > * { width: 100%; }
+/* Play a friend: the big button's own style, a size down, above it, so the big
+   button sits exactly where Season's Play does. */
+.friend { min-height: var(--tap-min); padding: 0 var(--sp-3); font-size: var(--fs-label); letter-spacing: .14em; }
+.signIn { display: grid; place-items: center; text-decoration: none; font-size: var(--fs-body); letter-spacing: .08em; white-space: nowrap; }
+
+/* Phones: the strip packs into two short rows and the hero goes compact,
+   like the Season scout, so the squad and tiles keep their room. */
+@media (max-width: 759px) {
+  .strip { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  /* One row, like the road on a phone, so switching modes moves nothing. */
+  .strip > .next { display: none; }
+  .rank, .rating { min-width: 0; }
+  .rating em, .rank .rankBars, .heroFacts { display: none; }
+  .strip > .rank { min-width: 0; }
+  .pips i { width: 10px; height: 10px; }
+  .hero { gap: var(--sp-2); }
+  .heroRank { flex-direction: row; align-items: center; justify-content: space-between; }
+  .heroRank b { font-size: var(--fs-title); }
+  .heroFacts dd { font-size: var(--fs-lead); }
+}
+@media (prefers-reduced-motion: reduce) { .meter i { transition: none; } }

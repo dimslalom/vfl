@@ -6,7 +6,7 @@ import useMediaQuery from '../lib/useMediaQuery';
 import useCardTilt from '../../shared/src/lib/useCardTilt';
 import { cardSpring, cardLeave, DUR } from '../../shared/src/lib/motion';
 import { assetPath } from '../../shared/src/lib/utils';
-import { playUiSound } from '../../shared/src/lib/gameAudio';
+import { playUiSound } from '../lib/uiSound.js';
 import { prefersReducedMotion } from '../../shared/src/lib/useReducedMotion';
 import styles from './SquadDock.module.css';
 

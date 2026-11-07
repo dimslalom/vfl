@@ -18,7 +18,7 @@ import { gsap } from 'gsap';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { assetPath } from '../../shared/src/lib/utils';
-import { playUiSound } from '../../shared/src/lib/gameAudio';
+import { playUiSound } from '../lib/uiSound.js';
 import { packArt } from './packArt';
 import { HALF_H, HALF_W, TEAR_Y, curlStrip, openMouth } from './packTear';
 

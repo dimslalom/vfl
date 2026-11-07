@@ -9,7 +9,7 @@ import { CHIP_TIERS, chipInfo } from '../chip3d/chipData.js';
 import { ICON_PATHS } from '../chip3d/chipIcons.js';
 import { mulberry32 } from '../../shared/src/engine/perfectRun.js';
 import { STAT_KEYS, STAT_LABELS, STAT_LABELS_FULL } from '../../shared/src/data/statFields.js';
-import { playUiSound } from '../../shared/src/lib/gameAudio.js';
+import { playUiSound } from '../lib/uiSound.js';
 import { assetPath, cardTextColor, thumbnailSrc } from '../../shared/src/lib/utils.js';
 
 const COLOR = {

@@ -2,7 +2,7 @@ import allCards from '../../shared/src/data/cards.json';
 import { mulberry32, pickN } from '../../shared/src/engine/perfectRun.js';
 import { hasRealPortrait } from '../../shared/src/lib/portrait.js';
 import { MAP_LANES } from '../engine/board/mapLanes.js';
-import { MAP_NAMES, mapCardsForYear, npcTacticChoices, TACTICS } from '../engine/endless/seriesCards.js';
+import { mapCardsForYear, npcTacticChoices, TACTICS } from '../engine/endless/seriesCards.js';
 
 const usable = allCards.filter(card => card.org && hasRealPortrait(card));
 const byOrg = new Map();
@@ -53,10 +53,8 @@ export function dealSeries(seed, bestOf) {
 
 // Drawn from the series' own seed, never the run's generator, so playing a
 // series on the board leaves a Daily's draws exactly as they were.
-export function pickSeriesMaps(seed, bestOf) {
-  const cards = mapCardsForYear(seed, 1);
-  return pickN(mulberry32(seed), MAP_NAMES, bestOf).map(name => cards.find(card => card.name === name));
-}
+// The same draw the server makes for a live duel (engine/duel.js).
+export { seriesMaps as pickSeriesMaps } from '../engine/duel.js';
 
 // The enemy IGL holds the same two-chip floor the player does and plays both.
 // `replay` (Chronos rewinds a map) re-seeds the enemy, so it thinks the map through

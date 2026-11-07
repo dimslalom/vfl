@@ -144,7 +144,7 @@ async function upsertUser(db, discord, at) {
 
 // ── sessions ────────────────────────────────────────────────────────────────
 
-async function currentUser(request, env, at) {
+export async function currentUser(request, env, at) {
   const token = readCookie(request, SESSION_COOKIE);
   if (!token) return null;
   const hash = await hashToken(token);

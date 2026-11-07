@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { playUiSound } from '../../shared/src/lib/gameAudio';
+import { playUiSound } from '../lib/uiSound.js';
 import useReducedMotion from '../../shared/src/lib/useReducedMotion';
 import { BOARD_SKILLS, hasSkill, seriesWinner, winsNeeded } from '../engine/board/board';
 import { refillTacticHand, settleTactic } from '../engine/endless/seriesCards';
 import { namedSeriesMaps, pickSeriesMaps, roundBoard, roundResult } from '../prototype/boardSetup';
+import { BETWEEN_MS, PLACE_MS, REVEAL_MS, ROTATE_MS } from '../engine/duel';
 import { chipInfo, chipPlan } from '../chip3d/chipData';
 import { chipCopy, planLine } from '../chip3d/chipCopy';
 import { titleCase } from '../lib/titleCase';
@@ -160,6 +161,27 @@ function ChipView({ view, roster, stageRef, hostRef }) {
   );
 }
 
+// A live duel's clock: a dark chrome slab over the board, the phase in mono and
+// the seconds left large. The whole face fills with the time left and drains
+// right to left; the face is drawn twice so the text reads on fill and on slab.
+// Red for the last ten.
+const CLOCK_SPAN = { place: PLACE_MS, waiting: PLACE_MS, reveal: REVEAL_MS + ROTATE_MS, rotate: REVEAL_MS + ROTATE_MS };
+
+function LiveClock({ phase, deadlineAt, now }) {
+  const left = Math.max(0, deadlineAt - now);
+  const share = Math.min(1, left / CLOCK_SPAN[phase]);
+  return (
+    <div className={styles.clock} role="timer" aria-label={t('{n} seconds left', { n: Math.ceil(left / 1000) })} data-low={left < 10_000 || undefined}>
+      <small>{phase === 'rotate' || phase === 'reveal' ? t('Rotate') : t('Place')}</small>
+      <b>{Math.ceil(left / 1000)}</b>
+      <span className={styles.clockFill} aria-hidden="true" style={{ clipPath: `inset(0 ${(1 - share) * 100}% 0 0)` }}>
+        <small>{phase === 'rotate' || phase === 'reveal' ? t('Rotate') : t('Place')}</small>
+        <b>{Math.ceil(left / 1000)}</b>
+      </span>
+    </div>
+  );
+}
+
 function Pips({ total, won, side }) {
   return (
     <span className={styles.pips} data-side={side}>
@@ -177,7 +199,7 @@ function Pips({ total, won, side }) {
 // intro: { you: { club, cards }, them: { club, cards }, stage } plays the match
 // intro over the board while it loads, then drops the 3D camera into the first deal.
 // settings: controls shown in a panel behind the gear beside Leave (the Club passes its music controls).
-export default function BoardSeries({ squad, opponent, opponentName, bestOf, seed, hand, onDone, onLeave, doneLabel = 'Continue', fixed = false, three = false, arena = 'tint', mapNames = null, intro = null, settings = null, hintsOn = false, initialSlots = null, onStageReady = null }) {
+export default function BoardSeries({ squad, opponent, opponentName, bestOf, seed, hand, onDone, onLeave, doneLabel = 'Continue', fixed = false, three = false, arena = 'tint', mapNames = null, intro = null, settings = null, hintsOn = false, initialSlots = null, onStageReady = null, online = null, startScore = null }) {
   const hostRef = useRef(null);
   const stageRef = useRef(null);
   const chipHostRef = useRef(null);
@@ -187,7 +209,7 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
   const [maps] = useState(() => (mapNames ? namedSeriesMaps(seed, mapNames) : pickSeriesMaps(seed, bestOf)));
   const arenaRef = useRef(arena);
   const [state, setState] = useState({ phase: 'loading', legal: false, placed: 0, moves: 1 });
-  const [score, setScore] = useState({ you: 0, them: 0 });
+  const [score, setScore] = useState(startScore ?? { you: 0, them: 0 });
   const [outcome, setOutcome] = useState(null);
   // false, or why the board couldn't start: 'webgl' (this browser can't draw 3D) or 'load'.
   const [failed, setFailed] = useState(false);
@@ -216,7 +238,10 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
   const [leaving, setLeaving] = useState(false);
   const [chipView, setChipView] = useState(null);
   const [cardView, setCardView] = useState(null);
-  const runRef = useRef({ you: 0, them: 0, hand, results: [] });
+  const runRef = useRef({ you: startScore?.you ?? 0, them: startScore?.them ?? 0, hand, results: [] });
+  // A live duel (src/lib/duelClient.js): the latest server snapshot and a ticking clock.
+  const [live, setLive] = useState(null);
+  const [clock, setClock] = useState(0);
   const finishedRef = useRef(false);
 
   function finish() {
@@ -234,7 +259,8 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
     chipsRef.current?.setChips(run.hand.map(card => card.key));
     const slots = initialSlots && round === 0 ? initialSlots : null;
     const replay = run.rewound ? 1 : 0;
-    stageRef.current?.deal(roundBoard({ seed, round, map: maps[round], you: squad, them: opponent, tactics: run.hand, slots, replay, spent: run.rewound ? ['timewarp'] : [] }))
+    const game = roundBoard({ seed, round, map: maps[round], you: squad, them: opponent, tactics: run.hand, slots, replay, spent: run.rewound ? ['timewarp'] : [] });
+    stageRef.current?.deal(online ? { ...game, remote: online.remote(round) } : game)
       .catch((error) => {
         if (import.meta.env.DEV) console.error(error);
         setFailed('load');
@@ -247,7 +273,7 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
     const won = result.winner === 'you';
     // Chronos: a series about to be lost by a single map rewinds that map, once.
     const need = winsNeeded(bestOf);
-    if (!won && bestOf >= 3 && !run.rewound && run.you === need - 1 && run.them === need - 1 && squad.some(card => hasSkill(card, 'timewarp'))) {
+    if (!online && !won && bestOf >= 3 && !run.rewound && run.you === need - 1 && run.them === need - 1 && squad.some(card => hasSkill(card, 'timewarp'))) {
       run.rewound = true;
       run.hand = run.handBefore;
       const replay = () => playRound();
@@ -285,8 +311,49 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
       .catch(() => null);
   }, [three]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { finishRoundRef.current = finishRound; });
+
   const playRoundRef = useRef(playRound);
   useEffect(() => { playRoundRef.current = playRound; });
+
+  // A live duel moves on without this side when its clock runs out: the server
+  // locks or keeps the board for it, and the stage follows.
+  function catchUp() {
+    const snap = online?.snapshot;
+    const stage = stageRef.current;
+    if (!snap || !stage) return;
+    const run = runRef.current;
+    const round = run.you + run.them;
+    // The next map deals on the server (both ready, or the timer ran out): follow it.
+    if (outcomeRef.current && !outcomeRef.current.champion && run.dealt !== round
+      && (snap.round > round || (snap.round === round && snap.phase !== 'between'))) {
+      run.dealt = round;
+      playRoundRef.current();
+      return;
+    }
+    const over = snap.history?.[round];
+    if (stage.phase === 'place' && ((snap.round === round && snap.board?.youPlaced) || over)) {
+      stage.forceLock(over ? over.yourPlan : snap.board.yourPlan);
+    }
+    if (stage.phase === 'rotate' && ((snap.round === round && snap.board?.youRotated) || over)) stage.forceRotate();
+  }
+  const catchUpRef = useRef(catchUp);
+  const outcomeRef = useRef(outcome);
+  useEffect(() => { outcomeRef.current = outcome; });
+  useEffect(() => { catchUpRef.current = catchUp; });
+  useEffect(() => {
+    if (!online) return undefined;
+    const stop = online.subscribe((snap) => {
+      setLive(snap);
+      catchUpRef.current();
+      // The other club gave up: the series is yours as it stands.
+      if (snap?.forfeit === 'them' && !finishedRef.current) {
+        finishedRef.current = true;
+        onDone({ won: true, results: runRef.current.results, hand: runRef.current.hand, forfeit: true });
+      }
+    });
+    const tick = setInterval(() => setClock(online.now()), 250);
+    return () => { stop(); clearInterval(tick); };
+  }, [online]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     let stage;
@@ -301,6 +368,7 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
       setState(next);
       chipsRef.current?.setLocked(next.phase !== 'place');
       if (next.result) finishRoundRef.current(next.result);
+      catchUpRef.current();
     };
     (async () => {
       try {
@@ -468,6 +536,9 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
           {settings && settingsOpen && <div className={styles.settingsPanel} role="dialog" aria-label="Settings">{settings}</div>}
         </div>
       )}
+      {online && live?.board && CLOCK_SPAN[phase] && !introOn && (
+        <LiveClock phase={phase} deadlineAt={live.board.deadlineAt} now={clock} />
+      )}
       <div className={styles.head} aria-label={`Round ${shownRound + 1}, best of ${bestOf}, ${maps[shownRound].name} against ${opponentName}`}>
         <b key={shownRound} className={styles.mapTitle}>{maps[shownRound].name}</b>
         <Pips total={winsNeeded(bestOf)} won={score.you} side="you" />
@@ -496,6 +567,8 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
             <span>{t('Rival revealed. Use your IGL rotate to reposition a player and counter their matchups.')}</span>
           </div>
         )}
+        {phase === 'waiting' && <p className={styles.hint}>{t('Waiting for {name}', { name: opponentName })}</p>}
+        {online && live?.them && !live.them.connected && <p className={styles.hint}>{t('{name} disconnected', { name: opponentName })}</p>}
         {phase === 'place' && (
           <button type="button" className={styles.primary} disabled={!legal} onClick={() => stageRef.current?.lockIn()}>
             {legal ? 'Lock in' : placed < 5 ? `${placed}/5 placed` : 'Fill every lane'}
@@ -548,7 +621,29 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
               </div>
               {outcome.champion
                 ? <button type="button" className={styles.primary} onClick={finish}>{doneLabel}</button>
-                : <button type="button" className={styles.primary} onClick={playRound}>Next round</button>}
+                : online
+                  ? (
+                    // The time to the next map drains across the button itself; once
+                    // you're ready its fill turns green.
+                    <button
+                      type="button"
+                      className={`${styles.primary} ${styles.readyButton}`}
+                      disabled={!live?.between || live.between.youReady}
+                      data-you={live?.between?.youReady || undefined}
+                      data-ready={live?.between?.themReady || undefined}
+                      onClick={() => online.ready(score.you + score.them)}
+                    >
+                      {t('Ready')}
+                      <span
+                        className={styles.readyFill}
+                        aria-hidden="true"
+                        style={{ clipPath: `inset(0 ${(1 - Math.min(1, Math.max(0, ((live?.between?.deadlineAt ?? 0) - clock) / BETWEEN_MS))) * 100}% 0 0)` }}
+                      >
+                        {t('Ready')}
+                      </span>
+                    </button>
+                  )
+                  : <button type="button" className={styles.primary} onClick={playRound}>Next round</button>}
             </div>
           </div>
         );

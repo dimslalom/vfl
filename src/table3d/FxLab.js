@@ -9,7 +9,7 @@ import {
 import {
   ART_SCALE, CARD_H, CARD_T, CARD_TIP, CARD_W, PX, PY, cardArt, cutShape, drawCard, loadImage, slab,
 } from './TableBlockout.js';
-import { playUiSound } from '../../shared/src/lib/gameAudio.js';
+import { playUiSound } from '../lib/uiSound.js';
 import { playSkillSound } from '../lib/evoSfx.js';
 import { SKILL_FX, attachSkillFx, readyPose } from './SkillFx.js';
 

@@ -24,7 +24,7 @@ import {
 } from '../engine/board/board.js';
 import { mulberry32 } from '../../shared/src/engine/perfectRun.js';
 import { assetPath } from '../../shared/src/lib/utils.js';
-import { playUiSound } from '../../shared/src/lib/gameAudio';
+import { playUiSound } from '../lib/uiSound.js';
 import { playGlassShatter, playLaneWin } from '../lib/sfx';
 import { playEvoSound, playSkillSound as skillSound } from '../lib/evoSfx';
 import { STAT_LABELS_FULL } from '../../shared/src/data/statFields.js';
@@ -241,7 +241,10 @@ export default class TableStage {
   async deal(game) {
     const fromRound = Boolean(this.board) && !this.reducedMotion;
     this.timeline?.kill();
-    const nextOppPlan = bestPlacement({ roster: game.them, maps: game.maps, tactics: game.opponentTactics ?? [game.opponentTactic], rng: mulberry32(game.seed + 1) });
+    // A live duel's enemy is a person: their board arrives at the reveal (game.remote).
+    const nextOppPlan = game.remote
+      ? { slots: game.them.map(() => null), tactics: [] }
+      : bestPlacement({ roster: game.them, maps: game.maps, tactics: game.opponentTactics ?? [game.opponentTactic], rng: mulberry32(game.seed + 1) });
     const [arts] = await Promise.all([
       Promise.all([...game.you, ...game.them].map(card => Promise.all(cardArt(card).map(loadImage)))),
       fromRound ? this.flyOutLeft() : Promise.resolve(),
@@ -961,11 +964,44 @@ export default class TableStage {
 
   lockIn() {
     if (this.phase !== 'place' || !isLegalPlacement(this.slots, this.game.you)) return;
-    this.phase = 'reveal';
     this.lockedSlots = [...this.slots];
     this.selected = null;
     playUiSound('lock_in');
     this.emitChip();
+    const { remote } = this.game;
+    if (!remote) {
+      this.reveal();
+      return;
+    }
+    // Locked, waiting on the other club's lock in.
+    this.phase = 'waiting';
+    this.place();
+    this.emit();
+    const dealt = this.game;
+    remote.place({ slots: this.lockedSlots, tactics: this.yourTactics() }).then((plan) => {
+      if (!this.alive || this.game !== dealt) return;
+      this.oppPlan = plan;
+      this.reveal();
+    });
+  }
+
+  /** The server filled this side's board (the clock ran out): lock that in. */
+  forceLock(plan) {
+    if (this.phase !== 'place') return;
+    this.slots = [...plan.slots];
+    this.tacticLane = {};
+    this.lockIn();
+  }
+
+  /** The server kept this side's board for the rotate (the clock ran out). */
+  forceRotate() {
+    if (this.phase !== 'rotate') return;
+    this.slots = [...this.lockedSlots];
+    this.resolve();
+  }
+
+  reveal() {
+    this.phase = 'reveal';
     // The hidden enemy cards turn over and fly to their lanes, one after another,
     // and their chips land with them.
     const hidden = this.theirs().filter(card => card.hidden);
@@ -993,14 +1029,29 @@ export default class TableStage {
     if (this.phase !== 'rotate') return;
     this.phase = 'resolve';
     playUiSound('lock_in');
-    const { maps, you, them } = this.game;
+    const { maps, you, them, remote } = this.game;
     const tactics = this.yourTactics();
+    if (remote) {
+      // The server resolves a live map; this side only plays it back.
+      this.emit();
+      const dealt = this.game;
+      remote.rotate(this.slots).then(({ result, oppSlots }) => {
+        if (!this.alive || this.game !== dealt) return;
+        this.oppPlan = { ...this.oppPlan, slots: oppSlots };
+        this.playResult(result, tactics);
+      });
+      return;
+    }
     const mine = { roster: you, slots: this.lockedSlots, tactics };
     const theirs = { roster: them, slots: this.oppPlan.slots, tactics: this.oppPlan.tactics };
     // Both IGLs answer the same revealed board, so neither sees the other's move.
     const oppSlots = bestRotate({ you: theirs, them: mine, maps });
     this.oppPlan = { ...this.oppPlan, slots: oppSlots };
-    const result = resolveBoard({ maps, you: { ...mine, slots: this.slots }, them: { ...theirs, slots: oppSlots } });
+    this.playResult(resolveBoard({ maps, you: { ...mine, slots: this.slots }, them: { ...theirs, slots: oppSlots } }), tactics);
+  }
+
+  playResult(result, tactics) {
+    const { maps } = this.game;
     this.shown = maps.map(() => ({ mine: { total: 0, steps: [] }, theirs: { total: 0, steps: [] }, stamp: null }));
     this.revealOppChips();
     this.place();

@@ -10,7 +10,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--sp-4);
-  overflow: hidden;
+  /* clip, not hidden: a hidden box still scrolls when focus lands on a button
+     mid-transition (the hub's mode switch), shifting the whole screen sideways. */
+  overflow: clip;
   background: transparent;
   color: var(--ink);
   font-family: var(--font-body);
@@ -844,6 +846,11 @@ span.counter { cursor: default; }
 @media (hover: hover) { .tileRow .tile:hover { background: var(--plate-hi); } }
 .hero { grid-area: hero; min-height: 0; padding: var(--sp-4); display: flex; flex-direction: column; background: var(--plate); clip-path: var(--notch); }
 .hero > section { flex: 1; }
+/* Season and Online heroes share one cell; the hidden one still holds its size. */
+.heroStack { flex: 1; min-height: 0; display: grid; }
+.heroStack > * { grid-area: 1 / 1; min-height: 0; display: flex; flex-direction: column; }
+.heroStack > * > section { flex: 1; }
+.home [data-off] { visibility: hidden; }
 .hero .playBig { width: 100%; min-width: 0; margin-top: auto; }
 .home > [aria-label="League news"] { grid-area: news; }
 .home .counter { clip-path: var(--notch); }
@@ -1701,4 +1708,32 @@ button.emptyTactic[data-swap-target] { border-color: var(--win); cursor: pointer
 @media (prefers-reduced-motion: reduce) {
   [data-swap-target] { animation: none; outline: 1px dashed var(--muted); outline-offset: 2px; }
   .windowSlot[data-held] .slotCard, .inventoryItem[data-held] { transition: none; }
+}
+
+/* ── friendly (League > Friendly): a live duel by code ───────────────────── */
+.duelCode { font: 800 var(--fs-display)/1 var(--font-mono); letter-spacing: .12em; color: var(--win); font-variant-numeric: tabular-nums; }
+.duelBestOf { display: inline-flex; gap: var(--sp-2); }
+.duelRoom, .duelJoin { display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-4); padding: var(--sp-4) var(--sp-2); }
+.duelVs { display: flex; flex-wrap: wrap; gap: var(--sp-8); padding-left: 8px; }
+.duelSide { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); min-width: 120px; }
+.duelSide b { font-size: var(--fs-lead); }
+.duelSide[data-empty] b { color: var(--muted); }
+.duelSlot { width: 88px; height: 88px; border: 2px dashed var(--line-bracket); }
+.duelInput {
+  width: min(100%, 280px); min-height: var(--tap-min); padding: 0 var(--sp-3);
+  border: 2px solid var(--line-bracket); background: var(--plate-inset); color: var(--ink);
+  font: 800 var(--fs-title)/1 var(--font-mono); letter-spacing: .2em; text-transform: uppercase;
+}
+.duelInput:focus-visible { outline: none; border-color: var(--win); }
+.duelError { margin: 0; padding-left: 8px; color: var(--accent); font-size: var(--fs-label); }
+@media (max-width: 759px) {
+  .duelCode { font-size: var(--fs-heading); }
+  .duelSlot { width: 56px; height: 56px; }
+}
+
+/* Phones: when the hub's header runs out of room (club name, Season/Online,
+   counters), the right-hand group drops to its own row instead of overlapping. */
+@media (max-width: 759px) {
+  .hud { flex-wrap: wrap; row-gap: var(--sp-2); }
+  .hud > .chips { margin-left: auto; }
 }

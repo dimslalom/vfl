@@ -35,3 +35,4 @@ graphify-out/
 tools/vlrggapi/.venv/
 __pycache__/
 .pytest_cache/
+scripts/sfx/out/

@@ -79,6 +79,7 @@ desktop                         phone (< 760px)
 - **hero:** the next match (`Scout` in `src/components/club/HubFeed.jsx`): the rival, both powers with a split bar, their best three cards, their record, then Play. This is the one red thing on the Hub.
 - **tiles:** Squad, Vault, Inventory, Train, League, in that order. Each tile shows a label and one value or object. If something there needs attention, the tile gets a green square pip (driven by `attention()` in `src/engine/club/attention.js`). A tile with nothing to do switches to an outline (`data-idle`).
 - **news:** one line (`LatestMove`): the latest transfer, then faces for the ones before it.
+- **Season / Online:** the header's mode switch swaps two slots only. Online puts the rank strip (`RankStrip`) in **road** and the ranked queue (`OnlineHero`) in **hero**; Find match is the same big red button as Play, in the same spot, and Play a friend is the same button a size down, above it. Both faces stay rendered in the shared slots with the inactive one `visibility: hidden` (`data-off`, `inert`), so switching never moves the squad, tiles or hero, at any width. Anything new in either slot must keep that true.
 
 ### 4.2 Menu screens (Squad, Vault, Inventory, Train, League, transfer window)
 

@@ -13,6 +13,15 @@
 .cardRow > * { filter: var(--shadow-rest); }
 .tags { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--sp-3); }
 
+/* Squad switcher: two plates side by side. The live one is ink with a green
+   underline; the one still to come is muted and does nothing. */
+.squads { display: flex; justify-content: center; gap: var(--sp-1); }
+.squad { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-1); min-width: 140px; min-height: var(--tap-min); padding: 0 var(--sp-4); border: 0; border-bottom: 2px solid transparent; background: var(--plate); color: var(--muted); font: inherit; font-size: var(--fs-label); cursor: default; }
+.squad b { font-weight: 700; }
+.squad small { font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; }
+.squad[data-on] { color: var(--ink); border-bottom-color: var(--win); }
+.squad[data-soon] { background: var(--plate-inset); pointer-events: none; }
+
 /* Table position: six pips, yours lit. */
 .place { display: inline-flex; align-items: center; gap: var(--sp-2); }
 .place small { font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }

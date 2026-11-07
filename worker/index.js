@@ -14,7 +14,22 @@ import {
   publicSnapshot,
   setConnection,
 } from '../src/engine/multiplayer.js';
+import {
+  DuelError,
+  advanceDuel,
+  applyDuelCommand,
+  createDuel,
+  createRankedDuel,
+  duelSnapshot,
+  joinDuel,
+  nextDuelAlarm,
+  rankedOutcome,
+  setPresence,
+} from '../src/engine/duel.js';
 import { handleAccounts } from './accounts.js';
+import { handleRanked, rateSeries } from './ranked.js';
+
+export { Matchmaker } from './ranked.js';
 
 const APP_PREFIX = '';
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -42,6 +57,8 @@ async function handleRequest(request, env) {
     // Discord sign-in and the Clubs cloud save (worker/accounts.js).
     const accountResponse = await handleAccounts(request, env);
     if (accountResponse) return withSecurityHeaders(accountResponse);
+    const rankedResponse = await handleRanked(request, env);
+    if (rankedResponse) return withSecurityHeaders(rankedResponse);
 
     if (url.pathname === `${APP_PREFIX}/api/lobbies` && request.method === 'POST') {
       const body = await readJson(request);
@@ -55,6 +72,31 @@ async function handleRequest(request, env) {
         if (response.status !== 409) return response;
       }
       return json({ error: 'code_generation_failed', message: 'Could not allocate a lobby code.' }, 503);
+    }
+
+    // ── Live Club duels (one Duel Durable Object per match code) ─────────────
+    if (url.pathname === '/api/duels' && request.method === 'POST') {
+      const body = await readJson(request);
+      for (let attempt = 0; attempt < 8; attempt++) {
+        const code = randomCode();
+        const stub = env.DUELS.get(env.DUELS.idFromName(code));
+        const response = await stub.fetch('https://duel.internal/create', { method: 'POST', body: JSON.stringify({ ...body, code }) });
+        if (response.status !== 409) return response;
+      }
+      return json({ error: 'code_generation_failed', message: 'Could not allocate a match code.' }, 503);
+    }
+    const duelJoin = url.pathname.match(/^\/api\/duels\/([A-Z2-9]{6})\/join$/);
+    if (duelJoin && request.method === 'POST') {
+      const stub = env.DUELS.get(env.DUELS.idFromName(duelJoin[1]));
+      return stub.fetch('https://duel.internal/join', { method: 'POST', body: JSON.stringify(await readJson(request)) });
+    }
+    const duelWs = url.pathname.match(/^\/ws\/duel\/([A-Z2-9]{6})$/);
+    if (duelWs) {
+      if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') return json({ error: 'upgrade_required' }, 426);
+      const stub = env.DUELS.get(env.DUELS.idFromName(duelWs[1]));
+      const internal = new URL('https://duel.internal/connect');
+      internal.searchParams.set('token', url.searchParams.get('token') ?? '');
+      return stub.fetch(new Request(internal, request));
     }
 
     const joinMatch = url.pathname.match(/^\/api\/lobbies\/([A-Z2-9]{6})\/join$/);
@@ -339,6 +381,199 @@ export class Lobby extends DurableObject {
     if (at) await this.ctx.storage.setAlarm(Math.max(at, Date.now() + 1));
     else await this.ctx.storage.deleteAlarm();
   }
+}
+
+/**
+ * One live Club duel: two seats, a hashed token each, and the series state from
+ * src/engine/duel.js. Same shell as Lobby (hibernating sockets, an alarm for
+ * deadlines, a snapshot per socket), its own two-player game.
+ */
+export class Duel extends DurableObject {
+  constructor(ctx, env) {
+    super(ctx, env);
+    this.ctx = ctx;
+    this.env = env;
+    this.duel = null;
+    this.auth = {};
+    this.ready = ctx.blockConcurrencyWhile(async () => {
+      const stored = await ctx.storage.get(['duel', 'auth']);
+      this.duel = stored.get('duel') ?? null;
+      this.auth = stored.get('auth') ?? {};
+    });
+  }
+
+  async fetch(request) {
+    await this.ready;
+    const url = new URL(request.url);
+    try {
+      if (url.pathname === '/create' && request.method === 'POST') return await this.create(await readJson(request));
+      if (url.pathname === '/create-ranked' && request.method === 'POST') return await this.createRanked(await readJson(request));
+      if (url.pathname === '/join' && request.method === 'POST') return await this.join(await readJson(request));
+      if (url.pathname === '/connect') return await this.connect(request, url.searchParams.get('token') ?? '');
+      return json({ error: 'not_found' }, 404);
+    } catch (error) {
+      return duelErrorResponse(error);
+    }
+  }
+
+  async create(body) {
+    if (this.duel) return json({ error: 'duel_exists' }, 409);
+    const seatId = crypto.randomUUID();
+    const sessionToken = randomToken();
+    this.duel = createDuel({
+      code: body.code,
+      hostId: seatId,
+      club: body.club,
+      squad: body.squad,
+      bestOf: Number(body.bestOf),
+      seed: crypto.getRandomValues(new Uint32Array(1))[0],
+      cards,
+      now: Date.now(),
+    });
+    this.auth[seatId] = await hashToken(sessionToken);
+    await this.save();
+    return json({ code: body.code, seatId, sessionToken, bestOf: this.duel.bestOf });
+  }
+
+  // From the Matchmaker only (it is not routed from outside): both seats known.
+  async createRanked(body) {
+    if (this.duel) return json({ error: 'duel_exists' }, 409);
+    this.duel = createRankedDuel({ code: body.code, seats: body.seats, seed: crypto.getRandomValues(new Uint32Array(1))[0], cards, now: Date.now() });
+    const tokens = {};
+    for (const seat of body.seats.filter(s => !s.cpu)) {
+      tokens[seat.id] = randomToken();
+      this.auth[seat.id] = await hashToken(tokens[seat.id]);
+    }
+    await this.save();
+    return json({ code: body.code, tokens });
+  }
+
+  async join(body) {
+    if (!this.duel) return json({ error: 'duel_not_found', message: 'No match with that code.' }, 404);
+    if (body.sessionToken) {
+      const seatId = await this.authenticate(body.sessionToken);
+      if (seatId) return json({ code: this.duel.code, seatId, sessionToken: body.sessionToken, bestOf: this.duel.bestOf, reconnected: true });
+    }
+    const seatId = crypto.randomUUID();
+    const sessionToken = randomToken();
+    joinDuel(this.duel, { id: seatId, club: body.club, squad: body.squad, cards, now: Date.now() });
+    this.auth[seatId] = await hashToken(sessionToken);
+    await this.save();
+    this.broadcast();
+    return json({ code: this.duel.code, seatId, sessionToken, bestOf: this.duel.bestOf });
+  }
+
+  async connect(request, token) {
+    if (!this.duel) return json({ error: 'duel_not_found' }, 404);
+    const seatId = await this.authenticate(token);
+    if (!seatId) return json({ error: 'invalid_session' }, 401);
+    const pair = new WebSocketPair();
+    const [client, server] = Object.values(pair);
+    this.ctx.acceptWebSocket(server);
+    server.serializeAttachment({ seatId });
+    setPresence(this.duel, seatId, true, Date.now());
+    advanceDuel(this.duel, Date.now());
+    await this.save();
+    this.broadcast();
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
+  async webSocketMessage(ws, message) {
+    await this.ready;
+    const { seatId } = ws.deserializeAttachment() ?? {};
+    try {
+      const size = typeof message === 'string' ? new TextEncoder().encode(message).byteLength : message.byteLength;
+      if (size > MAX_WEBSOCKET_MESSAGE_BYTES) throw new DuelError('invalid_command', 'Command is too large.');
+      const command = JSON.parse(typeof message === 'string' ? message : new TextDecoder().decode(message));
+      if (command.type === 'sync') {
+        ws.send(JSON.stringify({ type: 'snapshot', snapshot: duelSnapshot(this.duel, seatId, Date.now()) }));
+        return;
+      }
+      const now = Date.now();
+      const result = applyDuelCommand(this.duel, seatId, command, now);
+      // A seat the AI plays answers straight away.
+      advanceDuel(this.duel, now);
+      if (!result.duplicate) await this.save();
+      this.broadcast();
+    } catch (error) {
+      ws.send(JSON.stringify({
+        type: 'rejected',
+        code: error.code ?? 'invalid_command',
+        message: error instanceof DuelError ? error.message : 'Invalid command.',
+        snapshot: duelSnapshot(this.duel, seatId, Date.now()),
+      }));
+    }
+  }
+
+  async webSocketClose(ws) {
+    await this.ready;
+    const { seatId } = ws.deserializeAttachment() ?? {};
+    const others = this.ctx.getWebSockets().some(socket => socket !== ws && socket.deserializeAttachment()?.seatId === seatId);
+    if (this.duel && seatId && !others) {
+      setPresence(this.duel, seatId, false, Date.now());
+      await this.save();
+      this.broadcast();
+    }
+  }
+
+  async webSocketError(ws) {
+    await this.webSocketClose(ws);
+  }
+
+  async alarm() {
+    await this.ready;
+    if (!this.duel) return;
+    const now = Date.now();
+    if (!this.duel.board && this.ctx.getWebSockets().length === 0 && now >= nextDuelAlarm(this.duel)) {
+      await this.ctx.storage.deleteAll();
+      this.duel = null;
+      this.auth = {};
+      return;
+    }
+    const { changed } = advanceDuel(this.duel, now);
+    await this.save();
+    if (changed) this.broadcast();
+  }
+
+  async authenticate(token) {
+    if (!token) return null;
+    const hash = await hashToken(token);
+    for (const [seatId, stored] of Object.entries(this.auth)) {
+      if (await timingSafeHashEqual(stored, hash)) return seatId;
+    }
+    return null;
+  }
+
+  broadcast() {
+    const now = Date.now();
+    for (const socket of this.ctx.getWebSockets()) {
+      try {
+        socket.send(JSON.stringify({ type: 'snapshot', snapshot: duelSnapshot(this.duel, socket.deserializeAttachment()?.seatId, now) }));
+      } catch { /* stale sockets are cleaned up by the runtime */ }
+    }
+  }
+
+  async save() {
+    // A ranked series that just ended writes both ratings once, before anyone sees the result.
+    const outcome = rankedOutcome(this.duel);
+    if (outcome && this.env.ACCOUNTS) {
+      try {
+        this.duel.rated = await rateSeries(this.env.ACCOUNTS, outcome, Date.now());
+      } catch (error) {
+        console.error(JSON.stringify({ message: 'rating write failed', error: error instanceof Error ? error.message : String(error) }));
+      }
+    }
+    await this.ctx.storage.put({ duel: this.duel, auth: this.auth });
+    await this.ctx.storage.setAlarm(Math.max(nextDuelAlarm(this.duel), Date.now() + 1));
+  }
+}
+
+function duelErrorResponse(error) {
+  if (error instanceof DuelError) {
+    const status = error.code === 'duel_full' ? 409 : error.code === 'unauthorized' ? 403 : 400;
+    return json({ error: error.code, message: error.message }, status);
+  }
+  return errorResponse(error);
 }
 
 function randomCode() {

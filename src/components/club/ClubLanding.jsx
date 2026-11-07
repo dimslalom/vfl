@@ -54,6 +54,22 @@ function Place({ pos }) {
   );
 }
 
+// Which squad the landing shows. The story squad is on its way: it sits to the
+// right, greyed and labelled, and cannot be picked yet.
+function SquadSwitcher() {
+  return (
+    <div className={styles.squads} role="group" aria-label={t('Squads')}>
+      <button type="button" className={styles.squad} aria-pressed="true" data-on>
+        <b>{t('Club squad')}</b>
+      </button>
+      <button type="button" className={styles.squad} aria-disabled="true" data-soon tabIndex={-1}>
+        <b>{t('Story squad')}</b>
+        <small>{t('Coming soon')}</small>
+      </button>
+    </div>
+  );
+}
+
 // Direction A, "Front door": the one shipped in /club. One sentence and one button.
 // A new player reads what the mode is; a returning one sees their own club and Play,
 // taking them into the club hub. Everything else is a quiet link. Discord sign-in is optional.
@@ -83,6 +99,7 @@ export default function ClubLanding({ state, account, map = DEFAULT_MAP, due = f
       </header>
 
       <main className={`${club.ground} ${styles.landing}`} style={{ '--map': `url(${assetPath(map)})` }}>
+        <SquadSwitcher />
         <div className={styles.intro}>
           <span className={styles.kicker}>{returning ? t('Your club') : t('VCT card game')}</span>
           <h1 className={styles.headline}>{returning ? summary.name : t('Run a club')}</h1>

@@ -31,6 +31,14 @@
       {
         "name": "LOBBIES",
         "class_name": "Lobby"
+      },
+      {
+        "name": "DUELS",
+        "class_name": "Duel"
+      },
+      {
+        "name": "MATCHMAKER",
+        "class_name": "Matchmaker"
       }
     ]
   },
@@ -56,6 +64,10 @@
     {
       "tag": "v1",
       "new_sqlite_classes": ["Lobby"]
+    },
+    {
+      "tag": "v2",
+      "new_sqlite_classes": ["Duel", "Matchmaker"]
     }
   ]
 }

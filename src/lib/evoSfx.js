@@ -5,6 +5,10 @@
 // while it pans past. A short room is shared so cues sit in one space.
 
 import { playUiSound } from '../../shared/src/lib/gameAudio.js';
+import { playSample } from './samples.js';
+
+// Tuned to the live cues' level (their impacts peak around 0.2 after the bus).
+const EVO_GAIN = 0.24;
 
 let context = null;
 let bus = null;
@@ -373,6 +377,8 @@ export function hasEvoSound(key) {
 export function playEvoSound(key, seed = 0) {
   const cue = CUES[key];
   if (!cue) return;
+  // The SuperCollider render (scripts/sfx/evo.scd) when it's loaded; the live synth below otherwise.
+  if (playSample(key, { gain: EVO_GAIN, detune: 0.025 })) return;
   const ctx = audio();
   if (!ctx) return;
   cue(ctx, ctx.currentTime + 0.01, seeded(seed + key.length * 31));

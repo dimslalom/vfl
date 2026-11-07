@@ -5,7 +5,7 @@ import { TACTICS } from '../engine/endless/seriesCards.js';
 import useCardTilt from '../../shared/src/lib/useCardTilt.js';
 import useMediaQuery from '../lib/useMediaQuery.js';
 import { DUR, EASE, STAGGER } from '../../shared/src/lib/motion.js';
-import { playUiSound } from '../../shared/src/lib/gameAudio.js';
+import { playUiSound } from '../lib/uiSound.js';
 import useReducedMotion from '../../shared/src/lib/useReducedMotion.js';
 import { assetPath } from '../../shared/src/lib/utils.js';
 import { t } from '../lib/i18n.js';

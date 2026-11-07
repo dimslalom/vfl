@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { playUiSound } from '../../shared/src/lib/gameAudio';
+import { playUiSound } from '../lib/uiSound.js';
 import { assetPath } from '../../shared/src/lib/utils';
 import { startMatchMusic } from '../lib/music';
 import ClubLogo from './ClubLogo';
@@ -67,7 +67,7 @@ export default function MatchIntro({ you, them, stage, bestOf, ready, reducedMot
   // Close the panels, then count the hold.
   useEffect(() => {
     const first = requestAnimationFrame(() => setPhase('hold'));
-    if (!reducedMotion) playUiSound('lock_in');
+    if (!reducedMotion) playUiSound('match_join');
     // The music's beat drop (0:18) lands one second in, as the last player rises:
     // it starts a second before the drop and fades in over that second.
     startMatchMusic();

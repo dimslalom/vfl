@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import allCards from '../../shared/src/data/cards.json';
 import { STAT_KEYS, STAT_LABELS, STAT_LABELS_FULL } from '../../shared/src/data/statFields';
 import PlayerCard from '../../shared/src/components/PlayerCard';
-import { playUiSound } from '../../shared/src/lib/gameAudio';
+import { playUiSound } from '../lib/uiSound.js';
 import { assetPath } from '../../shared/src/lib/utils';
 import useReducedMotion from '../../shared/src/lib/useReducedMotion';
 import BoardSeries from '../components/BoardSeries';
@@ -13,7 +13,7 @@ import SpecialtyIcon from '../../shared/src/components/SpecialtyIcon';
 import { SPECIALTIES } from '../../shared/src/data/specialties';
 import { EVO_ART } from '../../shared/src/components/evoArt';
 import {
-  GOLD_PITY, GOLD_RATING, NAME_MAX, PACK_KEYS, PACK_VALUE, RENAME_PRICE, REROLL_PRICE, TAPE_MAX, TITLES_PER_ICON, clubFatigueExtra, packValue,
+  GOLD_PITY, GOLD_RATING, NAME_MAX, PACK_KEYS, PACK_VALUE, RENAME_PRICE, REROLL_PRICE, TAPE_MAX, TITLES_PER_ICON, clubFatigueExtra, grantPacks, packValue,
   squadMax, stock,
 } from '../engine/club/economy';
 import {
@@ -54,6 +54,9 @@ import { preloadMusic } from '../lib/music';
 import MusicControls from '../components/MusicControls';
 import { hintFor, loadOnboarding, markHintSeen, primerDue, saveOnboarding } from '../lib/clubOnboarding';
 import { t } from '../lib/i18n';
+import { DuelConnection, createDuel, joinDuel, saveSession, savedSession } from '../lib/duelClient';
+import { fetchRating, joinQueue, leaveQueue, pollTicket } from '../lib/rankedClient';
+import { ModeSwitch, OnlineHero, RankStrip } from '../components/club/OnlineHub';
 import { titleCase } from '../lib/titleCase';
 import entry from '../components/club/ClubEntry.module.css';
 import styles from './Club.module.css';
@@ -224,7 +227,7 @@ function Card({ card, scale, onClick, selected, children, dim, highlight }) {
 
 // The season as a calendar strip: one cell per league week with its rival, then
 // playoffs and the window. This week is filled; a won week turns green, a lost one fades.
-function Road({ state }) {
+function Road({ state, off }) {
   const cells = state.fixtures.map((week, index) => {
     const id = week.find(pair => pair.includes('you')).find(item => item !== 'you');
     const club = clubById(state, id);
@@ -237,7 +240,7 @@ function Road({ state }) {
   cells.push({ key: 'po', when: 'Playoffs', short: 'PO', name: 'Top 4', status: state.phase === 'playoffs' ? 'now' : undefined });
   cells.push({ key: 'win', when: 'Window', short: 'TW', name: 'Transfers' });
   return (
-    <ol className={styles.road} aria-label="Season calendar">
+    <ol className={styles.road} aria-label="Season calendar" data-off={off || undefined} inert={off}>
       {cells.map(cell => (
         <li key={cell.key} data-status={cell.status} aria-label={cell.aria ? `${cell.when}, ${cell.name}, ${cell.aria}` : undefined} aria-current={cell.status === 'now' ? 'step' : undefined}>
           <span className={styles.when}><span className={styles.long}>{cell.when}</span><span className={styles.short} aria-hidden="true">{cell.short}</span></span>
@@ -407,20 +410,22 @@ function ClubMenu({ onAbandon, onSettings, onPrimer, onRename, onCrest }) {
 
 // The pack counter: one pack and the club's total pack value, then its skill tapes.
 // The tier split lives in the vault; tapping the counter goes there.
-function PackCounter({ state, onOpen, bump, flyTarget, value: shown }) {
+function PackCounter({ state, onOpen, bump, flyTarget, value: shown, showTapes = true }) {
   const value = shown ?? packValue(state);
   const tapes = tapeCount(state);
-  const label = `${value} pack value, ${tapes} training ${tapes === 1 ? 'tape' : 'tapes'}`;
+  const label = showTapes ? `${value} pack value, ${tapes} training ${tapes === 1 ? 'tape' : 'tapes'}` : `${value} pack value`;
   const inner = (
     <>
       <span className={styles.counterPart}>
         <img src={assetPath('/assets/pack3d/pack-icon.webp')} alt="" aria-hidden="true" draggable={false} />
         <b>{value}</b>
       </span>
-      <span className={styles.counterPart} data-dim={tapes === 0 || undefined}>
-        <TapeCard scale={0.05} />
-        <b>{tapes}</b>
-      </span>
+      {showTapes && (
+        <span className={styles.counterPart} data-dim={tapes === 0 || undefined}>
+          <TapeCard scale={0.05} />
+          <b>{tapes}</b>
+        </span>
+      )}
     </>
   );
   return onOpen
@@ -490,7 +495,7 @@ function BenchOpen({ scale, onClick }) {
     : <span className={styles.benchOpen} style={style}>{body}</span>;
 }
 
-function Home({ state, go, onAbandon, onSettings, onPrimer, size }) {
+function Home({ state, go, onAbandon, onSettings, onPrimer, size, mode = 'season', onMode, online }) {
   const squad = squadCards(state, allCards);
   const match = nextMatch(state);
   const opponent = clubById(state, match.id);
@@ -512,11 +517,15 @@ function Home({ state, go, onAbandon, onSettings, onPrimer, size }) {
   return (
     <div className={styles.stage}>
       <Hud title={state.name} tags={[[tierName(state.tier), true], [`Year ${state.year}`], ...(started ? [[`${ordinal(pos)} in table`]] : [])]} mark={<OwnMark state={state} size={50} />}>
-        <PackCounter state={state} onOpen={() => go('vault')} />
+        {onMode && <ModeSwitch mode={mode} onMode={onMode} />}
+        <PackCounter state={state} showTapes={false} onOpen={() => go('vault')} />
         <ClubMenu onAbandon={onAbandon} onSettings={onSettings} onPrimer={onPrimer} onRename={() => go('rename')} onCrest={() => go('crest')} />
       </Hud>
       <Ground className={styles.home} style={{ '--hero-w': `${size.heroWidth}px` }}>
-        <Road state={state} />
+        {/* Both faces stay laid out in the same slots, the inactive one invisible,
+            so each slot keeps one size and switching modes moves nothing. */}
+        <Road state={state} off={mode === 'online'} />
+        {online && <RankStrip rating={online.rating} delta={online.delta} off={mode !== 'online'} />}
         <section className={styles.homeSquad} aria-label="Your squad">
           <span className={styles.groupLabel}>Starting five</span>
           <div className={styles.homeRow}>
@@ -534,9 +543,27 @@ function Home({ state, go, onAbandon, onSettings, onPrimer, size }) {
           {tile('league', 'League', started ? <><b>{ordinal(pos)}</b><small>of 6</small></> : <b>–</b>)}
         </nav>
         <aside className={styles.hero}>
-          <Scout state={state} cards={allCards} cardScale={size.heroCard}>
-            <button type="button" className={`${styles.primary} ${styles.playBig}`} data-tip="play" autoFocus onClick={() => go('match')} aria-label={`Play ${opponent.name}, best of ${match.bestOf}`}>Play</button>
-          </Scout>
+          <div className={styles.heroStack}>
+            <div data-off={mode === 'online' || undefined} inert={mode === 'online'}>
+              <Scout state={state} cards={allCards} cardScale={size.heroCard}>
+                <button type="button" className={`${styles.primary} ${styles.playBig}`} data-tip="play" autoFocus={mode !== 'online'} onClick={() => go('match')} aria-label={`Play ${opponent.name}, best of ${match.bestOf}`}>Play</button>
+              </Scout>
+            </div>
+            {online && (
+              <div data-off={mode !== 'online' || undefined} inert={mode !== 'online'}>
+                <OnlineHero
+              account={online.account}
+              rating={online.rating}
+              power={Math.round(squad.slice(0, STARTERS).reduce((sum, card) => sum + card.rating, 0) / STARTERS)}
+              queue={online.queue}
+              now={online.now}
+              onFind={online.onFind}
+              onCancel={online.onCancel}
+              onFriendly={() => go('friendly')}
+                />
+              </div>
+            )}
+          </div>
         </aside>
         <LatestMove state={state} cards={allCards} />
       </Ground>
@@ -1702,6 +1729,160 @@ function League({ state, go, onBack, onChallenge, size }) {
   );
 }
 
+// ── friendly: a live duel against a friend, by code ─────────────────────────
+
+function duelErrorText(error) {
+  if (error?.code === 'duel_not_found') return t('No match with that code');
+  if (error?.code === 'duel_full') return t('That match already has two clubs');
+  return t('Couldn’t reach the server');
+}
+
+function Friendly({ state, linkCode, onStart, size }) {
+  const [bestOf, setBestOf] = useState(3);
+  const [code, setCode] = useState(linkCode ?? '');
+  const [room, setRoom] = useState(null);
+  const [snap, setSnap] = useState(null);
+  const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const connRef = useRef(null);
+  const handedRef = useRef(false);
+  const club = { name: state.name, crest: state.crest, tone: state.tone };
+  const squad = squadCards(state, allCards).slice(0, STARTERS);
+
+  function open(session) {
+    saveSession(session);
+    setRoom(session);
+    const conn = new DuelConnection(session);
+    connRef.current = conn;
+    conn.subscribe((next) => {
+      setSnap(next);
+      if (next && next.phase !== 'waiting' && next.phase !== 'done' && !handedRef.current) {
+        handedRef.current = true;
+        onStart(conn, next);
+      }
+    });
+    conn.connect();
+  }
+
+  async function run(request) {
+    setBusy(true);
+    setError(null);
+    try {
+      open(await request());
+    } catch (failure) {
+      setError(duelErrorText(failure));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // A refresh takes the seat back; so does a match still running.
+  useEffect(() => {
+    const saved = savedSession();
+    if (saved) {
+      joinDuel(saved.code, { club, squad, sessionToken: saved.sessionToken })
+        .then(session => (session.reconnected ? open(session) : saveSession(null)))
+        .catch(() => saveSession(null));
+    }
+    return () => { if (!handedRef.current) connRef.current?.close(); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function cancel() {
+    connRef.current?.close();
+    connRef.current = null;
+    saveSession(null);
+    setRoom(null);
+    setSnap(null);
+  }
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(`${location.origin}/club?duel=${room.code}`);
+      setCopied(true);
+    } catch { /* the code is on screen to read out instead */ }
+  }
+
+  const typed = code.toUpperCase().replace(/[^A-Z2-9]/g, '').slice(0, 6);
+  const them = snap?.them;
+  return (
+    <Ground className={styles.managementGround}>
+      <aside className={styles.managementInspector} aria-label={t('Friendly')}>
+        <div className={styles.managementDetails}>
+          <span className={styles.inspectorTag}>{room ? t('Match code') : t('Friendly')}</span>
+          {room
+            ? <b className={styles.duelCode}>{room.code}</b>
+            : <h2 className={styles.inspectorName}>{state.name}</h2>}
+          <div className={styles.ledger}>
+            <LedgerRow label={t('Series')}>
+              {room
+                ? `Bo${room.bestOf}`
+                : (
+                  <span className={styles.duelBestOf}>
+                    {[3, 5].map(value => (
+                      <button key={value} type="button" className={styles.small} data-on={bestOf === value || undefined} aria-pressed={bestOf === value} onClick={() => setBestOf(value)}>
+                        Bo{value}
+                      </button>
+                    ))}
+                  </span>
+                )}
+            </LedgerRow>
+            <LedgerRow label={t('Roster power')}>{`${Math.round(squad.reduce((sum, card) => sum + card.rating, 0) / squad.length)} OVR`}</LedgerRow>
+          </div>
+        </div>
+        <div className={styles.managementActions}>
+          {room
+            ? <button type="button" className={styles.primary} onClick={copyLink}>{copied ? t('Link copied') : t('Copy link')}</button>
+            : <button type="button" className={styles.primary} disabled={busy} onClick={() => run(() => createDuel({ club, squad, bestOf }))}>{t('Create code')}</button>}
+        </div>
+      </aside>
+      <div className={styles.managementMain}>
+        {room ? (
+          <section className={styles.duelRoom} aria-live="polite">
+            <h2 className={styles.eafcRowHead}>{t('Clubs')}</h2>
+            <div className={styles.duelVs}>
+              <div className={styles.duelSide}>
+                <OwnMark state={state} size={size?.phone ? 56 : 88} />
+                <b>{state.name}</b>
+              </div>
+              <div className={styles.duelSide} data-empty={!them || undefined}>
+                {them
+                  ? <ClubLogo name={them.name} style={them.crest} tone={them.tone} size={size?.phone ? 56 : 88} />
+                  : <span className={styles.duelSlot} aria-hidden="true" />}
+                <b>{them ? them.name : t('Waiting')}</b>
+              </div>
+            </div>
+            <button type="button" className={styles.small} onClick={cancel}>{t('Cancel')}</button>
+          </section>
+        ) : (
+          <form
+            className={styles.duelJoin}
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (typed.length === 6) run(() => joinDuel(typed, { club, squad }));
+            }}
+          >
+            <h2 className={styles.eafcRowHead}>{t('Join a friend')}</h2>
+            <input
+              className={styles.duelInput}
+              value={typed}
+              onChange={event => setCode(event.target.value)}
+              placeholder="ABC123"
+              aria-label={t('Match code')}
+              autoCapitalize="characters"
+              autoComplete="off"
+              spellCheck={false}
+              maxLength={6}
+            />
+            {typed.length === 6 && <button type="submit" className={styles.small} disabled={busy}>{t('Join')}</button>}
+          </form>
+        )}
+        {error && <p className={styles.duelError} role="alert">{error}</p>}
+      </div>
+    </Ground>
+  );
+}
+
 // ── year review ─────────────────────────────────────────────────────────────
 
 const PLAYOFF_LABEL = { 1: 'Champion', 2: 'Final', 3: 'Semi-final' };
@@ -2124,6 +2305,21 @@ export default function Club() {
   const [trainingItem, setTrainingItem] = useState(null);
   const [exhibition, setExhibition] = useState(null);
   const [exhibitionResult, setExhibitionResult] = useState(null);
+  // A live duel (friendly or ranked): the open connection and the snapshot it started from.
+  const [duel, setDuel] = useState(null);
+  // The hub's face, Season or Online, remembered per device.
+  const [mode, setModeState] = useState(() => {
+    try { return localStorage.getItem('vfl.club.mode') === 'online' ? 'online' : 'season'; } catch { return 'season'; }
+  });
+  const setMode = (next) => {
+    setModeState(next);
+    try { localStorage.setItem('vfl.club.mode', next); } catch { /* private mode: not remembered */ }
+  };
+  const [rating, setRating] = useState(null);
+  const [ratingDelta, setRatingDelta] = useState(0);
+  // The ranked queue: the ticket and when it was taken, or null.
+  const [queue, setQueue] = useState(null);
+  const [queueNow, setQueueNow] = useState(() => Date.now());
   // With a chip pick waiting, the Inventory menu opens on the pick; its tab flips to the rest.
   const [chipView, setChipView] = useState('pick');
   // The menus' own tabs: a fresh visit, nothing carried over from the last one.
@@ -2140,9 +2336,68 @@ export default function Club() {
   // Optional Discord account: the device save stays the source of truth and the
   // account gets a copy. A club is only valid if every player in it still exists.
   const sync = useClubSync({ state, setState, isValid: isCloudClub });
+
+  // ── online: rating, the ranked queue, and handing a found match to the board ──
+  useEffect(() => {
+    if (mode !== 'online' || screen !== 'home') return undefined;
+    let cancelled = false;
+    fetchRating().then((next) => { if (!cancelled) setRating(next); });
+    return () => { cancelled = true; };
+  }, [mode, screen, sync.account.status]);
+
+  // A seat's connection goes to the board once the series is under way.
+  function openDuel(session) {
+    saveSession(session);
+    const conn = new DuelConnection(session);
+    let handed = false;
+    conn.subscribe((snap) => {
+      if (handed || !snap || snap.phase === 'waiting') return;
+      handed = true;
+      setDuel({ conn, start: snap });
+      setScreen('duel');
+    });
+    conn.connect();
+  }
+  const openDuelRef = useRef(openDuel);
+  useEffect(() => { openDuelRef.current = openDuel; });
+
+  useEffect(() => {
+    if (!queue) return undefined;
+    let stopped = false;
+    const tick = setInterval(() => setQueueNow(Date.now()), 500);
+    const poll = setInterval(() => {
+      pollTicket(queue.id).then((result) => {
+        if (stopped || result.status !== 'matched') return;
+        stopped = true;
+        setQueue(null);
+        openDuelRef.current(result);
+      }).catch(() => {
+        if (stopped) return;
+        stopped = true;
+        setQueue(null);
+        setNotice(t('Couldn’t reach the server'));
+      });
+    }, 1500);
+    return () => { stopped = true; clearInterval(tick); clearInterval(poll); };
+  }, [queue]);
+
+  function findMatch() {
+    setNotice('');
+    const squad = squadCards(state, allCards).slice(0, STARTERS);
+    joinQueue({ club: { name: state.name, crest: state.crest, tone: state.tone }, squad })
+      .then(id => setQueue({ id, since: Date.now() }))
+      .catch(error => setNotice(error.code === 'signed_out' ? t('Sign in with Discord') : t('Couldn’t reach the server')));
+  }
+
+  function cancelQueue() {
+    if (queue) leaveQueue(queue.id);
+    setQueue(null);
+  }
   // Then drop ?signin= so a reload doesn't repeat it.
   const [params, setParams] = useSearchParams();
   const signinResult = params.get('signin');
+  // A friend's invite link: /club?duel=CODE opens the Friendly screen.
+  const [linkCode] = useState(() => params.get('duel'));
   useEffect(() => {
     if (signinResult) setParams({}, { replace: true });
   }, [signinResult, setParams]);
@@ -2294,7 +2549,14 @@ export default function Club() {
         account={sync.account}
         map={map}
         due={due}
-        onContinue={() => show(screenFor(state))}
+        onContinue={() => {
+          const next = screenFor(state);
+          // An invite link, or a match this tab is still in, goes straight back online.
+          if ((linkCode || savedSession()) && next === 'home') {
+            setMode('online');
+            show('friendly');
+          } else show(next);
+        }}
         onFound={found}
         onPrimer={() => openPrimer('landing')}
         onSettings={() => openSettings('landing')}
@@ -2389,6 +2651,56 @@ export default function Club() {
       />
     );
   }
+  if (screen === 'duel' && duel) {
+    const yours = squadCards(state, allCards).slice(0, STARTERS);
+    const { conn, start } = duel;
+    const them = start.them;
+    const stage = start.ranked ? (them.cpu ? t('CPU match') : t('Ranked')) : t('Friendly');
+    const theirName = them.cpu ? t('{name} (CPU)', { name: them.name }) : them.name;
+    const endDuel = () => { conn.close(); saveSession(null); setDuel(null); };
+    return (
+      <BoardSeries
+        key={`duel:${start.code}`}
+        squad={yours}
+        opponent={them.roster}
+        intro={{
+          you: { club: { name: state.name, mark: { style: state.crest, tone: state.tone } }, cards: yours },
+          them: { club: { name: theirName, mark: { style: them.crest, tone: them.tone } }, cards: them.roster },
+          stage,
+        }}
+        opponentName={theirName}
+        bestOf={start.bestOf}
+        seed={start.seed}
+        hand={state.hand}
+        online={conn}
+        startScore={start.score}
+        onDone={(outcome) => {
+          // Ranked: the server has written the rating; First Win of the Day pays a pack.
+          const rated = conn.snapshot?.rating;
+          if (rated) {
+            setRatingDelta(rated.delta);
+            if (rated.firstWin) {
+              setState(current => grantPacks(current, { silver: 1 }));
+              setNotice(t('First win of the day: +1 pack'));
+            }
+          }
+          endDuel();
+          setExhibitionResult({
+            opponent: { id: 'online', name: theirName, style: them.crest, tone: them.tone },
+            won: outcome.won,
+            rounds: outcome.results,
+            stage,
+            back: 'home',
+          });
+          show('exhibitionResult');
+        }}
+        onLeave={() => { conn.forfeit(); endDuel(); show('home'); }}
+        fixed="full"
+        three
+        settings={<MusicControls />}
+      />
+    );
+  }
   if (screen === 'exhibitionResult' && exhibitionResult) {
     const syntheticClub = {
       id: exhibitionResult.opponent.id,
@@ -2404,7 +2716,7 @@ export default function Club() {
         opponent: syntheticClub.id,
         won: exhibitionResult.won,
         rounds: exhibitionResult.rounds,
-        stage: t('Exhibition'),
+        stage: exhibitionResult.stage ?? t('Exhibition'),
         packs: 0,
         tapes: [],
         growth: [],
@@ -2417,8 +2729,8 @@ export default function Club() {
         state={syntheticState}
         size={size}
         onContinue={() => {
+          show(exhibitionResult.back ?? 'league');
           setExhibitionResult(null);
-          show('league');
         }}
       />
     );
@@ -2481,6 +2793,13 @@ export default function Club() {
     );
   } else if (screen === 'squad') {
     hubView = withHint(<Squad state={state} go={goTab} size={size} onVault={() => show('vault')} onBack={() => show('home')} onMove={(from, to) => setState(current => moveSquad(current, from, to))} />, 'squad');
+  } else if (screen === 'friendly') {
+    hubView = (
+      <div className={styles.stage}>
+        <ScreenHeader state={state} title={t('Play a friend')} onBack={() => show('home')} />
+        <Friendly state={state} linkCode={linkCode} onStart={(conn, start) => { setDuel({ conn, start }); setScreen('duel'); }} size={size} />
+      </div>
+    );
   } else if (screen === 'league') {
     hubView = withHint(<League state={state} go={goTab} onBack={() => show('home')} onChallenge={startChallenge} size={size} />, 'league');
   } else if (screen === 'window') {
@@ -2493,6 +2812,9 @@ export default function Club() {
         <Home
           state={state}
           size={size}
+          mode={mode}
+          onMode={(next) => { if (next === 'season') cancelQueue(); setMode(next); }}
+          online={{ account: sync.account, rating, delta: ratingDelta, queue, now: queueNow, onFind: findMatch, onCancel: cancelQueue }}
           go={(next) => { setNotice(''); show(next); }}
           onAbandon={fresh}
           onSettings={() => openSettings('home')}

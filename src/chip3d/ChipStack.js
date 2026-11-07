@@ -20,7 +20,7 @@ import {
 } from 'three';
 import { gsap } from 'gsap';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { playUiSound } from '../../shared/src/lib/gameAudio';
+import { playUiSound } from '../lib/uiSound.js';
 import { CHIP_TIERS, chipInfo } from './chipData';
 import { ICON_PATHS } from './chipIcons';
 import { chipStyle } from './chipStyle';

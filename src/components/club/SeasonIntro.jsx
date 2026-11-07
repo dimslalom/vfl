@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import allCards from '../../../shared/src/data/cards.json';
 import PlayerCard from '../../../shared/src/components/PlayerCard';
-import { playUiSound } from '../../../shared/src/lib/gameAudio';
+import { playUiSound } from '../../lib/uiSound.js';
 import { assetPath } from '../../../shared/src/lib/utils';
 import { STARTERS, clubById, squadCards } from '../../engine/club/season';
 import { TIER_META } from '../../engine/endless/ladder';
