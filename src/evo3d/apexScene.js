@@ -209,11 +209,13 @@ export async function mountApex(canvas, card, { level = 2, theme, still = false,
     const map = keep(new THREE.Texture(art.portrait));
     map.colorSpace = THREE.SRGBColorSpace;
     map.needsUpdate = true;
-    const portrait = add(keep(new THREE.PlaneGeometry(4, 4.12)), keep(new THREE.MeshBasicMaterial({ map, transparent: true, alphaTest: 0.04 })), BASE + 0.2 * depth);
+    const portrait = add(keep(new THREE.PlaneGeometry(4, 4.12)), keep(new THREE.MeshBasicMaterial({ map, transparent: true, alphaTest: 0.04, depthWrite: false })), BASE + 0.2 * depth);
     portrait.position.y = Y(206);
+    portrait.renderOrder = 1;
   }
   add(ext(floorPts(evoTheme, level), 0.26 * depth), [keep(new THREE.MeshBasicMaterial({ map: keep(texture(art.floor, true)) })), goldSide], BASE);
-  add(keep(new THREE.PlaneGeometry(4, 5.8)), keep(new THREE.MeshBasicMaterial({ map: keep(texture(art.top)), transparent: true })), BASE + 0.3 * depth);
+  const topMesh = add(keep(new THREE.PlaneGeometry(4, 5.8)), keep(new THREE.MeshBasicMaterial({ map: keep(texture(art.top)), transparent: true, depthWrite: false })), BASE + 0.3 * depth);
+  topMesh.renderOrder = 2;
 
   // Light running round the border, drawn per frame onto a plane on the bezel.
   const PAD = 24;
@@ -222,7 +224,8 @@ export async function mountApex(canvas, card, { level = 2, theme, still = false,
   const trackPath = new Path2D(`M${track.map(p => p.join(',')).join(' L')} Z`);
   const perimeter = track.reduce((sum, p, i) => { const q = track[(i + 1) % track.length]; return sum + Math.hypot(q[0] - p[0], q[1] - p[1]); }, 0);
   const borderMap = keep(texture(borderCanvas));
-  add(keep(new THREE.PlaneGeometry((400 + PAD * 2) / U, (580 + PAD * 2) / U)), keep(new THREE.MeshBasicMaterial({ map: borderMap, transparent: true, depthWrite: false })), level === 2 ? BASE + 0.38 + 0.03 : BASE + 0.24);
+  const borderMesh = add(keep(new THREE.PlaneGeometry((400 + PAD * 2) / U, (580 + PAD * 2) / U)), keep(new THREE.MeshBasicMaterial({ map: borderMap, transparent: true, depthWrite: false })), level === 2 ? BASE + 0.38 + 0.03 : BASE + 0.24);
+  borderMesh.renderOrder = 3;
   const drawBorder = seconds => {
     bx.clearRect(-PAD, -PAD, 400 + PAD * 2, 580 + PAD * 2);
     bx.lineJoin = 'round';

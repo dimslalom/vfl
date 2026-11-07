@@ -7,7 +7,7 @@ import {
   GOLD_PITY, GOLD_RATING, PACK_VALUE, grantPacks, packValue, payPacks, settlePacks, squadMax,
 } from '../src/engine/club/economy.js';
 import {
-  canRename, choosePick, cleanName, renameClub, chooseChip, openBlocker, openPack, rerollChips, setTacticEquipped, useTape,
+  canRename, choosePick, cleanName, renameClub, chooseChip, openBlocker, openPack, rerollChips, setTacticEquipped, swapTactic, useTape,
 } from '../src/engine/club/rewards.js';
 import {
   STARTERS, WEEKS, draftPack, finishSeries, newClub, nextMatch, rollChipOffer, rollSeasonEvo, trainingOffer, clubCard, squadCards,
@@ -349,4 +349,13 @@ test('the founding name is free; a new name later costs 3 in pack value', () => 
   const rich = grantPacks(state, { gold: 1 });
   assert.equal(packValue(renameClub(rich, 'Gold Rush')), packValue(rich) - 3);
   assert.equal(cleanName('x'.repeat(40)).length, 18);
+});
+
+test('swapping a reserve tactic into the loadout keeps the slot and sends the old chip to the reserve', () => {
+  const state = { hand: [{ uid: 'a', key: 'pocket' }, { uid: 'b', key: 'hit' }], tacticReserve: [{ uid: 'c', key: 'layers' }] };
+  const next = swapTactic(state, 'a', 'c');
+  assert.deepEqual(next.hand.map(chip => chip.uid), ['c', 'b']);
+  assert.deepEqual(next.tacticReserve.map(chip => chip.uid), ['a']);
+  assert.equal(swapTactic(state, 'missing', 'c'), state);
+  assert.equal(swapTactic(state, 'a', 'missing'), state);
 });

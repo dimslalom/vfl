@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { laneScore, resolveBoard } from '../src/engine/board/board.js';
+import {
+  EVO_TUNING, bestPlacement, crowdsCrown, isLegalPlacement, isLegalRotation, laneScore, nextLane, resolveBoard, sideScores,
+} from '../src/engine/board/board.js';
 
 const mockCard = (id, rating, role, org = 'org_a', nationality = 'US', learned = []) => ({
   id,
@@ -102,250 +104,154 @@ test('Overdrive skill boosts other lanes by +0.2x multiplier when its lane is wo
   assert.ok(!board.lanes[0].mine.steps.some(s => s.key === 'overdrive'));
 });
 
-test('Ironclad skill grants +3 armor and makes lane immune to No Respect and Lockout', () => {
+// A card with its own org and nation, so no Team or Nation pair sneaks into a lane.
+let soloCount = 0;
+const solo = (id, rating, role, learned = [], stats = null) => {
+  soloCount += 1;
+  return { ...mockCard(id, rating, role, `org_${id}_${soloCount}`, `N${soloCount}`, learned), ...(stats ? { stats } : {}) };
+};
+const aimMaps = () => [mockMap('aim'), mockMap('aim'), mockMap('aim')];
+
+test('Ironclad adds +4 and no chip works on its lane, either side', () => {
   const map = mockMap();
-  const ironCard = mockCard('ic', 80, 'Initiator', 'org_a', 'US', ['ironclad']);
+  const iron = solo('ic', 80, 'Initiator', ['ironclad']);
 
-  // Normal score gains +3 Ironclad armor
-  const normalScore = laneScore([ironCard], map);
-  assert.ok(normalScore.steps.some(s => s.key === 'ironclad' && s.value === 3));
-
-  // Immune to No Respect: disrespect step is ignored
-  const disScore = laneScore([ironCard], map, null, { disrespect: 'zero' });
-  assert.ok(!disScore.steps.some(s => s.key === 'disrespect'));
-  assert.equal(disScore.total, 80 + 3);
-
-  // Immune to Lockout: cancelled step is ignored
-  const cancelScore = laneScore([ironCard], map, { key: 'hit' }, { cancelled: true });
-  assert.ok(!cancelScore.steps.some(s => s.key === 'cancelled'));
+  assert.ok(laneScore([iron], map).steps.some(s => s.key === 'ironclad' && s.value === EVO_TUNING.ironclad));
+  // The enemy's No Respect does nothing here...
+  const dis = laneScore([iron], map, null, { disrespect: 'zero' });
+  assert.ok(!dis.steps.some(s => s.key === 'disrespect'));
+  // ...and neither does your own chip or a chain into the lane.
+  const own = laneScore([iron], map, { key: 'hit' }, { chain: 2 });
+  assert.ok(own.steps.some(s => s.key === 'cancelled' && s.label === 'Ironclad'));
+  assert.ok(!own.steps.some(s => s.key === 'tactic' || s.key === 'chain'));
+  assert.equal(own.total, 80 + EVO_TUNING.ironclad);
 });
 
-test('Lurk skill grants +4 duel power when opposing lane has only 1 card', () => {
+test('Lurk gains +6 facing exactly one enemy and cannot move at the rotate', () => {
   const map = mockMap();
-  const lurkCard = mockCard('lrk', 80, 'Controller', 'org_a', 'US', ['lurk']);
+  const lurker = solo('lrk', 80, 'Controller', ['lurk']);
+  assert.ok(laneScore([lurker], map, null, { enemyCount: 1 }).steps.some(s => s.key === 'lurk' && s.value === EVO_TUNING.lurk));
+  assert.ok(!laneScore([lurker], map, null, { enemyCount: 2 }).steps.some(s => s.key === 'lurk'));
 
-  // Facing 1 enemy: triggers Lurk (+4)
-  const vs1Score = laneScore([lurkCard], map, null, { enemyCount: 1 });
-  assert.ok(vs1Score.steps.some(s => s.key === 'lurk' && s.value === 4));
-
-  // Facing 2 enemies: does not trigger
-  const vs2Score = laneScore([lurkCard], map, null, { enemyCount: 2 });
-  assert.ok(!vs2Score.steps.some(s => s.key === 'lurk'));
+  const roster = [lurker, solo('a', 70, 'Duelist'), solo('b', 70, 'Sentinel'), solo('c', 70, 'Initiator'), solo('d', 70, 'Duelist')];
+  const locked = [0, 0, 1, 1, 2];
+  assert.equal(isLegalRotation(locked, [1, 0, 1, 1, 2], roster), false);
+  assert.equal(isLegalRotation(locked, [0, 1, 1, 1, 2], roster), true);
 });
 
-test('Velocity skill automatically rotates to flip a losing lane during resolve', () => {
-  const maps = [mockMap('aim'), mockMap('aim'), mockMap('aim')];
-  // Lane 0: You has 90 rating, enemy has 50 (You win Lane 0 easily)
-  // Lane 1: You has Velocity (80 rating) + filler (50 rating) = 130, enemy has 50 (Lane 1 is crushing win)
-  // Lane 2: You has filler (50 rating), enemy has 70 rating (You are losing Lane 2 by 20 points!)
-  // Velocity can move from Lane 1 to Lane 2:
-  // - Lane 1 remaining: 50 vs 50 (ties/holds)
-  // - Lane 2 with Velocity: 50 + 80 - 4 fatigue = 126 vs 70 -> FLIPS TO WIN!
+test('Velocity dashes to a lane lost by 4 or less and arrives at 40%, for either side', () => {
   const youRoster = [
-    mockCard('y0', 90, 'Duelist', 'org_a', 'US', []),
-    mockCard('vel', 80, 'Initiator', 'org_a', 'US', ['velocity']),
-    mockCard('y2', 60, 'Controller', 'org_a', 'US', []),
-    mockCard('y3', 50, 'Sentinel', 'org_a', 'US', []),
-    mockCard('y4', 50, 'Duelist', 'org_a', 'US', []),
+    solo('y0', 90, 'Duelist'),
+    solo('vel', 80, 'Initiator', ['velocity']),
+    solo('y2', 60, 'Controller'),
+    solo('y3', 60, 'Sentinel'),
+    solo('y4', 60, 'Controller'),
   ];
-  const themRoster = [
-    mockCard('t0', 50, 'Duelist', 'org_b', 'KR', []),
-    mockCard('t1', 50, 'Initiator', 'org_b', 'KR', []),
-    mockCard('t2', 70, 'Controller', 'org_b', 'KR', []),
-    mockCard('t3', 50, 'Sentinel', 'org_b', 'KR', []),
-    mockCard('t4', 50, 'Duelist', 'org_b', 'KR', []),
-  ];
+  const themRoster = [solo('t0', 50, 'Sentinel'), solo('t1', 50, 'Sentinel'), solo('t2', 62, 'Sentinel'), solo('t3', 61, 'Sentinel'), solo('t4', 40, 'Sentinel')];
+  const slots = { you: [0, 1, 1, 2, 2], them: [0, 1, 2, 2, 0] };
 
-  const youSlots = [0, 1, 1, 2, 2];
-  const themSlots = [0, 1, 2, 2, 2];
-
-  const board = resolveBoard({
-    maps,
-    you: { roster: youRoster, slots: youSlots },
-    them: { roster: themRoster, slots: themSlots },
-  });
-
-  // Verify velocityMoves recorded the shift
-  assert.ok(board.velocityMoves.length > 0);
-  assert.equal(board.velocityMoves[0].fromLane, 1);
-  assert.equal(board.velocityMoves[0].toLane, 2);
-  // Lane 2 was flipped to 'you' win with fatigue step!
+  const board = resolveBoard({ maps: aimMaps(), you: { roster: youRoster, slots: slots.you }, them: { roster: themRoster, slots: slots.them } });
+  const spent = Math.ceil(80 * (1 - EVO_TUNING.velocityKeep));
+  assert.deepEqual(board.velocityMoves.map(m => [m.side, m.fromLane, m.toLane, m.fatigue]), [['you', 1, 2, spent]]);
   assert.equal(board.lanes[2].winner, 'you');
-  assert.ok(board.lanes[2].mine.steps.some(s => s.key === 'fatigue' && s.value === 4));
+  assert.equal(board.lanes[2].mine.total, 60 + 60 + 80 - spent);
+
+  // The same board from the other chair: the enemy's Velocity works too.
+  const flipped = resolveBoard({ maps: aimMaps(), you: { roster: themRoster, slots: slots.them }, them: { roster: youRoster, slots: slots.you } });
+  assert.deepEqual(flipped.velocityMoves.map(m => [m.side, m.toLane]), [['them', 2]]);
 });
 
-test('Solstice skill blinds adjacent enemy star on win for 20% (up to -10)', () => {
-  const maps = [mockMap('aim'), mockMap('aim'), mockMap('aim')];
-  // Lane 0: You has Solstice (90) vs enemy (50) -> You win Lane 0!
-  // Lane 1: Enemy has a 90 rating star player
-  const youRoster = [
-    mockCard('sol', 90, 'Duelist', 'org_a', 'US', ['combustion']),
-    mockCard('y1', 70, 'Initiator', 'org_a', 'US', []),
-    mockCard('y2', 70, 'Controller', 'org_a', 'US', []),
-    mockCard('y3', 70, 'Sentinel', 'org_a', 'US', []),
-    mockCard('y4', 70, 'Duelist', 'org_a', 'US', []),
-  ];
-  const themRoster = [
-    mockCard('t0', 50, 'Duelist', 'org_b', 'KR', []),
-    mockCard('star', 90, 'Initiator', 'org_b', 'KR', []),
-    mockCard('t2', 60, 'Controller', 'org_b', 'KR', []),
-    mockCard('t3', 60, 'Sentinel', 'org_b', 'KR', []),
-    mockCard('t4', 60, 'Duelist', 'org_b', 'KR', []),
-  ];
+test('Velocity stays put when the losing lane is out of reach', () => {
+  const youRoster = [solo('y0', 90, 'Duelist'), solo('vel', 80, 'Initiator', ['velocity']), solo('y2', 60, 'Controller'), solo('y3', 50, 'Sentinel'), solo('y4', 50, 'Controller')];
+  const themRoster = [solo('t0', 50, 'Sentinel'), solo('t1', 50, 'Sentinel'), solo('t2', 90, 'Sentinel'), solo('t3', 60, 'Sentinel'), solo('t4', 40, 'Sentinel')];
+  const board = resolveBoard({ maps: aimMaps(), you: { roster: youRoster, slots: [0, 1, 1, 2, 2] }, them: { roster: themRoster, slots: [0, 1, 2, 2, 0] } });
+  assert.equal(board.velocityMoves.length, 0);
+});
 
-  const board = resolveBoard({
-    maps,
-    you: { roster: youRoster, slots: [0, 1, 1, 2, 2] },
-    them: { roster: themRoster, slots: [0, 1, 1, 2, 2] },
-  });
+test('Combustion burns 5 fuel on its lane and, on a win, cuts the next lane enemy star', () => {
+  assert.deepEqual([0, 1, 2].map(nextLane), [1, 2, 1]);
+  const youRoster = [solo('sol', 90, 'Duelist', ['combustion']), solo('y1', 70, 'Initiator'), solo('y2', 70, 'Controller'), solo('y3', 70, 'Sentinel'), solo('y4', 70, 'Duelist')];
+  const themRoster = [solo('t0', 50, 'Sentinel'), solo('star', 90, 'Sentinel'), solo('t2', 60, 'Sentinel'), solo('t3', 60, 'Sentinel'), solo('t4', 60, 'Sentinel')];
+  const board = resolveBoard({ maps: aimMaps(), you: { roster: youRoster, slots: [0, 1, 1, 2, 2] }, them: { roster: themRoster, slots: [0, 1, 1, 2, 2] } });
 
-  assert.equal(board.lanes[0].winner, 'you');
-  // Adjacent Lane 1 has Solar Eclipse deduction (-10 max on 90 rating star)
+  assert.ok(board.lanes[0].mine.steps.some(s => s.key === 'combustion_fuel' && s.value === EVO_TUNING.combustionFuel));
+  assert.equal(board.lanes[0].mine.total, 90 - EVO_TUNING.combustionFuel);
   assert.ok(board.lanes[1].theirs.steps.some(s => s.key === 'combustion' && s.value === 10));
+  assert.ok(board.effects.some(e => e.key === 'combustion' && e.toLane === 1 && e.card.id === 'star'));
 });
 
-test('Phase skill siphons +4 when facing enemy with active synergy', () => {
-  const map = mockMap();
-  const phaseCard = mockCard('phs', 80, 'Duelist', 'org_a', 'US', ['phase']);
+test('Phase voids the best enemy facing it and scores half itself', () => {
+  const youRoster = [solo('phs', 80, 'Duelist', ['phase']), solo('y1', 70, 'Initiator'), solo('y2', 70, 'Controller'), solo('y3', 70, 'Sentinel'), solo('y4', 70, 'Duelist')];
+  const themRoster = [solo('star', 90, 'Sentinel'), solo('t1', 60, 'Sentinel'), solo('t2', 60, 'Sentinel'), solo('t3', 60, 'Sentinel'), solo('t4', 60, 'Sentinel')];
+  const [lane0] = sideScores({ roster: themRoster, slots: [0, 0, 1, 1, 2], maps: aimMaps(), enemyRoster: youRoster, enemySlots: [0, 1, 1, 2, 2], enemyCounts: [1, 2, 2] });
+  assert.ok(lane0.steps.some(s => s.key === 'player' && s.label === 'STAR' && s.value === 0 && s.voided));
+  assert.equal(lane0.total, 60);
 
-  // Enemy has synergy: +4 Phase siphon
-  const synScore = laneScore([phaseCard], map, null, { enemyHasSynergy: true });
-  assert.ok(synScore.steps.some(s => s.key === 'phase' && s.value === 4));
-
-  // Enemy has no synergy: does not trigger
-  const noSynScore = laneScore([phaseCard], map, null, { enemyHasSynergy: false });
-  assert.ok(!noSynScore.steps.some(s => s.key === 'phase'));
+  const [mine] = sideScores({ roster: youRoster, slots: [0, 1, 1, 2, 2], maps: aimMaps(), enemyRoster: themRoster, enemySlots: [0, 0, 1, 1, 2], enemyCounts: [2, 2, 1] });
+  assert.equal(mine.total, Math.round(80 * EVO_TUNING.phaseKeep));
 });
 
-test('Timewarp skill grants +6 Temporal Surge to an allied lane trailing by <= 6', () => {
-  const maps = [mockMap('aim'), mockMap('aim'), mockMap('aim')];
-  // Lane 0: You has Timewarp (80) vs enemy (50) -> You win Lane 0
-  // Lane 1: You has 70 vs enemy 74 -> You are losing by 4 (<= 6)!
-  const youRoster = [
-    mockCard('trp', 80, 'Initiator', 'org_a', 'US', ['timewarp']),
-    mockCard('y1', 70, 'Duelist', 'org_a', 'US', []),
-    mockCard('y2', 70, 'Controller', 'org_a', 'US', []),
-    mockCard('y3', 70, 'Sentinel', 'org_a', 'US', []),
-    mockCard('y4', 70, 'Duelist', 'org_a', 'US', []),
-  ];
-  const themRoster = [
-    mockCard('t0', 50, 'Duelist', 'org_b', 'KR', []),
-    mockCard('t1', 74, 'Initiator', 'org_b', 'KR', []),
-    mockCard('t2', 70, 'Controller', 'org_b', 'KR', []),
-    mockCard('t3', 70, 'Sentinel', 'org_b', 'KR', []),
-    mockCard('t4', 70, 'Duelist', 'org_b', 'KR', []),
-  ];
+test('Timewarp does nothing inside a board: it works on the series', () => {
+  const youRoster = [solo('trp', 80, 'Initiator', ['timewarp']), solo('y1', 70, 'Duelist'), solo('y2', 70, 'Controller'), solo('y3', 70, 'Sentinel'), solo('y4', 70, 'Duelist')];
+  const themRoster = [solo('t0', 50, 'Sentinel'), solo('t1', 74, 'Sentinel'), solo('t2', 70, 'Sentinel'), solo('t3', 70, 'Sentinel'), solo('t4', 70, 'Sentinel')];
+  const board = resolveBoard({ maps: aimMaps(), you: { roster: youRoster, slots: [0, 1, 1, 2, 2] }, them: { roster: themRoster, slots: [0, 1, 1, 2, 2] } });
+  assert.ok(board.lanes.every(lane => !lane.mine.steps.some(s => s.key === 'timewarp')));
+});
 
-  const board = resolveBoard({
-    maps,
-    you: { roster: youRoster, slots: [0, 1, 1, 2, 2] },
-    them: { roster: themRoster, slots: [0, 1, 1, 2, 2] },
-  });
+test('Surge strikes the next lane: -8 per enemy card there, -2 per own card', () => {
+  const youRoster = [solo('srg', 80, 'Duelist', ['surge']), solo('partner', 75, 'Initiator'), solo('y2', 70, 'Controller'), solo('y3', 70, 'Sentinel'), solo('y4', 70, 'Duelist')];
+  const themRoster = [solo('t0', 70, 'Sentinel'), solo('t1', 70, 'Sentinel'), solo('t2', 70, 'Sentinel'), solo('t3', 70, 'Sentinel'), solo('t4', 70, 'Sentinel')];
+  const board = resolveBoard({ maps: aimMaps(), you: { roster: youRoster, slots: [0, 0, 1, 2, 2] }, them: { roster: themRoster, slots: [0, 1, 1, 2, 2] } });
+  assert.ok(board.lanes[1].theirs.steps.some(s => s.key === 'surge' && s.value === EVO_TUNING.surgeEnemy * 2));
+  assert.ok(board.lanes[1].mine.steps.some(s => s.key === 'surge' && s.value === EVO_TUNING.surgeAlly));
+});
 
-  // Lane 1 received +6 Temporal Surge and flipped to a win (76 vs 74)!
-  assert.ok(board.lanes[1].mine.steps.some(s => s.key === 'timewarp' && s.value === 6));
+test('Ascendance: a lost lane sends her to the closest losing lane at 75%', () => {
+  const youRoster = [solo('valk', 70, 'Duelist', ['ascendance']), solo('y1', 60, 'Initiator'), solo('y2', 60, 'Controller'), solo('y3', 60, 'Sentinel'), solo('y4', 40, 'Duelist')];
+  const themRoster = [solo('t0', 95, 'Sentinel'), solo('t1', 65, 'Sentinel'), solo('t2', 60, 'Sentinel'), solo('t3', 50, 'Sentinel'), solo('t4', 30, 'Sentinel')];
+  const board = resolveBoard({ maps: aimMaps(), you: { roster: youRoster, slots: [0, 1, 1, 2, 2] }, them: { roster: themRoster, slots: [0, 1, 1, 2, 0] } });
+  assert.equal(board.lanes[0].mine.total, 0);
+  assert.equal(board.lanes[1].mine.total, 120 + Math.round(70 * EVO_TUNING.ascendanceKeep));
   assert.equal(board.lanes[1].winner, 'you');
 });
 
-test('Surge skill shocks adjacent enemy lane for -4 when paired with an ally', () => {
-  const maps = [mockMap('aim'), mockMap('aim'), mockMap('aim')];
-  const youRoster = [
-    mockCard('srg', 80, 'Duelist', 'org_a', 'US', ['surge']),
-    mockCard('partner', 75, 'Initiator', 'org_a', 'US', []),
-    mockCard('y2', 70, 'Controller', 'org_a', 'US', []),
-    mockCard('y3', 70, 'Sentinel', 'org_a', 'US', []),
-    mockCard('y4', 70, 'Duelist', 'org_a', 'US', []),
-  ];
-  const themRoster = [
-    mockCard('t0', 70, 'Duelist', 'org_b', 'KR', []),
-    mockCard('t1', 70, 'Initiator', 'org_b', 'KR', []),
-    mockCard('t2', 70, 'Controller', 'org_b', 'KR', []),
-    mockCard('t3', 70, 'Sentinel', 'org_b', 'KR', []),
-    mockCard('t4', 70, 'Duelist', 'org_b', 'KR', []),
-  ];
+test('Dominion plays alone on her best stat, and her lane counts double', () => {
+  const sov = solo('dmn', 85, 'Sentinel', ['dominion'], { aim: 70, positioning: 95, ability: 70, mentality: 70, synergy: 70 });
+  const roster = [sov, solo('y1', 70, 'Initiator'), solo('y2', 70, 'Controller'), solo('y3', 70, 'Duelist'), solo('y4', 70, 'Duelist')];
+  assert.equal(crowdsCrown([0, 0, 1, 1, 2], roster), true);
+  assert.equal(isLegalPlacement([0, 0, 1, 1, 2], roster), false);
+  assert.equal(isLegalPlacement([0, 1, 1, 2, 2], roster), true);
+  const placed = bestPlacement({ roster, maps: aimMaps() });
+  assert.equal(placed.slots.filter(slot => slot === placed.slots[0]).length, 1);
 
-  const board = resolveBoard({
-    maps,
-    you: { roster: youRoster, slots: [0, 0, 1, 2, 2] },
-    them: { roster: themRoster, slots: [0, 1, 1, 2, 2] },
-  });
-
-  // Lane 0 has 2 cards with surge -> shocks adjacent Lane 1 for -4
-  assert.ok(board.lanes[1].theirs.steps.some(s => s.key === 'surge' && s.value === 4));
+  assert.equal(laneScore([sov], mockMap('aim')).total, 95);
+  const themRoster = [solo('t0', 50, 'Sentinel'), solo('t1', 90, 'Sentinel'), solo('t2', 90, 'Sentinel'), solo('t3', 60, 'Sentinel'), solo('t4', 60, 'Sentinel')];
+  const board = resolveBoard({ maps: aimMaps(), you: { roster, slots: [0, 1, 1, 2, 2] }, them: { roster: themRoster, slots: [0, 1, 1, 2, 2] } });
+  assert.equal(board.lanes[0].weight, 2);
+  assert.equal(board.lanes[0].winner, 'you');
+  assert.equal(board.youWon, 2 + (board.lanes[2].winner === 'you' ? 1 : 0));
 });
 
-test('Valkyrie skill grants +8 Divine Blessing to an allied lane trailing by <= 10', () => {
-  const maps = [mockMap('aim'), mockMap('aim'), mockMap('aim')];
-  // Lane 0: You has Valkyrie (93) vs enemy 60 -> You win Lane 0 easily
-  // Lane 1: You has 70 vs enemy 76 -> You are trailing by 6 (<= 10)!
-  const youRoster = [
-    mockCard('valk', 93, 'Duelist', 'org_a', 'US', ['ascendance']),
-    mockCard('y1', 70, 'Initiator', 'org_a', 'US', []),
-    mockCard('y2', 70, 'Controller', 'org_a', 'US', []),
-    mockCard('y3', 70, 'Sentinel', 'org_a', 'US', []),
-    mockCard('y4', 70, 'Duelist', 'org_a', 'US', []),
-  ];
-  const themRoster = [
-    mockCard('t0', 60, 'Duelist', 'org_b', 'KR', []),
-    mockCard('t1', 76, 'Initiator', 'org_b', 'KR', []),
-    mockCard('t2', 70, 'Controller', 'org_b', 'KR', []),
-    mockCard('t3', 70, 'Sentinel', 'org_b', 'KR', []),
-    mockCard('t4', 70, 'Duelist', 'org_b', 'KR', []),
-  ];
-
-  const board = resolveBoard({
-    maps,
-    you: { roster: youRoster, slots: [0, 1, 1, 2, 2] },
-    them: { roster: themRoster, slots: [0, 1, 1, 2, 2] },
-  });
-
-  // Lane 1 receives +8 Divine Blessing and flips to win (78 vs 76)
-  assert.ok(board.lanes[1].mine.steps.some(s => s.key === 'ascendance' && s.value === 8));
-  assert.equal(board.lanes[1].winner, 'you');
+test('Dominion voids the enemy chip on her lane', () => {
+  const roster = [solo('dmn', 85, 'Sentinel', ['dominion']), solo('y1', 70, 'Initiator'), solo('y2', 70, 'Controller'), solo('y3', 70, 'Duelist'), solo('y4', 70, 'Duelist')];
+  const them = [solo('t0', 70, 'Duelist'), solo('t1', 70, 'Initiator'), solo('t2', 70, 'Sentinel'), solo('t3', 70, 'Sentinel'), solo('t4', 70, 'Sentinel')];
+  const scores = sideScores({ roster: them, slots: [0, 0, 1, 1, 2], maps: aimMaps(), tactics: [{ lane: 0, card: { key: 'hit' } }], enemyRoster: roster, enemySlots: [0, 1, 1, 2, 2] });
+  assert.ok(scores[0].steps.some(s => s.key === 'cancelled'));
 });
 
-test('Sovereign skill collects 2 points per active enemy synergy up to +8', () => {
-  const map = mockMap();
-  const dmnCard = mockCard('dmn', 93, 'Sentinel', 'org_a', 'US', ['dominion']);
-
-  // 3 enemy synergies active -> 3 * 2 = +6 Dominion tribute
-  const score3 = laneScore([dmnCard], map, null, { enemyTotalSynergies: 3 });
-  assert.ok(score3.steps.some(s => s.key === 'dominion' && s.value === 6));
-
-  // 6 enemy synergies active -> capped at +8
-  const scoreCapped = laneScore([dmnCard], map, null, { enemyTotalSynergies: 6 });
-  assert.ok(scoreCapped.steps.some(s => s.key === 'dominion' && s.value === 8));
-});
-
-test('Singularity skill pulls enemy star player from another lane into its lane', () => {
-  const maps = [mockMap('aim'), mockMap('aim'), mockMap('aim')];
-  // Lane 0: You has Singularity (92)
-  // Lane 1: Enemy has their highest star player (95 rating)
-  const youRoster = [
-    mockCard('sing', 92, 'Controller', 'org_a', 'US', ['black_hole']),
-    mockCard('y1', 70, 'Initiator', 'org_a', 'US', []),
-    mockCard('y2', 70, 'Controller', 'org_a', 'US', []),
-    mockCard('y3', 70, 'Sentinel', 'org_a', 'US', []),
-    mockCard('y4', 70, 'Duelist', 'org_a', 'US', []),
-  ];
-  const themRoster = [
-    mockCard('t0', 50, 'Duelist', 'org_b', 'KR', []),
-    mockCard('star', 95, 'Initiator', 'org_b', 'KR', []),
-    mockCard('t2', 60, 'Controller', 'org_b', 'KR', []),
-    mockCard('t3', 60, 'Sentinel', 'org_b', 'KR', []),
-    mockCard('t4', 60, 'Duelist', 'org_b', 'KR', []),
-  ];
-
-  const board = resolveBoard({
-    maps,
-    you: { roster: youRoster, slots: [0, 1, 1, 2, 2] },
-    them: { roster: themRoster, slots: [0, 1, 1, 2, 2] },
-  });
-
-  // Verify Singularity displaced enemy star to Lane 0
-  assert.ok(board.displacements.length > 0);
-  assert.equal(board.displacements[0].reason, 'black_hole');
-  assert.equal(board.displacements[0].fromLane, 1);
-  assert.equal(board.displacements[0].toLane, 0);
+test('Black Hole pulls the enemy star in at half its stats', () => {
+  const youRoster = [solo('sing', 92, 'Controller', ['black_hole']), solo('y1', 70, 'Initiator'), solo('y2', 70, 'Controller'), solo('y3', 70, 'Sentinel'), solo('y4', 70, 'Duelist')];
+  const themRoster = [solo('t0', 50, 'Sentinel'), solo('star', 95, 'Sentinel'), solo('t2', 60, 'Sentinel'), solo('t3', 60, 'Sentinel'), solo('t4', 60, 'Sentinel')];
+  const board = resolveBoard({ maps: aimMaps(), you: { roster: youRoster, slots: [0, 1, 1, 2, 2] }, them: { roster: themRoster, slots: [0, 1, 1, 2, 2] } });
   assert.equal(board.displacements[0].card.id, 'star');
+  assert.deepEqual([board.displacements[0].fromLane, board.displacements[0].toLane], [1, 0]);
+  assert.ok(board.lanes[0].theirs.steps.some(s => s.label === 'STAR' && s.value === Math.round(95 * EVO_TUNING.blackHoleKeep)));
+});
+
+test('Overdrive tilts the other lanes when its lane is lost', () => {
+  const youRoster = [solo('ovd', 50, 'Duelist', ['overdrive']), solo('y1', 70, 'Initiator'), solo('y2', 70, 'Controller'), solo('y3', 70, 'Sentinel'), solo('y4', 70, 'Duelist')];
+  const themRoster = [solo('t0', 90, 'Sentinel'), solo('t1', 50, 'Sentinel'), solo('t2', 50, 'Sentinel'), solo('t3', 50, 'Sentinel'), solo('t4', 50, 'Sentinel')];
+  const board = resolveBoard({ maps: aimMaps(), you: { roster: youRoster, slots: [0, 1, 1, 2, 2] }, them: { roster: themRoster, slots: [0, 1, 1, 2, 2] } });
+  assert.equal(board.lanes[0].winner, 'them');
+  assert.ok(board.lanes[1].mine.steps.some(s => s.key === 'overdrive' && s.value === EVO_TUNING.overdriveTilt));
 });

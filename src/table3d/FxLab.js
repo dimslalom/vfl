@@ -10,6 +10,7 @@ import {
   ART_SCALE, CARD_H, CARD_T, CARD_TIP, CARD_W, PX, PY, cardArt, cutShape, drawCard, loadImage, slab,
 } from './TableBlockout.js';
 import { playUiSound } from '../../shared/src/lib/gameAudio.js';
+import { playSkillSound } from '../lib/evoSfx.js';
 import { SKILL_FX, attachSkillFx, readyPose } from './SkillFx.js';
 
 export const FX_SKILLS = Object.keys(SKILL_FX);
@@ -112,7 +113,7 @@ export default class FxLab {
     const entry = this.entries[index];
     if (!entry) return;
     entry.fx.burst();
-    playUiSound(`skill_${entry.skill}`);
+    playSkillSound(entry.skill);
   }
 
   /** Where each card sits on screen, for the page's labels. */

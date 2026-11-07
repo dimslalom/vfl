@@ -121,6 +121,15 @@ function CardView({ view, stageRef, hostRef, onPlaceLane, onBack }) {
           ))}
         </ul>
       )}
+      {live && (
+        <button
+          type="button"
+          className={styles.skillFireButton}
+          onClick={() => stageRef.current?.fireSkill?.(card.id)}
+        >
+          Trigger {BOARD_SKILLS[live]?.label ?? 'skill'} animation
+        </button>
+      )}
       {canReturn && <button type="button" className={styles.back} onClick={onBack}>Back to hand</button>}
     </BoardTag>
   );
@@ -168,7 +177,7 @@ function Pips({ total, won, side }) {
 // intro: { you: { club, cards }, them: { club, cards }, stage } plays the match
 // intro over the board while it loads, then drops the 3D camera into the first deal.
 // settings: controls shown in a panel behind the gear beside Leave (the Club passes its music controls).
-export default function BoardSeries({ squad, opponent, opponentName, bestOf, seed, hand, onDone, onLeave, doneLabel = 'Continue', fixed = false, three = false, arena = 'tint', mapNames = null, intro = null, settings = null, hintsOn = false }) {
+export default function BoardSeries({ squad, opponent, opponentName, bestOf, seed, hand, onDone, onLeave, doneLabel = 'Continue', fixed = false, three = false, arena = 'tint', mapNames = null, intro = null, settings = null, hintsOn = false, initialSlots = null, onStageReady = null }) {
   const hostRef = useRef(null);
   const stageRef = useRef(null);
   const chipHostRef = useRef(null);
@@ -194,12 +203,14 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
     return () => window.removeEventListener('keydown', onKey);
   }, [settingsOpen]);
   const introRef = useRef(introOn);
+  const onStageReadyRef = useRef(onStageReady);
   // The first round's pieces, for preloading behind the intro without making the
   // board's setup effect depend on arrays the parent rebuilds every render.
   const firstRef = useRef({ cards: [...squad, ...opponent], mapName: maps[0].name });
   useEffect(() => {
     introRef.current = introOn;
     firstRef.current = { cards: [...squad, ...opponent], mapName: maps[0].name };
+    onStageReadyRef.current = onStageReady;
   });
   const [attempt, setAttempt] = useState(0);
   const [leaving, setLeaving] = useState(false);
@@ -217,10 +228,13 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
   function playRound() {
     const run = runRef.current;
     const round = run.you + run.them;
+    run.handBefore = run.hand;
     run.hand = refillTacticHand(() => ((seed * (round + 7)) % 997) / 997, run.hand, { roster: squad, map: maps[round] });
     setOutcome(null);
     chipsRef.current?.setChips(run.hand.map(card => card.key));
-    stageRef.current?.deal(roundBoard({ seed, round, map: maps[round], you: squad, them: opponent, tactics: run.hand }))
+    const slots = initialSlots && round === 0 ? initialSlots : null;
+    const replay = run.rewound ? 1 : 0;
+    stageRef.current?.deal(roundBoard({ seed, round, map: maps[round], you: squad, them: opponent, tactics: run.hand, slots, replay, spent: run.rewound ? ['timewarp'] : [] }))
       .catch((error) => {
         if (import.meta.env.DEV) console.error(error);
         setFailed('load');
@@ -231,6 +245,16 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
     const run = runRef.current;
     const round = run.you + run.them;
     const won = result.winner === 'you';
+    // Chronos: a series about to be lost by a single map rewinds that map, once.
+    const need = winsNeeded(bestOf);
+    if (!won && bestOf >= 3 && !run.rewound && run.you === need - 1 && run.them === need - 1 && squad.some(card => hasSkill(card, 'timewarp'))) {
+      run.rewound = true;
+      run.hand = run.handBefore;
+      const replay = () => playRound();
+      const rewinding = stageRef.current?.rewind?.(squad.find(card => hasSkill(card, 'timewarp')).id);
+      if (rewinding) rewinding.then(replay, replay); else replay();
+      return;
+    }
     if (won) run.you += 1;
     else run.them += 1;
     // Each chip lives or dies with its own lane: a won lane hands it back, a lost one burns it.
@@ -288,6 +312,7 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
             if (await stage.init()) {
               if (cancelled) return;
               stageRef.current = stage;
+              onStageReadyRef.current?.(stage);
               // With an intro, the first deal waits for the panels to part.
               if (introRef.current) {
                 stage.raiseForDrop();
@@ -348,6 +373,7 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
         });
         stageRef.current = stage;
         if (await stage.init()) {
+          onStageReadyRef.current?.(stage);
           playRoundRef.current();
           chips?.fit();
         }
@@ -360,6 +386,7 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
       cancelled = true;
       stage?.destroy();
       chips?.destroy();
+      onStageReadyRef.current?.(null);
       stageRef.current = null;
       chipsRef.current = null;
     };
@@ -391,7 +418,7 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
   }
 
   const skills = Object.keys(BOARD_SKILLS).filter(key => squad.some(card => hasSkill(card, key)));
-  const { phase, legal, placed, moves, rotated, layout } = state;
+  const { phase, legal, placed, moves, layout } = state;
   // The finished round stays on screen until the next one is dealt.
   const shownRound = Math.min(score.you + score.them - (outcome ? 1 : 0), bestOf - 1);
   return (
@@ -476,13 +503,13 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
         )}
         {phase === 'rotate' && (
           <button type="button" className={styles.primary} onClick={() => stageRef.current?.resolve()}>
-            {rotated ? 'Rotate and go' : 'Go without rotating'}
+            Go
           </button>
         )}
         {phase === 'rotate' && !three && <p className={styles.hint}>{moves === 2 ? t('Mastermind IGL: move two players') : t('IGL rotate: move one player')}</p>}
         {phase === 'resolve' && <p className={styles.hint}>{t('Tap to skip')}</p>}
       </div>
-      {outcome && outcome.lanes?.length === 3 && outcome.youWon === 3 && (
+      {outcome && outcome.lanes?.length === 3 && outcome.lanes.every(lane => lane.winner === 'you') && (
         <div className={styles.flawlessBanner} role="status" aria-label={t('FLAWLESS')}>
           <span className={styles.flawlessKicker}>{t('Clean sweep')}</span>
           <b className={styles.flawlessTitle}>{t('FLAWLESS')}</b>
@@ -491,7 +518,7 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
       )}
       {outcome && (() => {
         const won = (outcome.champion ?? outcome.winner) === 'you';
-        const flawless = outcome.lanes?.length === 3 && outcome.youWon === 3;
+        const flawless = outcome.lanes?.length === 3 && outcome.lanes.every(lane => lane.winner === 'you');
         // A round shows its number as a big numeral beside the map name, so the
         // two never need a typed separator. The series verdict keeps its score.
         const kicker = outcome.champion ? `Series ${score.you}–${score.them}` : maps[shownRound].name;

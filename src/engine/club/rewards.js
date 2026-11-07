@@ -147,6 +147,20 @@ export function setTacticEquipped(state, uid, equipped) {
   };
 }
 
+/** A reserve chip takes an equipped chip's slot, in place; the equipped one goes to the reserve. */
+export function swapTactic(state, outUid, inUid) {
+  const hand = state.hand ?? [];
+  const reserve = state.tacticReserve ?? [];
+  const out = hand.find(item => item.uid === outUid);
+  const chip = reserve.find(item => item.uid === inUid);
+  if (!out || !chip) return state;
+  return {
+    ...state,
+    hand: hand.map(item => (item.uid === outUid ? chip : item)),
+    tacticReserve: [...reserve.filter(item => item.uid !== inUid), out],
+  };
+}
+
 // ── the club's name ─────────────────────────────────────────────────────────
 
 /** A club name as stored: trimmed, single-spaced, at most NAME_MAX characters. */

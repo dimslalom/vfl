@@ -1,0 +1,236 @@
+.bench {
+  display: grid;
+  gap: var(--sp-4);
+  padding: var(--sp-6);
+  background: var(--bg-sunken);
+  color: var(--ink);
+}
+
+.benchHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2) var(--sp-6);
+}
+
+.benchHead h2 {
+  margin: 0;
+  font-size: var(--fs-title);
+  line-height: 1.1;
+}
+
+.benchHead p {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-label);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr);
+  gap: var(--sp-6);
+  align-items: start;
+}
+
+.stageBox {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  min-height: 320px;
+  background: var(--bg-deep);
+  box-shadow: 0 0 0 1px var(--line);
+  overflow: hidden;
+}
+
+.stageCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.stageCanvas canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  color: var(--muted);
+  font-size: var(--fs-label);
+}
+
+.overlayControls {
+  position: absolute;
+  bottom: var(--sp-3);
+  left: var(--sp-3);
+  right: var(--sp-3);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  pointer-events: none;
+}
+
+.actions {
+  display: flex;
+  gap: var(--sp-2);
+  pointer-events: auto;
+}
+
+.fireBtn {
+  min-height: 38px;
+  padding: 0 var(--sp-4);
+  border: 0;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: 700 var(--fs-label)/1 var(--font-mono);
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.fireBtn:hover {
+  filter: brightness(1.1);
+}
+
+.toggleBtn {
+  min-height: 38px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font: 700 var(--fs-label)/1 var(--font-mono);
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.toggleBtn:hover {
+  background: var(--surface-hi);
+}
+
+.toggleBtn[data-on] {
+  background: var(--surface-hi);
+  color: var(--win);
+  border-color: var(--win);
+}
+
+.sidePanel {
+  display: grid;
+  gap: var(--sp-4);
+}
+
+.skillDetail {
+  display: grid;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.skillHead {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-1) var(--sp-2);
+  font: 700 var(--fs-micro)/1 var(--font-mono);
+  letter-spacing: var(--track-caps);
+  border: 1px solid currentColor;
+}
+
+.skillTitle {
+  display: grid;
+  gap: 2px;
+}
+
+.skillTitle b {
+  font-size: var(--fs-heading);
+  line-height: 1.1;
+}
+
+.skillTitle span {
+  font: 700 var(--fs-micro)/1 var(--font-mono);
+  letter-spacing: var(--track-mono);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.metaList {
+  margin: 0;
+  display: grid;
+  gap: var(--sp-2);
+}
+
+.metaList dt {
+  font: 700 var(--fs-micro)/1 var(--font-mono);
+  letter-spacing: var(--track-mono);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.metaList dd {
+  margin: 2px 0 0;
+  font-size: var(--fs-body);
+  line-height: 1.4;
+  color: var(--ink);
+}
+
+.skillSelector {
+  display: grid;
+  gap: var(--sp-2);
+}
+
+.selectorLabel {
+  font: 700 var(--fs-micro)/1 var(--font-mono);
+  letter-spacing: var(--track-mono);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.skillPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
+
+.skillPill {
+  min-height: 30px;
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font: 700 var(--fs-micro)/1 var(--font-mono);
+  letter-spacing: var(--track-caps);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+.skillPill:hover {
+  background: var(--surface-hi);
+}
+
+.skillPill[data-on] {
+  background: var(--surface-hi);
+  border-color: var(--win);
+  color: var(--win);
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}

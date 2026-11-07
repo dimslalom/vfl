@@ -49,6 +49,11 @@ const YOU = 'you';
 
 // ── Evo Chips Catalog ───────────────────────────────────────────────────────
 
+// Apex evos grow every stat a little: their board skill carries them, and big stat
+// jumps inflated ratings without changing results (the sim put stats at 0 to 2 points).
+const APEX_L1 = { aim: 1, positioning: 1, ability: 1, mentality: 1, synergy: 1 };
+const APEX_L2 = { aim: 2, positioning: 2, ability: 2, mentality: 2, synergy: 2 };
+
 export const EVO_CHIPS = {
   glacier: {
     key: 'glacier',
@@ -107,8 +112,8 @@ export const EVO_CHIPS = {
     color: '#ff003c',
     headline: 'OVD',
     requirements: { maxRating: 93, roles: null },
-    level1: { type: 'play', count: 2, stats: { aim: 2, positioning: 2, ability: 2, mentality: 2, synergy: 2 }, label: 'Play 2 matches with player starting' },
-    level2: { type: 'mvp', count: 3, stats: { aim: 3, positioning: 3, ability: 3, mentality: 3, synergy: 3 }, skill: 'overdrive', label: 'Win 3 matches where player is MVP' },
+    level1: { type: 'play', count: 2, stats: APEX_L1, label: 'Play 2 matches with player starting' },
+    level2: { type: 'mvp', count: 3, stats: APEX_L2, skill: 'overdrive', label: 'Win 3 matches where player is MVP' },
   },
   bastion: {
     key: 'bastion',
@@ -137,14 +142,14 @@ export const EVO_CHIPS = {
   hyperdrive: {
     key: 'hyperdrive',
     name: 'Hyperdrive',
-    tier: 'common',
+    tier: 'rare',
     theme: 'neon',
     badge: 'VEL',
     color: '#84cc16',
     headline: 'VEL',
-    requirements: { maxRating: 82, roles: ['Duelist', 'Initiator'] },
-    level1: { type: 'win', count: 1, stats: { aim: 1, mentality: 1 }, label: 'Win 1 match with player starting' },
-    level2: { type: 'win', count: 2, stats: { aim: 1, synergy: 1 }, skill: 'velocity', label: 'Win 2 matches with player in starting 5' },
+    requirements: { maxRating: 85, roles: ['Duelist', 'Initiator'] },
+    level1: { type: 'win', count: 1, stats: { aim: 2, mentality: 2 }, label: 'Win 1 match with player starting' },
+    level2: { type: 'mvp', count: 2, stats: { aim: 2, synergy: 2 }, skill: 'velocity', label: 'Win 2 matches where player is MVP' },
   },
   solstice: {
     key: 'solstice',
@@ -173,14 +178,14 @@ export const EVO_CHIPS = {
   chronos: {
     key: 'chronos',
     name: 'Chronos Dial',
-    tier: 'rare',
+    tier: 'apex',
     theme: 'chrono',
     badge: 'TRP',
     color: '#eab308',
     headline: 'TRP',
-    requirements: { maxRating: 87, roles: null },
-    level1: { type: 'win', count: 1, stats: { mentality: 2, synergy: 2 }, label: 'Win 1 match with player starting' },
-    level2: { type: 'win', count: 2, stats: { mentality: 2, aim: 2 }, skill: 'timewarp', label: 'Win 2 matches with player in starting 5' },
+    requirements: { maxRating: 93, roles: null },
+    level1: { type: 'play', count: 2, stats: APEX_L1, label: 'Play 2 matches with player starting' },
+    level2: { type: 'mvp', count: 3, stats: APEX_L2, skill: 'timewarp', label: 'Win 3 matches where player is MVP' },
   },
   tempest: {
     key: 'tempest',
@@ -203,8 +208,8 @@ export const EVO_CHIPS = {
     color: '#fb7185',
     headline: 'ASC',
     requirements: { maxRating: 93, roles: null },
-    level1: { type: 'play', count: 2, stats: { aim: 2, positioning: 2, ability: 2, mentality: 2, synergy: 2 }, label: 'Play 2 matches with player starting' },
-    level2: { type: 'mvp', count: 3, stats: { aim: 3, positioning: 3, ability: 3, mentality: 3, synergy: 3 }, skill: 'ascendance', label: 'Win 3 matches where player is MVP' },
+    level1: { type: 'play', count: 2, stats: APEX_L1, label: 'Play 2 matches with player starting' },
+    level2: { type: 'mvp', count: 3, stats: APEX_L2, skill: 'ascendance', label: 'Win 3 matches where player is MVP' },
   },
   sovereign: {
     key: 'sovereign',
@@ -215,8 +220,8 @@ export const EVO_CHIPS = {
     color: '#d946ef',
     headline: 'DMN',
     requirements: { maxRating: 93, roles: null },
-    level1: { type: 'play', count: 2, stats: { aim: 2, positioning: 2, ability: 2, mentality: 2, synergy: 2 }, label: 'Play 2 matches with player starting' },
-    level2: { type: 'mvp', count: 3, stats: { aim: 3, positioning: 3, ability: 3, mentality: 3, synergy: 3 }, skill: 'dominion', label: 'Win 3 matches where player is MVP' },
+    level1: { type: 'play', count: 2, stats: APEX_L1, label: 'Play 2 matches with player starting' },
+    level2: { type: 'mvp', count: 3, stats: APEX_L2, skill: 'dominion', label: 'Win 3 matches where player is MVP' },
   },
   singularity: {
     key: 'singularity',
@@ -227,8 +232,8 @@ export const EVO_CHIPS = {
     color: '#06b6d4',
     headline: 'BKH',
     requirements: { maxRating: 92, roles: null },
-    level1: { type: 'play', count: 2, stats: { aim: 2, positioning: 2, ability: 2, mentality: 2, synergy: 2 }, label: 'Play 2 matches with player starting' },
-    level2: { type: 'mvp', count: 3, stats: { aim: 3, positioning: 3, ability: 3, mentality: 3, synergy: 3 }, skill: 'black_hole', label: 'Win 3 matches where player is MVP' },
+    level1: { type: 'play', count: 2, stats: APEX_L1, label: 'Play 2 matches with player starting' },
+    level2: { type: 'mvp', count: 3, stats: APEX_L2, skill: 'black_hole', label: 'Win 3 matches where player is MVP' },
   },
 };
 

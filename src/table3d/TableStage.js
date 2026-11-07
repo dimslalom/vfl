@@ -26,12 +26,16 @@ import { mulberry32 } from '../../shared/src/engine/perfectRun.js';
 import { assetPath } from '../../shared/src/lib/utils.js';
 import { playUiSound } from '../../shared/src/lib/gameAudio';
 import { playGlassShatter, playLaneWin } from '../lib/sfx';
+import { playEvoSound, playSkillSound as skillSound } from '../lib/evoSfx';
 import { STAT_LABELS_FULL } from '../../shared/src/data/statFields.js';
 import { disposeChip, makeChip, printChip, THICK } from '../chip3d/ChipStack.js';
 import { createChipView } from '../chip3d/chipRenderer.js';
 import { attack, chipFire, lightning, lockShatter, slash } from './chipFx.js';
 import { attachLaneVerdictFx, disposeLaneVerdictFx, triggerFlawlessSweepFx } from './LaneVerdictFx.js';
 import { attachSkillFx, readyPose } from './SkillFx.js';
+import {
+  blessing, burnDown, chainLightning, dash, flare, laneSurge, pullIn, rewindDial, rise, riftSink, sealStamp, smokePeel, wardBlock,
+} from './EvoBeats.js';
 import { ARENAS, createSoftFocus, loadArena, preloadArena } from './arena.js';
 import {
   ART_SCALE, CARD_H, CARD_T, CARD_TIP, CARD_W, FOV, IMAGE_ASPECT, LANE_GAP, LANE_W,
@@ -39,6 +43,13 @@ import {
 } from './TableBlockout.js';
 import styles from './TableStage.module.css';
 import { CHIP_TIERS } from '../chip3d/chipData.js';
+
+// The evo skills a card shows when it holds more than one: apex first.
+const EVO_SKILLS_BY_RANK = [
+  'black_hole', 'ascendance', 'dominion', 'overdrive', 'velocity',
+  'combustion', 'phase', 'surge', 'clutch',
+  'synergy_link', 'first_blood', 'anchor', 'ironclad', 'lurk',
+];
 
 const CHIP_BODY = Object.fromEntries(Object.entries(CHIP_TIERS).map(([tier, tone]) => [tier, tone.body]));
 
@@ -122,6 +133,11 @@ function segmentItems(steps) {
   }).filter(item => item.value);
   return [...players, ...(bonus ? [{ value: bonus, text: `+${bonus}`, solid: true }] : []), ...mults];
 }
+
+// How fast a locked round plays back after Go: below 1 is slower. It stretches every
+// beat of the scoring timeline alike (the gaps between scores, verdicts and pauses);
+// a tap still skips to the end.
+const ROUND_PLAYBACK = 0.6;
 
 export default class TableStage {
   /** onChipView({ selected, anchor }): a hand chip was picked, for the page to show its payout. */
@@ -235,7 +251,7 @@ export default class TableStage {
     if (!this.alive) return;
     this.game = game;
     this.phase = 'place';
-    this.slots = game.you.map(() => null);
+    this.slots = game.slots ? [...game.slots] : game.you.map(() => null);
     this.lockedSlots = null;
     this.tacticLane = {};
     this.shown = null;
@@ -548,7 +564,7 @@ export default class TableStage {
     const held = entry === this.drag?.entry;
     const preview = held ? this.hot : this.laneOf(entry) == null && entry.side === 'you' ? this.hoverLane : null;
     const lane = held && this.hot != null ? this.hot : this.laneOf(entry) ?? preview;
-    const stat = lane == null || entry.hidden ? null : this.game.maps[lane].stat;
+    const stat = lane == null || entry.hidden || entry.smoked ? null : this.game.maps[lane].stat;
     // Small on a phone's lane, a card shows only the number it scores, big.
     const focus = Boolean(this.L.tall && stat && (held || this.laneOf(entry) != null));
     const key = `${stat}:${focus}`;
@@ -640,15 +656,16 @@ export default class TableStage {
       const s = L.card;
       const w = CARD_W * s;
       const z = entry.side === 'you' ? L.you : L.them;
-      if (!L.tall) return { x: LANE_X[lane] + (k - (row.length - 1) / 2) * (w + 0.1), y: 0.02, z, rx: 0, rz: 0, s };
+      const rz = entry.smoked ? Math.PI : 0;
+      if (!L.tall) return { x: LANE_X[lane] + (k - (row.length - 1) / 2) * (w + 0.1), y: 0.02, z, rx: 0, rz, s };
       // Two at the bar, the third tucked behind so every scoring number shows:
       // yours slides under the pair, theirs lies over it.
       if (k === 2) {
         const yours = entry.side === 'you';
-        return { x: LANE_X[lane], y: yours ? 0.02 : 0.07, z: z + (yours ? TUCK : -TUCK), rx: 0, rz: 0, s };
+        return { x: LANE_X[lane], y: yours ? 0.02 : 0.07, z: z + (yours ? TUCK : -TUCK), rx: 0, rz, s };
       }
       const x = row.length === 1 ? LANE_X[lane] : LANE_X[lane] + (k === 0 ? -1 : 1) * (w + 0.05) / 2;
-      return { x, y: 0.045, z, rx: 0, rz: 0, s };
+      return { x, y: 0.045, z, rx: 0, rz, s };
     }
     const pool = this.cards.filter(c => c.side === entry.side && this.laneOf(c) == null);
     const k = pool.indexOf(entry);
@@ -744,8 +761,13 @@ export default class TableStage {
     this.emitCard();
   }
 
-  room(lane) {
-    return this.slots.filter(slot => slot === lane).length < LANE_CAP;
+  // Whether `entry` (the card in hand, by default) may go on `lane`: the lane's
+  // cap, and the Sovereign's crown, which no ally may share.
+  room(lane, entry = this.drag?.entry ?? this.picked()) {
+    const here = this.cards.filter(c => c.side === 'you' && c !== entry && this.slots[c.i] === lane);
+    if (here.length >= LANE_CAP) return false;
+    if (entry?.kind === 'card' && hasSkill(entry.card, 'dominion') && here.length) return false;
+    return !here.some(c => hasSkill(c.card, 'dominion'));
   }
 
   // The hand card or chip picked to be tapped onto a lane, if any.
@@ -797,11 +819,14 @@ export default class TableStage {
   // after the reveal, the real board with auras; while resolving, the steps so far.
   laneView(lane) {
     if (this.shown) return this.shown[lane];
+    if (this.phase === 'rewind') return { mine: { total: 0, steps: [] }, theirs: null };
     if (this.phase === 'place') {
       const mine = sideScores({ roster: this.game.you, slots: this.slots, maps: this.game.maps, tactics: this.yourTactics() })[lane];
       return { mine, theirs: null };
     }
-    const board = this.scoreBoard();
+    const smoked = this.cards.filter(c => c.side === 'them' && c.smoked).map(c => c.i);
+    const oppSlots = this.oppPlan.slots.map((slot, i) => (smoked.includes(i) ? null : slot));
+    const board = this.scoreBoard(this.slots, oppSlots);
     return { mine: board.lanes[lane].mine, theirs: board.lanes[lane].theirs };
   }
 
@@ -908,7 +933,8 @@ export default class TableStage {
 
   canMove(entry) {
     if (this.phase === 'place') return entry.side === 'you' || entry.kind === 'chip';
-    return this.phase === 'rotate' && entry.kind === 'card' && entry.side === 'you';
+    // A lurker is committed in the smoke: it stays put at the rotate.
+    return this.phase === 'rotate' && entry.kind === 'card' && entry.side === 'you' && !hasSkill(entry.card, 'lurk');
   }
 
   dropOn(entry, lane) {
@@ -927,14 +953,14 @@ export default class TableStage {
       if (isLegalRotation(this.lockedSlots, next, this.game.you)) this.slots = next;
       return;
     }
-    if (lane != null && this.slots[entry.i] !== lane && this.slots.filter(slot => slot === lane).length >= LANE_CAP) return;
+    if (lane != null && this.slots[entry.i] !== lane && !this.room(lane, entry)) return;
     this.slots[entry.i] = lane;
   }
 
   // ── flow ─────────────────────────────────────────────────────────────────
 
   lockIn() {
-    if (this.phase !== 'place' || !isLegalPlacement(this.slots)) return;
+    if (this.phase !== 'place' || !isLegalPlacement(this.slots, this.game.you)) return;
     this.phase = 'reveal';
     this.lockedSlots = [...this.slots];
     this.selected = null;
@@ -947,6 +973,8 @@ export default class TableStage {
     hidden.forEach((card, k) => {
       gsap.delayedCall(this.reducedMotion ? 0 : 0.25 + k * 0.14, () => {
         card.hidden = false;
+        // An enemy lurker takes its lane but stays face down until resolve.
+        card.smoked = hasSkill(card.card, 'lurk');
         playUiSound('flip', k);
         this.place();
       });
@@ -986,35 +1014,53 @@ export default class TableStage {
         this.result = null;
       },
     });
-    this.timeline.timeScale(this.reducedMotion ? 20 : 1);
-    if (result.displacements?.length) {
-      result.displacements.forEach(disp => {
-        this.timeline.call(() => {
-          if (disp.side === 'you') this.slots = [...result.youSlots];
-          else this.oppPlan.slots = [...result.themSlots];
-          playUiSound('rotate_ready');
-          this.place();
-          const cardEntry = this.cards.find(c => c.side === disp.side && c.card.id === disp.card.id);
-          if (cardEntry?.fx?.burst) cardEntry.fx.burst();
+    this.timeline.timeScale(this.reducedMotion ? 20 : ROUND_PLAYBACK);
+    this.resolving = result;
+    const motion = !this.reducedMotion;
+    const fx = { onUpdate: this.mark };
+    const entryOf = (side, card) => this.cards.find(c => c.side === side && c.card.id === card.id);
+    // Lurkers come out of the smoke first, so every card that scores is face up.
+    const smoked = this.cards.filter(c => c.smoked);
+    if (smoked.length) {
+      this.timeline.call(() => {
+        playEvoSound('lurk_reveal');
+        smoked.forEach((entry) => {
+          if (motion) smokePeel(this.board, entry, fx);
+          entry.smoked = false;
         });
-        this.timeline.to({}, { duration: this.reducedMotion ? 0.1 : 0.65 });
+        gsap.delayedCall(motion ? 0.25 : 0, () => this.place());
       });
+      this.timeline.to({}, { duration: 0.6 });
     }
-    if (result.velocityMoves?.length) {
-      result.velocityMoves.forEach(move => {
-        this.timeline.call(() => {
-          if (move.side === 'you') this.slots = [...result.youSlots];
-          else this.oppPlan.slots = [...result.themSlots];
-          playUiSound('rotate_ready');
-          this.place();
-          const cardEntry = this.cards.find(c => c.side === move.side && c.card.id === move.card.id);
-          if (cardEntry?.fx?.burst) cardEntry.fx.burst();
-        });
-        this.timeline.to({}, { duration: this.reducedMotion ? 0.1 : 0.65 });
+    // Black Hole: the enemy star is dragged across, stretching, and lands drained.
+    (result.displacements ?? []).forEach((disp) => {
+      this.timeline.call(() => {
+        playEvoSound('black_hole_pull');
+        const puller = this.cards.find(c => c.side !== disp.side && hasSkill(c.card, 'black_hole'));
+        puller?.fx?.burst();
+        if (disp.side === 'you') this.slots = [...result.youSlots];
+        else this.oppPlan.slots = [...result.themSlots];
+        this.place();
+        const entry = entryOf(disp.side, disp.card);
+        if (entry && motion) pullIn(this.board, entry, fx);
       });
-    }
+      this.timeline.to({}, { duration: 0.85 });
+    });
+    // Velocity: the card runs to the close lane, leaving its ghosts behind.
+    (result.velocityMoves ?? []).forEach((move) => {
+      this.timeline.call(() => {
+        playEvoSound('velocity_dash');
+        const entry = entryOf(move.side, move.card);
+        const from = entry ? entry.group.position.clone() : null;
+        if (move.side === 'you') this.slots = [...result.youSlots];
+        else this.oppPlan.slots = [...result.themSlots];
+        this.place();
+        if (entry && motion) gsap.delayedCall(0.3, () => dash(this.board, entry, from, fx));
+      });
+      this.timeline.to({}, { duration: 0.75 });
+    });
     result.lanes.forEach((laneResult, lane) => this.playLane(laneResult, lane));
-    if (result.lanes.length === 3 && result.youWon === 3) {
+    if (result.lanes.length === 3 && result.lanes.every(lane => lane.winner === 'you')) {
       this.timeline.call(() => {
         triggerFlawlessSweepFx(this.lanes, { reducedMotion: this.reducedMotion, onUpdate: this.mark });
         playUiSound('flawless');
@@ -1034,9 +1080,18 @@ export default class TableStage {
           const other = side === 'you' ? 'them' : 'you';
           const fx = { onUpdate: this.mark };
           const motion = !this.reducedMotion;
-          if (step.key === 'player') {
+          const effect = key => this.resolving?.effects?.find(e => e.key === key && e.toLane === lane && (key !== 'ascendance' || step.op === '+'));
+          if (step.key === 'player' && step.voided) {
+            // Phase: this side's best card falls into the rift and scores nothing.
+            const card = this.cards.find(c => c.side === side && c.card.player === step.label);
+            if (card && motion) riftSink(this.board, card, { deep: true, ...fx });
+            this.cards.find(c => c.side === other && this.laneOf(c) === lane && hasSkill(c.card, 'phase'))?.fx?.burst();
+            playEvoSound('phase_rift', lane);
+          } else if (step.key === 'player') {
             // The card attacks the bar as its number lands.
             const card = this.cards.find(c => c.side === side && c.card.player === step.label);
+            // Phase itself scores half, half-sunk at the rift's edge.
+            if (card && motion && hasSkill(card.card, 'phase') && step.value < card.card.stats[this.game.maps[lane].stat]) riftSink(this.board, card, { deep: false, ...fx });
             if (card && motion) attack(this.board, card, { barZ: this.barZ(side), color: side === 'you' ? 0x00c8a0 : 0xff4655, ...fx });
             else if (card) gsap.fromTo(card.group.scale, { x: 1.14, y: 1.14, z: 1.14 }, { x: 1, y: 1, z: 1, duration: 0.25, ease: 'power3.out', onUpdate: this.mark });
             playUiSound(side === 'you' ? 'score' : 'score_opp', index + lane * 2);
@@ -1050,6 +1105,52 @@ export default class TableStage {
             const to = this.barSpot(lane, side, 'chain');
             if (chip && motion) lightning(this.board, { from: chip.group.position, to, ...fx });
             playUiSound('tactic_mult', step.value);
+          } else if (step.key === 'cancelled' && step.label === 'Ironclad') {
+            // Ironclad: the plate holds, and this side's own chip bounces off it.
+            const chip = this.sideChip(side, lane);
+            if (chip && motion) wardBlock(this.board, chip, fx);
+            playEvoSound('ironclad_block', lane);
+          } else if (step.key === 'cancelled' && this.cards.some(c => c.side === other && this.laneOf(c) === lane && hasSkill(c.card, 'dominion'))) {
+            // The Sovereign's decree: her seal stamps the chip facing her void.
+            const chip = this.sideChip(side, lane);
+            if (chip && motion) sealStamp(this.board, chip, fx);
+            playEvoSound('dominion_seal', lane);
+          } else if (step.key === 'ironclad') {
+            this.cards.find(c => c.side === side && this.laneOf(c) === lane && hasSkill(c.card, 'ironclad'))?.fx?.burst();
+            playEvoSound('ironclad_ready');
+          } else if (step.key === 'combustion_fuel') {
+            const card = this.cards.find(c => c.side === side && this.laneOf(c) === lane && hasSkill(c.card, 'combustion'));
+            if (card && motion) burnDown(card, fx);
+            playEvoSound('combustion_fuel', lane);
+          } else if (step.key === 'combustion') {
+            // The flare from the won lane next door lands on this side's star.
+            const e = effect('combustion');
+            const source = e && this.cards.find(c => c.side === e.side && this.laneOf(c) === e.fromLane && hasSkill(c.card, 'combustion'));
+            const target = e && this.cards.find(c => c.side === side && c.card.id === e.card.id);
+            if (source && target && motion) flare(this.board, source.group.position, target, fx);
+            playEvoSound('combustion_flare', lane);
+          } else if (step.key === 'surge') {
+            // One storm per lane: the bolt hits this side; the striker's own cards here take a branch.
+            const e = effect('surge');
+            if (e && !e.played) {
+              e.played = true;
+              const source = this.cards.find(c => c.side === e.side && this.laneOf(c) === e.fromLane && hasSkill(c.card, 'surge'));
+              const foes = this.cards.filter(c => c.side !== e.side && this.laneOf(c) === lane);
+              const allies = this.cards.filter(c => c.side === e.side && this.laneOf(c) === lane);
+              if (source && motion) chainLightning(this.board, source.group.position, foes, allies, fx);
+              playEvoSound('surge_chain', lane);
+            }
+          } else if (step.key === 'ascendance' && step.op === '-') {
+            const card = this.cards.find(c => c.side === side && this.laneOf(c) === lane && hasSkill(c.card, 'ascendance'));
+            if (card && motion) rise(this.board, card, fx);
+            playEvoSound('ascendance_rise', lane);
+          } else if (step.key === 'ascendance') {
+            if (motion) blessing(this.board, { x: LANE_X[lane], z: side === 'you' ? this.L.you : this.L.them }, fx);
+          } else if (step.key === 'overdrive') {
+            if (motion) laneSurge(this.lanes[lane], step.value > 1, fx);
+            playEvoSound(step.value > 1 ? 'overdrive_surge' : 'overdrive_tilt', lane);
+          } else if (step.key === 'fatigue') {
+            playUiSound('lane_hover', lane);
           } else if (step.key === 'cancelled') {
             // Lock the Map: the other side's lock slams this side's chip and it shatters.
             const chip = this.sideChip(side, lane);
@@ -1114,6 +1215,36 @@ export default class TableStage {
     if (this.phase === 'resolve' && this.timeline) this.timeline.progress(1);
   }
 
+  /**
+   * Chronos: the map that lost the series plays backwards. A brass dial spins
+   * the wrong way over the board, the verdicts lift off, and every card flies
+   * back the way it came (yours to the hand, theirs face down to their pile)
+   * before the map is dealt again. Resolves once the board is clear.
+   */
+  rewind(cardId) {
+    if (!this.board) return Promise.resolve();
+    this.timeline?.kill();
+    playEvoSound('timewarp_rewind');
+    const motion = !this.reducedMotion;
+    this.cards.find(c => c.card.id === cardId)?.fx?.burst();
+    if (motion) rewindDial(this.board, { size: (this.L.halfW ?? 6) * 1.3, onUpdate: this.mark });
+    this.phase = 'rewind';
+    this.shown = null;
+    this.lanes.forEach((_, lane) => this.applyLaneVerdict(lane, null));
+    this.tacticLane = {};
+    this.selected = null;
+    this.emit();
+    // Last placed first, as if the film ran backwards.
+    [...this.cards].reverse().forEach((entry, k) => {
+      gsap.delayedCall(motion ? 0.15 + k * 0.07 : 0, () => {
+        if (entry.side === 'you') this.slots[entry.i] = null;
+        else { entry.hidden = true; entry.smoked = false; }
+        this.place();
+      });
+    });
+    return new Promise((resolve) => gsap.delayedCall(motion ? 1.5 : 0.05, resolve));
+  }
+
   emit() {
     this.onState?.({
       phase: this.phase,
@@ -1142,7 +1273,7 @@ export default class TableStage {
   // `at` is the card's centre on screen.
   emitCard() {
     // Any picked card that isn't face down, wherever it is: the page shows what it does.
-    const pick = this.selected?.kind === 'card' && !this.selected.hidden ? this.selected : null;
+    const pick = this.selected?.kind === 'card' && !this.selected.hidden && !this.selected.smoked ? this.selected : null;
     let view = null;
     if (pick) {
       const lane = this.laneOf(pick);
@@ -1391,6 +1522,10 @@ export default class TableStage {
       }
       this.selected = this.selected === entry ? null : entry;
       playUiSound(entry.kind === 'chip' ? 'chip_lift' : 'select');
+      if (this.selected?.fx) {
+        this.selected.fx.burst();
+        skillSound(this.selected.skill);
+      }
       this.place();
     };
     el.addEventListener('pointerdown', this.onDown);
@@ -1442,7 +1577,18 @@ export default class TableStage {
     const map = this.game.maps[lane];
     if (hasSkill(card, 'one_trick') && card.agents?.length === 1 && map.agents?.includes(card.agents[0])) return 'one_trick';
     if (hasSkill(card, 'aura')) return 'aura';
-    return null;
+
+    if (hasSkill(card, 'timewarp')) return this.game.spent?.includes('timewarp') ? 'timewarp_spent' : 'timewarp';
+    return EVO_SKILLS_BY_RANK.find(key => hasSkill(card, key)) ?? null;
+  }
+
+  fireSkill(cardId) {
+    const entry = cardId ? this.cards?.find(c => c.card?.id === cardId) : this.cards?.find(c => c.fx);
+    if (entry?.fx) {
+      entry.fx.burst();
+      skillSound(entry.skill);
+      this.mark();
+    }
   }
 
   stepSkills(dt) {
@@ -1458,12 +1604,12 @@ export default class TableStage {
         // The moment a power comes alive, it flares once and plays its signature sound.
         if (skill) {
           entry.fx?.burst();
-          playUiSound(`skill_${skill}`);
+          skillSound(skill);
         }
         if (entry === this.selected) this.emitCard();
         entry.skill = skill;
       }
-      const target = skill ? 0.6 : 0;
+      const target = skill && skill !== 'timewarp_spent' ? 0.6 : 0;
       const before = entry.liftAmount ?? 0;
       entry.liftAmount = before + (target - before) * Math.min(1, dt * 8);
       if (entry.liftAmount > 0.002 || before > 0.002) {
@@ -1618,6 +1764,11 @@ export default class TableStage {
       themN.textContent = them ?? '?';
       split.style.left = `${share * 100}%`;
       split.hidden = them == null || !you;
+      // A Sovereign's lane counts double: a gold mark beside its bar, taking the
+      // winner's colour once the lane is decided.
+      const crown = this.cards?.find(c => this.laneOf(c) === lane && !c.hidden && !c.smoked && hasSkill(c.card, 'dominion'));
+      if (crown) bar.dataset.crown = this.shown?.[lane]?.verdict ?? 'held';
+      else delete bar.dataset.crown;
       stampEl.textContent = stamp ?? '';
       stampEl.dataset.won = stamp === 'WON' ? 'true' : 'false';
       this.segments(youRow, mine.steps, you ? share : preview != null ? 0.45 : 0, 0, preview);

@@ -5,10 +5,16 @@ import SpecialtyIcon from '../../shared/src/components/SpecialtyIcon';
 import { SPECIALTIES } from '../../shared/src/data/specialties';
 import { STAT_KEYS, STAT_LABELS } from '../../shared/src/data/statFields';
 import { CHIP_KEYS } from '../chip3d/chipData';
+import { BOARD_SKILLS, bestPlacement, bestRotate, resolveBoard } from '../engine/board/board';
+import { mulberry32 } from '../../shared/src/engine/perfectRun';
+import { MAP_LANES } from '../engine/board/mapLanes';
 import {
   EVO_CHIPS, EVO_KEYS, commitEvolution, evoStatGain, isEligibleForEvo, newClub, squadCards, xpPerPoint,
 } from '../engine/club/season';
 import EvoShowcase from '../evo3d/EvoShowcase';
+import EvoBoardBench from '../table3d/EvoBoardBench';
+import BoardSeries from '../components/BoardSeries';
+import { dealSeries, namedSeriesMaps, roundBoard } from '../prototype/boardSetup';
 import { EvoChip } from '../chip3d/EvoChip';
 import { ChipPick, Result, Train } from './Club';
 import styles from './EvoLab.module.css';
@@ -163,6 +169,8 @@ export default function EvoLab() {
         </div>
       </section>
 
+      <EvoBoardBench key={`${card.id}-${evoKey}-${stage}`} card={card} defaultSkill={evo.level2.skill} />
+
       <section className={styles.balanceGrid} aria-label="Progression balance">
         <article className={styles.balanceCard}>
           <h3>Soft rating ceiling</h3>
@@ -229,9 +237,95 @@ export default function EvoLab() {
               <LabResult key={`${evoKey}-${stage}-${player.id}`} player={player} evoKey={evoKey} stage={stage} />
             </Screen>
           )}
+          <Screen label="Match board, evo skill in play">
+            <LabBoard key={`${evoKey}-${stage}-${player.id}`} card={card} evoKey={evoKey} />
+          </Screen>
         </div>
       </section>
     </main>
+  );
+}
+
+// Whether a resolved board shows `skill` doing its thing for your side.
+const FIRED = {
+  black_hole: r => r.displacements.some(d => d.side === 'them'),
+  velocity: r => r.velocityMoves.some(m => m.side === 'you'),
+  combustion: r => r.effects.some(e => e.key === 'combustion' && e.side === 'you'),
+  surge: r => r.effects.some(e => e.key === 'surge' && e.side === 'you'),
+  ascendance: r => r.effects.some(e => e.key === 'ascendance' && e.side === 'you'),
+  overdrive: r => r.effects.some(e => e.key === 'overdrive' && e.side === 'you'),
+  phase: r => r.lanes.some(l => l.theirs.steps.some(s => s.voided)),
+  ironclad: r => r.lanes.some(l => l.mine.steps.some(s => s.key === 'ironclad')),
+  lurk: r => r.lanes.some(l => l.mine.steps.some(s => s.key === 'lurk')),
+  dominion: r => r.lanes.some(l => l.weight === 2 && l.winner === 'you'),
+};
+
+const MAP_NAMES = ['Ascent', 'Ascent', 'Ascent'];
+
+// A deal where the evo's skill fires in the first round, so its board beat can be
+// watched: the seed and your placement, found by playing the round in the engine
+// the way the board will (the enemy places and rotates as the game's bot does).
+function firingDeal(card, skillKey) {
+  const rest = allCards.filter(c => c.id !== card.id && c.league === 'vct' && c.rating >= 74).slice(0, 4);
+  const you = [card, ...rest];
+  const fired = FIRED[skillKey];
+  for (let seed = 4242; seed < 4242 + (fired ? 160 : 1); seed += 1) {
+    const deal = dealSeries(seed, 3);
+    const maps = namedSeriesMaps(seed, MAP_NAMES);
+    const game = roundBoard({ seed, round: 0, map: maps[0], you, them: deal.them, tactics: deal.tactics });
+    const opp = bestPlacement({ roster: deal.them, maps: game.maps, tactics: game.opponentTactics, rng: mulberry32(game.seed + 1) });
+    const mine = { roster: you, slots: bestPlacement({ roster: you, maps: game.maps }).slots, tactics: [] };
+    const theirs = { roster: deal.them, slots: opp.slots, tactics: opp.tactics };
+    const result = resolveBoard({ maps: game.maps, you: mine, them: { ...theirs, slots: bestRotate({ you: theirs, them: mine, maps: game.maps }) } });
+    if (!fired || fired(result)) return { ...deal, seed, you, slots: mine.slots, fires: Boolean(fired) };
+  }
+  return { ...dealSeries(4242, 3), seed: 4242, you, slots: bestPlacement({ roster: you, maps: MAP_LANES[MAP_NAMES[0]] }).slots, fires: false };
+}
+
+function LabBoard({ card, evoKey }) {
+  const [stage, setStage] = useState(null);
+  const [take, setTake] = useState(0);
+  const evo = EVO_CHIPS[evoKey];
+  const skillKey = evo?.level2?.skill || 'anchor';
+  const skill = BOARD_SKILLS[skillKey];
+
+  const series = useMemo(() => firingDeal(card, skillKey), [card, skillKey]);
+
+  // Chronos works on the series, so its trigger plays the rewind itself, then deals again.
+  const triggerAnimation = () => {
+    if (skillKey === 'timewarp') stage?.rewind?.(card.id).then(() => setTake(n => n + 1));
+    else stage?.fireSkill?.(card.id);
+  };
+
+  return (
+    <div className={styles.realBoardHost}>
+      <div className={styles.realBoardBar}>
+        <div className={styles.realBoardInfo}>
+          <b>{skill?.label ?? 'Evo Skill'}</b>
+          <span>{skill?.text ?? ''}</span>
+        </div>
+        <button type="button" className={styles.realBoardTriggerBtn} onClick={triggerAnimation}>
+          Trigger {skill?.label ?? 'skill'} animation
+        </button>
+      </div>
+      <div className={styles.realBoardStage}>
+        <BoardSeries
+          key={`${card.id}-${evoKey}-${card.rating}-${take}`}
+          squad={series.you}
+          opponent={series.them}
+          opponentName={series.opponentName}
+          bestOf={3}
+          seed={series.seed}
+          hand={series.tactics}
+          mapNames={MAP_NAMES}
+          onDone={noop}
+          three
+          arena="tint"
+          initialSlots={series.slots}
+          onStageReady={setStage}
+        />
+      </div>
+    </div>
   );
 }
 

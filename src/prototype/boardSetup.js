@@ -59,10 +59,14 @@ export function pickSeriesMaps(seed, bestOf) {
 }
 
 // The enemy IGL holds the same two-chip floor the player does and plays both.
-export function roundBoard({ seed, round, map, you, them, tactics }) {
-  const opponentTactics = npcTacticChoices(mulberry32(seed + 100 + round), them, map);
+// `replay` (Chronos rewinds a map) re-seeds the enemy, so it thinks the map through
+// again instead of repeating a board the player has already seen. `spent` lists
+// once-per-series skills already used, so their cards stop showing as ready.
+export function roundBoard({ seed, round, map, you, them, tactics, slots = null, replay = 0, spent = [] }) {
+  const reseed = replay * 7919;
+  const opponentTactics = npcTacticChoices(mulberry32(seed + 100 + round + reseed), them, map);
   return {
-    seed: seed + round + 1,
+    seed: seed + round + 1 + reseed,
     mapName: map.name,
     maps: MAP_LANES[map.name].map(lane => ({ ...lane, image: map.image, agents: map.agents })),
     you,
@@ -70,6 +74,8 @@ export function roundBoard({ seed, round, map, you, them, tactics }) {
     tactics,
     opponentTactics,
     opponentTactic: opponentTactics[0],
+    slots,
+    spent,
   };
 }
 

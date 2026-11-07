@@ -70,7 +70,7 @@
 .primerLadderWrap { width: min(380px, 100%); display: flex; justify-content: center; }
 .primerLadder { width: 100%; display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
 .primerLadder li { min-height: 42px; padding: 0 var(--sp-3); display: flex; align-items: center; justify-content: space-between; background: var(--plate); border: 1px solid var(--line-bracket); font-weight: 700; }
-.primerLadder li[data-here] { border-left: 3px solid var(--win); background: var(--plate-hi); }
+.primerLadder li[data-here] { background: var(--plate-hi); }
 .tierName { font-size: var(--fs-body); color: var(--ink); }
 .tierBadge { font: 700 var(--fs-nano)/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; background: var(--win-soft); color: var(--win); padding: 3px 8px; }
 .tierZone { font: 700 var(--fs-nano)/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--gold); }
@@ -132,104 +132,70 @@
 @media (hover: hover) { .signin:hover { background: var(--plate-hi); } }
 @media (prefers-reduced-motion: reduce) { .sync { animation: none; } }
 
-/* ── hint (broadcast HUD advisory) ───────────────────────────────────────── */
-.hint {
+/* ── tip ─────────────────────────────────────────────────────────────────────
+   A first-time tip is information, so it is made like the match tags: a light
+   paper slab with a two-step edge and the lift shadow, pointing at the control it
+   explains, which gets a green ring. ClubHint places both every frame. */
+.tip {
+  --tip-muted: color-mix(in srgb, var(--bg) 62%, var(--ink));
   position: fixed;
   z-index: 62;
-  top: calc(max(var(--sp-6), env(safe-area-inset-top)) + 64px);
-  left: 50%;
-  width: min(480px, calc(100vw - 2 * var(--sp-3)));
-  padding: var(--sp-3) var(--sp-4);
+  left: 0;
+  top: 0;
+  width: min(340px, calc(100vw - 24px));
+  padding: var(--sp-4) var(--sp-4) var(--sp-3);
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
   box-sizing: border-box;
-  transform: translateX(-50%);
-  background: var(--surface);
-  color: var(--ink);
-  border: 1px solid var(--line-bracket);
-  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
-  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.6);
+  background: var(--ink);
+  color: var(--bg);
+  box-shadow: 0 4px 0 #b8b3aa, 0 7px 0 var(--surface-alt);
+  filter: var(--shadow-lift);
   text-align: left;
-  animation: hintIn .24s cubic-bezier(.22, 1, .36, 1) both;
+  visibility: hidden;
 }
-.hintHead {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--sp-2);
+.tip[data-ready] { visibility: visible; animation: tipIn .22s cubic-bezier(.22, 1, .36, 1) both; }
+/* The pointer, on whichever edge faces the control. */
+.tip::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 12px;
+  background: var(--ink);
 }
-.hintKicker {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-2);
-  font: 700 var(--fs-micro)/1 var(--font-mono);
-  letter-spacing: .14em;
-  text-transform: uppercase;
-  color: var(--win);
-}
-.hintPip {
-  width: 6px;
-  height: 6px;
-  background: var(--win);
-  flex: none;
-}
-.hintOff {
-  background: transparent;
+.tip[data-side='above']::after { top: 100%; left: calc(var(--point) - 10px); clip-path: polygon(0 0, 100% 0, 50% 100%); }
+.tip[data-side='below']::after { bottom: 100%; left: calc(var(--point) - 10px); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.tip[data-side='right']::after { right: 100%; top: calc(var(--point) - 10px); width: 12px; height: 20px; clip-path: polygon(100% 0, 100% 100%, 0 50%); }
+.tip[data-side='left']::after { left: 100%; top: calc(var(--point) - 10px); width: 12px; height: 20px; clip-path: polygon(0 0, 100% 50%, 0 100%); }
+.tip[data-side='dock']::after { display: none; }
+.tipTitle { margin: 0; font-size: var(--fs-lead); font-weight: 800; line-height: 1.2; color: var(--bg); }
+.tipText { margin: 0; font-size: var(--fs-body); line-height: 1.45; color: var(--bg); }
+.tipFoot { margin-top: var(--sp-1); display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.tipOff { min-height: var(--tap-min-secondary, 28px); padding: 0; border: 0; background: none; color: var(--tip-muted); font: 600 var(--fs-label)/1 var(--font-body); cursor: pointer; }
+@media (hover: hover) { .tipOff:hover { color: var(--bg); text-decoration: underline; text-underline-offset: 3px; } }
+/* An ink slab on the paper: the one thing to press. */
+.tipOk {
+  min-height: 36px;
+  padding: 0 var(--sp-5);
   border: 0;
-  padding: 4px;
-  color: var(--muted);
-  font: 700 var(--fs-nano)/1 var(--font-mono);
+  background: var(--bg);
+  color: var(--ink);
+  font: 800 var(--fs-label)/1 var(--font-body);
   letter-spacing: .1em;
   text-transform: uppercase;
+  box-shadow: 0 3px 0 var(--bg-deep);
   cursor: pointer;
-  transition: color .15s ease;
+  transition: translate 90ms ease-out, box-shadow 90ms ease-out;
 }
-@media (hover: hover) { .hintOff:hover { color: var(--ink); } }
-.hintBody {
-  margin: 0;
-  font-size: var(--fs-body);
-  line-height: 1.45;
-  color: var(--ink);
-}
-.hintFoot {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  margin-top: 2px;
-}
-.hintDismiss {
-  min-height: var(--tap-min-secondary, 28px);
-  padding: 6px 18px;
-  border: 0;
-  background: var(--accent);
-  color: var(--accent-ink);
-  font: 700 var(--fs-micro)/1 var(--font-mono);
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  cursor: pointer;
-  clip-path: polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 7px 100%, 0 calc(100% - 7px));
-  transition: opacity .15s ease;
-}
-@media (hover: hover) { .hintDismiss:hover { opacity: .92; } }
-
-@keyframes hintIn { from { opacity: 0; transform: translate(var(--hint-x, -50%), -8px); } to { opacity: 1; transform: translateX(var(--hint-x, -50%)); } }
-
-/* On a wide screen each menu's tip sits in that menu's own empty space, never over its cards or table. */
-@media (min-width: 760px) {
-  .hint[data-at='squad'], .hint[data-at='league'], .hint[data-at='train'] { --hint-x: 0; left: auto; right: max(var(--sp-10), env(safe-area-inset-right)); width: 380px; transform: none; }
-  .hint[data-at='squad'], .hint[data-at='league'] { top: auto; bottom: max(var(--sp-6), env(safe-area-inset-bottom)); }
-  .hint[data-at='vault'] { top: auto; bottom: max(var(--sp-6), env(safe-area-inset-bottom)); }
-  .hint[data-at='chips'] { --hint-x: 0; top: auto; bottom: max(var(--sp-6), env(safe-area-inset-bottom)); left: auto; right: max(var(--sp-10), env(safe-area-inset-right)); width: 380px; transform: none; }
-  .hint[data-at='chipPick'] { --hint-x: 0; top: auto; bottom: max(var(--sp-6), env(safe-area-inset-bottom)); left: max(var(--sp-10), env(safe-area-inset-left)); width: 380px; transform: none; }
-  .hint[data-at='window'] { --hint-x: 0; top: auto; bottom: max(var(--sp-6), env(safe-area-inset-bottom)); left: auto; right: max(var(--sp-10), env(safe-area-inset-right)); width: 380px; transform: none; }
-}
-
-/* On a phone the menus' header holds their tabs, so their tips sit at the bottom instead. */
-@media (max-width: 759px) {
-  .hint[data-at]:not([data-at='home']) { top: auto; bottom: max(var(--sp-3), env(safe-area-inset-bottom)); }
-}
-@media (prefers-reduced-motion: reduce) { .hint { animation: none; } }
+.tipOk:active { translate: 0 2px; box-shadow: 0 1px 0 var(--bg-deep); }
+.tipOk:focus-visible { outline: 2px solid var(--win); outline-offset: 2px; }
+/* The ring around the control the tip is about. */
+.tipRing { position: fixed; z-index: 61; pointer-events: none; box-shadow: 0 0 0 2px var(--win); visibility: hidden; }
+.tipRing[data-on] { visibility: visible; animation: ringPulse 1.4s ease-in-out infinite alternate; }
+@keyframes tipIn { from { opacity: 0; translate: 0 6px; } }
+@keyframes ringPulse { from { opacity: 1; } to { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .tip[data-ready], .tipRing[data-on] { animation: none; } }
 
 /* ── phones ──────────────────────────────────────────────────────────────── */
 @media (max-width: 759px) {
@@ -244,7 +210,6 @@
   .primerTelemetry { grid-template-columns: 1fr; }
   .primerLanes { grid-template-columns: 1fr; }
   .settings li { min-height: 64px; padding: var(--sp-3); }
-  .hint { top: calc(max(var(--sp-2), env(safe-area-inset-top)) + 56px); }
   .syncPair { grid-template-columns: 1fr; }
   .syncSide { padding: var(--sp-3); gap: var(--sp-2); }
 }

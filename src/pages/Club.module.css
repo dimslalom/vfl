@@ -1486,7 +1486,7 @@ img.tapeCard { object-fit: contain; filter: var(--shadow-rest); }
 .managementMain { grid-area: main; min-width: 0; }
 .managementBottom { grid-area: bottom; min-width: 0; }
 .managementEmpty { margin: 0; padding-inline: 8px; color: var(--muted); }
-.managementGround .eafcCardsRow { padding: 14px 8px 12px; justify-content: flex-start; }
+.managementGround .eafcCardsRow { padding: 28px 8px 12px; justify-content: flex-start; } /* top room for the IGL crown above the card */
 .managementGround .eafcRowHead { padding-left: 8px; }
 .managementGround .windowSlot { flex: none; }
 .managementStatus { margin: 0 8px; color: var(--win); font-size: var(--fs-label); }
@@ -1528,7 +1528,7 @@ img.tapeCard { object-fit: contain; filter: var(--shadow-rest); }
   .managementInspector { block-size: clamp(270px, 52dvh, 380px); }
   .managementActions { min-height: 44px; }
   .managementMain { overflow: visible; }
-  .managementGround .eafcCardsRow { padding: 8px; }
+  .managementGround .eafcCardsRow { padding: 16px 8px 8px; }
   .inventorySpotlightArt { min-height: 76px; }
 }
 
@@ -1690,3 +1690,15 @@ button.handSlot[data-droppable] { box-shadow: inset 0 0 0 1px var(--accent); }
   .globalTable .globalPower { display: none; }
 }
 
+
+/* Two-click swap (Squad and Inventory): the held piece rises, every place it can
+   go bobs, and an open loadout slot that can take it lights its ring. */
+.windowSlot[data-held] .slotCard, .inventoryItem[data-held] { translate: 0 -10px; transition: translate .18s cubic-bezier(.22, 1, .36, 1); }
+[data-swap-target] { animation: swapBob .7s cubic-bezier(.45, 0, .55, 1) infinite alternate; cursor: pointer; }
+@keyframes swapBob { to { translate: 0 -5px; } }
+button.emptyTactic { padding: 0; background: none; color: inherit; cursor: default; }
+button.emptyTactic[data-swap-target] { border-color: var(--win); cursor: pointer; }
+@media (prefers-reduced-motion: reduce) {
+  [data-swap-target] { animation: none; outline: 1px dashed var(--muted); outline-offset: 2px; }
+  .windowSlot[data-held] .slotCard, .inventoryItem[data-held] { transition: none; }
+}

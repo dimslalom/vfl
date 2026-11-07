@@ -46,6 +46,23 @@
 .overlay [data-row] span[data-cut] { text-decoration: line-through; text-decoration-thickness: 3px; opacity: 0.7; }
 /* What a held or picked card would add, before it lands. */
 .overlay [data-row='you'] span[data-ghost] { padding: 0 8px; white-space: nowrap; background: transparent; border: 2px dashed var(--ink); color: var(--ink); }
+/* A Sovereign's lane counts as two: two gold bars stacked at the bar's left end,
+   which take the colour of whoever wins the lane. */
+.overlay [data-role='bar'][data-crown]::before {
+  content: '';
+  position: absolute;
+  left: -52px;
+  top: 50%;
+  width: 40px;
+  height: 24px;
+  margin-top: -32px;
+  background: var(--crown, var(--gold));
+  box-shadow: 0 40px 0 var(--crown, var(--gold));
+  clip-path: polygon(0 0, 100% 0, 78% 100%, 22% 100%);
+  animation: stampLand 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.overlay [data-role='bar'][data-crown='you'] { --crown: var(--win); }
+.overlay [data-role='bar'][data-crown='them'] { --crown: var(--accent); }
 /* The lane's verdict, on the bar's corner once it has scored. */
 .overlay [data-stamp] { position: absolute; right: 0; top: -40px; padding: 2px 10px; font-style: normal; font-size: 20px; font-weight: 800; letter-spacing: 0.14em; background: var(--surface); color: var(--muted); }
 .overlay [data-stamp]:empty { display: none; }

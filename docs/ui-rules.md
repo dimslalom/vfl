@@ -117,6 +117,7 @@ Every menu screen uses the same frame. Build new menus on it; never write a new 
   - chips and evos: `itemArtSize(size)`
   - selected card in the inspector: `SPOTLIGHT_SCALE`
 - **Selection** is green corner brackets (`SelectionCorners`, which `ItemChoice` adds when `selected`). Don't add a border or a fill.
+- **Swapping is two clicks everywhere.** The first click picks a thing up: it rises (`data-held`) and every place it can go bobs (`data-swap-target`). The second click swaps it with whatever is clicked; clicking the held thing again puts it down. Squad does this for players, Inventory for a reserve tactic and a loadout chip (an empty slot just takes it). Keep the explicit button (Swap, Equip, Unequip) beside it, so both ways work.
 
 ### 4.4 Lists of cards
 
@@ -124,11 +125,37 @@ Every menu screen uses the same frame. Build new menus on it; never write a new 
 - A card row must fit its container without horizontal overflow at 1440×900. If it doesn't, scale the cards from the available width (see `squadScale` in `Window`); don't let the row scroll.
 - Empty squad places use `BenchOpen`, at bench size.
 
-### 4.5 First-week tips (`ClubHint`)
+### 4.5 First-time tips (`ClubHint`)
 
-- One tip per screen, from the `HINTS` map in `src/components/club/ClubHint.jsx`.
-- A tip must never cover the content it explains. Each screen places its tip in its own empty space with a `data-at` rule in `src/components/club/ClubEntry.module.css`. When one screen key covers two layouts, pass a third argument to `withHint(view, at, place)`, as the chip pick does.
-- On phones, menu tips sit at the bottom, because the header holds the tabs.
+- **Write for someone who has never played.** Each tip is a plain heading, then what to do and why it matters, in one or two short sentences. Explain a game word the first time it appears ("your captain (IGL)"). Name buttons exactly as they are labelled on screen, including in the Spanish and Portuguese translations.
+- **A tip points at the control it is about.** Give the control a `data-tip="name"` attribute and set `target: 'name'` on the tip in the `HINTS` map in `src/components/club/ClubHint.jsx`. Every frame, the tip places itself next to the control (above it, else below, else beside it), points its arrow at it and puts a green ring around it. With no target on screen, it docks at the bottom.
+- **Tips are light paper slabs,** the same information material as the match tags. Never give a tip its own new look or a fixed corner position.
+- **Each tip has one main button ("Got it") and a quiet "Turn off tips" link.** Don't add more.
+
+### 4.6 The match screen (`src/components/BoardSeries.jsx`)
+
+The match is a 3D table. Everything laid over it must look like a piece on that table, not a flat web button.
+
+- **One popup for every picked piece.** A picked card and a picked chip both use `BoardTag`: a light slab that follows the piece every frame, tilts with the board, and points at it. Never add a second popup style, a bar across the top, or a modal for piece details. A new pickable piece gets an anchor method on `TableStage` (in the shape of `cardAnchor` and `chipAnchor`) and its content inside `BoardTag`.
+- **Every control is a slab.** The map and score plate, Settings and Leave, the settings panel, the main button, the round result and the failure card all use the slab rules in `BoardSeries.module.css`:
+  - a face colour
+  - a two-step extruded edge (`--slab-edge`, then `--slab-base`)
+  - `--shadow-rest`
+  - the board tilt (`--slab-tilt`)
+  - a press that sinks the slab onto its edge
+- **Slab colours:**
+  - light slabs (the tags) carry information
+  - dark slabs are chrome
+  - the one red slab is the main action
+- **Never put a second tilt on a slab inside a tilted slab** (for example, the button inside the round result).
+- **Position slabs with the `translate` property.** `transform` holds the tilt.
+- **Button labels in the match stay short and fixed.** One label per action ("Lock in", "Go", "Next round"); don't build a label from state ("Rotate and go" / "Go without rotating").
+- **Round playback speed is `ROUND_PLAYBACK` in `src/table3d/TableStage.js`** (below 1 is slower). Change that one number; never retime single steps to slow the round down.
+
+### 4.7 The IGL mark
+
+- The IGL is marked by `PlayerCard`'s `isIgl` prop: a green crown tucked behind the card's top peak, reading "IGL" straight across. Use the prop; never draw a separate IGL badge or label next to a card.
+- A row that shows an IGL card needs about 28px of top padding (16px on phones) so the crown isn't clipped.
 
 ---
 

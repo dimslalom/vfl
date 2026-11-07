@@ -590,6 +590,24 @@
 .skillList li[data-skill='one_trick'] { --live: #b24a0c; }
 .skillList li[data-skill='aura'] { --live: #6b3fc4; }
 
+.skillFireButton {
+  margin-top: var(--sp-2);
+  min-height: 32px;
+  padding: 0 var(--sp-3);
+  border: 0;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: 700 var(--fs-micro)/1 var(--font-mono);
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+  cursor: pointer;
+  width: 100%;
+}
+
+.skillFireButton:hover {
+  filter: brightness(1.1);
+}
+
 .tag .back {
   background: var(--tag-ink);
   color: var(--tag-bg);

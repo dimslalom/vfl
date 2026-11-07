@@ -27,6 +27,24 @@ const COUNTRY_PAIR = 8;
 const ONE_TRICK_BONUS = 20;
 const AURA_PENALTY = 15;
 
+// Evo skill numbers, tuned by simulation (see EVO_TUNING notes in the evo lab).
+export const EVO_TUNING = {
+  ironclad: 4,          // its lane's flat bonus; no chip works there, either side
+  lurk: 6,              // facing exactly one enemy
+  velocityWindow: 4,    // dashes to a losing lane trailing by this much or less
+  velocityKeep: 0.4,    // share of its stat it scores on arrival
+  combustionPct: 0.2,   // the burned star's cut...
+  combustionMax: 10,    // ...capped
+  combustionFuel: 5,    // what Combustion costs its own lane
+  phaseKeep: 0.5,       // Phase's own share while voiding the best enemy facing it
+  surgeEnemy: 8,        // per enemy card on the next lane
+  surgeAlly: 2,         // per own card on the next lane
+  ascendanceKeep: 0.75, // share of her stat she brings to the lane she flies to
+  overdriveWin: 1.2,    // other lanes when its lane wins
+  overdriveTilt: 0.9,   // other lanes when its lane loses
+  blackHoleKeep: 0.5,   // the pulled star's stats on arrival
+};
+
 export const BOARD_SKILLS = {
   flex: { label: 'Flex', text: 'Moves free during the rotate' },
   flick: { label: 'Flick', text: 'Alone on a lane: scores their best stat' },
@@ -37,17 +55,17 @@ export const BOARD_SKILLS = {
   first_blood: { label: 'First Blood', text: 'On primary lane: +20' },
   clutch: { label: 'Clutch', text: 'Alone vs 2+: +25' },
   synergy_link: { label: 'Synergy Link', text: 'Teammate combo with anyone' },
-  overdrive: { label: 'Overdrive', text: 'Win lane: +0.2x other lanes' },
-  ironclad: { label: 'Ironclad', text: 'Lane immune to tactic debuffs; +3' },
-  lurk: { label: 'Lurk', text: 'Stealthed until resolve; +4 vs 1' },
-  velocity: { label: 'Velocity', text: 'Flashes to clutched losing lane' },
-  combustion: { label: 'Combustion', text: 'Win lane: -20% adjacent enemy star' },
-  phase: { label: 'Phase', text: 'Siphons +4 from facing synergy' },
-  timewarp: { label: 'Timewarp', text: 'Losing by <=6: +6 rewind surge' },
-  surge: { label: 'Surge', text: 'With ally: -4 adjacent enemy lane' },
-  ascendance: { label: 'Ascendance', text: 'Trailing <=10: +8 to ally, or +4' },
-  dominion: { label: 'Dominion', text: 'Collects +2 per enemy synergy (max +8)' },
-  black_hole: { label: 'Black Hole', text: 'Pulls enemy star from other lane' },
+  overdrive: { label: 'Overdrive', text: 'Win lane: other lanes x1.2; lose it: x0.9' },
+  ironclad: { label: 'Ironclad', text: 'No chips work on its lane, either side; +4' },
+  lurk: { label: 'Lurk', text: 'Hidden until resolve; +6 vs 1; cannot rotate' },
+  velocity: { label: 'Velocity', text: 'Dashes to a lane lost by 4 or less; arrives at 40%' },
+  combustion: { label: 'Combustion', text: 'Win lane: next lane enemy star -20%; -5 fuel' },
+  phase: { label: 'Phase', text: 'Best enemy facing it scores 0; it scores half' },
+  timewarp: { label: 'Timewarp', text: 'Lose a series by one map: replay it, once' },
+  surge: { label: 'Surge', text: 'With ally: next lane -8 per enemy, -2 per ally' },
+  ascendance: { label: 'Ascendance', text: 'Lane lost: flies to a losing lane at 75%' },
+  dominion: { label: 'Dominion', text: 'Plays alone, best stat; lane counts double; voids enemy chip' },
+  black_hole: { label: 'Black Hole', text: 'Pulls the enemy star in at half stats' },
 };
 
 export function hasSkill(card, key) {
@@ -69,12 +87,27 @@ export function allPlacements(size = SQUAD_SIZE) {
   return out;
 }
 
-export function isLegalPlacement(slots) {
+export function isLegalPlacement(slots, roster = null) {
   if (slots.length !== SQUAD_SIZE) return false;
-  return [0, 1, 2].every((lane) => {
-    const count = slots.filter(slot => slot === lane).length;
-    return count >= 1 && count <= LANE_CAP;
-  });
+  const counts = [0, 1, 2].map(lane => slots.filter(slot => slot === lane).length);
+  return counts.every(count => count >= 1 && count <= LANE_CAP) && !crowdsCrown(slots, roster);
+}
+
+/** Dominion plays alone: no ally may share the Sovereign's lane. */
+export function crowdsCrown(slots, roster) {
+  if (!Array.isArray(roster)) return false; // also called as an Array#every callback
+  return roster.some((card, index) => slots[index] != null && hasSkill(card, 'dominion')
+    && slots.filter(slot => slot === slots[index]).length > 1);
+}
+
+/** The lane a Combustion flare or a Surge bolt reaches: the next one, or the middle from the right. */
+export function nextLane(lane) {
+  return lane === LANES - 1 ? lane - 1 : lane + 1;
+}
+
+/** What a lane is worth in lanes won: two with a Sovereign on it. */
+export function laneWeight(lane) {
+  return lane.myCards.some(card => hasSkill(card, 'dominion')) || lane.theirCards.some(card => hasSkill(card, 'dominion')) ? 2 : 1;
 }
 
 function pairs(cards) {
@@ -106,11 +139,21 @@ export function laneScore(cards, lane, tactic = null, ctx = {}) {
   let total = 0;
   const add = (key, value, label) => {
     total += value;
-    steps.push({ key, op: '+', value, label, total });
+    steps.push({ key, op: value < 0 ? '-' : '+', value: Math.abs(value), label, total });
   };
+  // Phase: facing one, this side's highest-rated card here is pulled into the rift and scores 0.
+  const voided = ctx.phaseOut && cards.length ? cards.reduce((top, card) => (card.rating > top.rating ? card : top)) : null;
   for (const card of cards) {
-    const alone = cards.length === 1 && hasSkill(card, 'flick');
-    add('player', alone ? Math.max(...Object.values(card.stats)) : card.stats[lane.stat], card.player);
+    if (card === voided) {
+      steps.push({ key: 'player', op: '+', value: 0, label: card.player, voided: true, total });
+      continue;
+    }
+    // Flick alone, and the Sovereign (who always plays alone), score their best stat.
+    const best = cards.length === 1 && (hasSkill(card, 'flick') || hasSkill(card, 'dominion'));
+    const stat = best ? Math.max(...Object.values(card.stats)) : card.stats[lane.stat];
+    // Phase: its own share while it holds the rift open.
+    const phasing = hasSkill(card, 'phase') && (ctx.enemyCount ?? 0) > 0;
+    add('player', phasing ? Math.round(stat * EVO_TUNING.phaseKeep) : stat, card.player);
   }
   const hasIronclad = cards.some(card => hasSkill(card, 'ironclad'));
   // No Respect: the enemy's best player here counts for half, or nothing.
@@ -121,11 +164,9 @@ export function laneScore(cards, lane, tactic = null, ctx = {}) {
     total -= value;
     steps.push({ key: 'disrespect', op: '-', value, label: 'No Respect', player: best.label, total });
   }
-  // Ironclad: Fortress anchor grants +3 defensive armor to its lane.
-  if (cards.length && hasIronclad) {
-    add('ironclad', 3, 'Ironclad');
-  }
-  if (cards.length && ruleFires(cards, lane) && !ctx.phaseOut) add('rule', ROLE_PAIR, 'Roles');
+  // Ironclad: the plate holds its lane; no chip works here, either side.
+  if (cards.length && hasIronclad) add('ironclad', EVO_TUNING.ironclad, 'Ironclad');
+  if (cards.length && ruleFires(cards, lane)) add('rule', ROLE_PAIR, 'Roles');
   for (const card of cards) {
     if (hasSkill(card, 'one_trick') && card.agents?.length === 1 && lane.agents?.includes(card.agents[0])) {
       add('trick', ONE_TRICK_BONUS, 'Trick');
@@ -145,26 +186,21 @@ export function laneScore(cards, lane, tactic = null, ctx = {}) {
   if (cards.length === 1 && hasSkill(cards[0], 'clutch') && (ctx.enemyCount >= 2)) {
     add('clutch', 25, 'Clutch');
   }
-  // Lurk: Shrouded from opponent until resolve; +4 duel power when opposing lane has only 1 card.
+  // Lurk: hidden until resolve; it pays off facing exactly one enemy.
   if (cards.length && cards.some(card => hasSkill(card, 'lurk')) && ctx.enemyCount === 1) {
-    add('lurk', 4, 'Lurk');
+    add('lurk', EVO_TUNING.lurk, 'Lurk');
   }
-  // Phase: Siphons +4 from facing enemy if enemy has active Team or Nation synergy.
-  if (cards.length && cards.some(card => hasSkill(card, 'phase')) && ctx.enemyHasSynergy) {
-    add('phase', 4, 'Phase');
-  }
-  // Dominion: Demands tribute from enemy ranks; collects 2 points per active enemy synergy across all lanes (max +8).
-  if (cards.length && cards.some(card => hasSkill(card, 'dominion'))) {
-    const bonus = Math.min(8, (ctx.enemyTotalSynergies ?? 0) * 2);
-    if (bonus > 0) add('dominion', bonus, 'Dominion');
-  }
+  // Combustion burns its own lane's fuel; the flare it buys lands at resolve.
+  if (cards.some(card => hasSkill(card, 'combustion'))) add('combustion_fuel', -EVO_TUNING.combustionFuel, 'Fuel');
   for (const [a, b] of pairs(cards)) {
     if (a.org && a.org === b.org) add('teammates', TEAMMATE_PAIR, 'Team');
     else if (hasSkill(a, 'synergy_link') || hasSkill(b, 'synergy_link')) add('synergy_link', TEAMMATE_PAIR, 'Link');
-    else if (a.nationality && a.nationality === b.nationality && !ctx.phaseOut) add('country', COUNTRY_PAIR, 'Nation');
+    else if (a.nationality && a.nationality === b.nationality) add('country', COUNTRY_PAIR, 'Nation');
   }
   const tacticCtx = { ...ctx, rule: cards.length > 0 && ruleFires(cards, lane) };
-  if (cards.length && tactic && ctx.cancelled && !hasIronclad) {
+  if (cards.length && tactic && hasIronclad) {
+    steps.push({ key: 'cancelled', op: '×', value: 1, label: 'Ironclad', total });
+  } else if (cards.length && tactic && ctx.cancelled) {
     steps.push({ key: 'cancelled', op: '×', value: 1, label: 'Cancelled', total });
   } else if (cards.length && tactic) {
     const value = tacticMult(tactic, cards, tacticCtx);
@@ -173,7 +209,7 @@ export function laneScore(cards, lane, tactic = null, ctx = {}) {
       steps.push({ key: 'tactic', op: '×', value, label: 'Tactic', total });
     }
   }
-  if (cards.length && ctx.chain && !ctx.cancelled) {
+  if (cards.length && ctx.chain && !ctx.cancelled && !hasIronclad) {
     total = Math.round(total * ctx.chain);
     steps.push({ key: 'chain', op: '×', value: ctx.chain, label: 'Chain', total });
   }
@@ -272,35 +308,14 @@ export function sideScores({ roster, slots, maps, tactic = null, tactics = null,
     chains[to] = Math.max(chains[to] ?? 1, chainMult(lanes[chip.lane]));
   }
 
-  let enemyTotalSynergies = 0;
-  if (enemyLanes) {
-    for (const oppCards of enemyLanes) {
-      for (const [a, b] of pairs(oppCards)) {
-        if (a.org && a.org === b.org) enemyTotalSynergies += 1;
-        else if (hasSkill(a, 'synergy_link') || hasSkill(b, 'synergy_link')) enemyTotalSynergies += 1;
-        else if (a.nationality && a.nationality === b.nationality) enemyTotalSynergies += 1;
-      }
-    }
-  }
-  if (theirs.length) enemyTotalSynergies += theirs.length;
-
   return maps.map((map, lane) => {
     const oppCards = enemyLanes?.[lane] ?? [];
-    let enemyHasSynergy = false;
-    for (const [a, b] of pairs(oppCards)) {
-      if ((a.org && a.org === b.org) || hasSkill(a, 'synergy_link') || hasSkill(b, 'synergy_link') || (a.nationality && a.nationality === b.nationality)) {
-        enemyHasSynergy = true;
-        break;
-      }
-    }
     const ctx = {
       igl: roster[0]?.id,
       laneIndex: lane,
       enemyCount: enemyCounts?.[lane] ?? (theirs.length ? 1 : 0),
-      enemyRatings: oppCards.map(c => c.rating),
-      enemyHasSynergy,
-      enemyTotalSynergies,
-      phaseOut: Boolean(oppCards.some(c => hasSkill(c, 'phase'))),
+      // Facing a Phase card: this side's best card here falls into the rift.
+      phaseOut: oppCards.some(c => hasSkill(c, 'phase')),
       cancelled: cancelled(lane),
     };
     if (chains[lane]) ctx.chain = chains[lane];
@@ -349,6 +364,14 @@ function underAura(score, opposing) {
 
 /** The whole board. Ties on a map go to the higher raw rating there. */
 export function resolveBoard({ maps, you, them }) {
+  // Black Hole rewrites a roster entry (the pulled star arrives weakened), so work on copies.
+  you = { ...you, roster: [...you.roster] };
+  them = { ...them, roster: [...them.roster] };
+  const pulled = card => ({
+    ...card,
+    pulled: true,
+    stats: Object.fromEntries(Object.entries(card.stats).map(([key, value]) => [key, Math.round(value * EVO_TUNING.blackHoleKeep)])),
+  });
   let youSlots = [...you.slots];
   let themSlots = [...them.slots];
   const displacements = [];
@@ -375,6 +398,7 @@ export function resolveBoard({ maps, you, them }) {
         }
         themSlots[bestOppIdx] = lane;
         displacements.push({ side: 'them', card: them.roster[bestOppIdx], fromLane, toLane: lane, reason: 'black_hole' });
+        them.roster[bestOppIdx] = pulled(them.roster[bestOppIdx]);
       }
     }
   }
@@ -398,6 +422,7 @@ export function resolveBoard({ maps, you, them }) {
         }
         youSlots[bestYouIdx] = lane;
         displacements.push({ side: 'you', card: you.roster[bestYouIdx], fromLane, toLane: lane, reason: 'black_hole' });
+        you.roster[bestYouIdx] = pulled(you.roster[bestYouIdx]);
       }
     }
   }
@@ -425,180 +450,124 @@ export function resolveBoard({ maps, you, them }) {
 
   let lanes = computeScores(youSlots, themSlots);
 
-  // 2. Velocity (Swift Flank): Automatically rotates to flip a losing lane during resolve (-4 sprint fatigue).
-  for (let i = 0; i < you.roster.length; i++) {
-    const card = you.roster[i];
-    if (hasSkill(card, 'velocity')) {
-      const curLane = youSlots[i];
-      for (let targetLane = 0; targetLane < LANES; targetLane++) {
-        if (targetLane === curLane) continue;
-        const targetCards = laneCards(you.roster, youSlots, targetLane);
-        if (targetCards.length >= 3) continue;
-        if (lanes[targetLane].winner === 'them') {
-          const testSlots = [...youSlots];
-          testSlots[i] = targetLane;
-          const testLanes = computeScores(testSlots, themSlots);
-          const flippedWin = testLanes[targetLane].mine.total - 4 > testLanes[targetLane].theirs.total;
-          const curLaneOk = lanes[curLane].winner !== 'you' || testLanes[curLane].winner === 'you';
-          if (flippedWin && curLaneOk) {
-            youSlots = testSlots;
-            velocityMoves.push({ side: 'you', card, fromLane: curLane, toLane: targetLane, fatigue: 4 });
-            lanes = computeScores(youSlots, themSlots);
-            const destLane = lanes[targetLane];
-            const newTotal = Math.max(0, destLane.mine.total - 4);
-            destLane.mine = { ...destLane.mine, total: newTotal, steps: [...destLane.mine.steps, { key: 'fatigue', op: '-', value: 4, label: 'Fatigue', total: newTotal }] };
-            destLane.winner = destLane.mine.total !== destLane.theirs.total
-              ? (destLane.mine.total > destLane.theirs.total ? 'you' : 'them')
-              : destLane.rawMine === destLane.rawTheirs ? null : (destLane.rawMine > destLane.rawTheirs ? 'you' : 'them');
-            break;
-          }
-        }
-      }
-    }
-  }
+  // Every pass below works for either side; `sides` names the halves of a lane for each.
+  const decide = lane => (lane.mine.total !== lane.theirs.total
+    ? (lane.mine.total > lane.theirs.total ? 'you' : 'them')
+    : lane.rawMine === lane.rawTheirs ? null : (lane.rawMine > lane.rawTheirs ? 'you' : 'them'));
+  const sides = {
+    you: { own: 'mine', foe: 'theirs', cards: 'myCards', foeCards: 'theirCards', other: 'them' },
+    them: { own: 'theirs', foe: 'mine', cards: 'theirCards', foeCards: 'myCards', other: 'you' },
+  };
+  const margin = (lane, k) => lane[k.own].total - lane[k.foe].total;
+  const nudge = (lane, half, value, step) => {
+    const total = Math.max(0, lane[half].total + value);
+    lane[half] = { ...lane[half], total, steps: [...lane[half].steps, { ...step, op: value < 0 ? '-' : '+', value: Math.abs(value), total }] };
+  };
+  const effects = [];
 
-  // 3. Solstice (Solar Eclipse): Winning this lane blinds adjacent enemy star by 20% (up to -10 max).
-  lanes.forEach((lane, idx) => {
-    if (lane.winner === 'you' && lane.myCards.some(c => hasSkill(c, 'combustion'))) {
-      const adj = (idx + 1) % LANES;
-      const adjLane = lanes[adj];
-      if (adjLane.theirs.total > 0 && adjLane.theirCards.length > 0) {
-        const topEnemy = adjLane.theirCards.reduce((top, c) => (c.rating > top.rating ? c : top));
-        const penalty = Math.min(10, Math.round(topEnemy.rating * 0.2));
-        if (penalty > 0) {
-          const total = Math.max(0, adjLane.theirs.total - penalty);
-          adjLane.theirs = { ...adjLane.theirs, total, steps: [...adjLane.theirs.steps, { key: 'combustion', op: '-', value: penalty, label: 'Solar Eclipse', total }] };
-          adjLane.winner = adjLane.mine.total !== adjLane.theirs.total
-            ? (adjLane.mine.total > adjLane.theirs.total ? 'you' : 'them')
-            : adjLane.rawMine === adjLane.rawTheirs ? null : (adjLane.rawMine > adjLane.rawTheirs ? 'you' : 'them');
-        }
-      }
-    }
-    if (lane.winner === 'them' && lane.theirCards.some(c => hasSkill(c, 'combustion'))) {
-      const adj = (idx + 1) % LANES;
-      const adjLane = lanes[adj];
-      if (adjLane.mine.total > 0 && adjLane.myCards.length > 0) {
-        const topCard = adjLane.myCards.reduce((top, c) => (c.rating > top.rating ? c : top));
-        const penalty = Math.min(10, Math.round(topCard.rating * 0.2));
-        if (penalty > 0) {
-          const total = Math.max(0, adjLane.mine.total - penalty);
-          adjLane.mine = { ...adjLane.mine, total, steps: [...adjLane.mine.steps, { key: 'combustion', op: '-', value: penalty, label: 'Solar Eclipse', total }] };
-          adjLane.winner = adjLane.mine.total !== adjLane.theirs.total
-            ? (adjLane.mine.total > adjLane.theirs.total ? 'you' : 'them')
-            : adjLane.rawMine === adjLane.rawTheirs ? null : (adjLane.rawMine > adjLane.rawTheirs ? 'you' : 'them');
-        }
-      }
-    }
-  });
-
-  // 4. Tempest (Chain Lightning): When paired with an ally on lane, shocks adjacent enemy lane for -4.
-  lanes.forEach((lane, idx) => {
-    if (lane.myCards.length >= 2 && lane.myCards.some(c => hasSkill(c, 'surge'))) {
-      const adj = (idx + 1) % LANES;
-      const adjLane = lanes[adj];
-      if (adjLane.theirs.total > 0) {
-        const total = Math.max(0, adjLane.theirs.total - 4);
-        adjLane.theirs = { ...adjLane.theirs, total, steps: [...adjLane.theirs.steps, { key: 'surge', op: '-', value: 4, label: 'Chain Lightning', total }] };
-        adjLane.winner = adjLane.mine.total !== adjLane.theirs.total
-          ? (adjLane.mine.total > adjLane.theirs.total ? 'you' : 'them')
-          : adjLane.rawMine === adjLane.rawTheirs ? null : (adjLane.rawMine > adjLane.rawTheirs ? 'you' : 'them');
-      }
-    }
-    if (lane.theirCards.length >= 2 && lane.theirCards.some(c => hasSkill(c, 'surge'))) {
-      const adj = (idx + 1) % LANES;
-      const adjLane = lanes[adj];
-      if (adjLane.mine.total > 0) {
-        const total = Math.max(0, adjLane.mine.total - 4);
-        adjLane.mine = { ...adjLane.mine, total, steps: [...adjLane.mine.steps, { key: 'surge', op: '-', value: 4, label: 'Chain Lightning', total }] };
-        adjLane.winner = adjLane.mine.total !== adjLane.theirs.total
-          ? (adjLane.mine.total > adjLane.theirs.total ? 'you' : 'them')
-          : adjLane.rawMine === adjLane.rawTheirs ? null : (adjLane.rawMine > adjLane.rawTheirs ? 'you' : 'them');
-      }
-    }
-  });
-
-  // 5. Chronos (Temporal Surge): If an allied lane is losing by 6 or fewer, grants +6 rewind surge.
-  const youHasChrono = lanes.some(l => l.myCards.some(c => hasSkill(c, 'timewarp')));
-  if (youHasChrono) {
-    const clutchable = lanes.find(l => l.winner === 'them' && (l.theirs.total - l.mine.total) <= 6);
-    if (clutchable) {
-      const total = clutchable.mine.total + 6;
-      clutchable.mine = { ...clutchable.mine, total, steps: [...clutchable.mine.steps, { key: 'timewarp', op: '+', value: 6, label: 'Temporal Surge', total }] };
-      clutchable.winner = clutchable.mine.total !== clutchable.theirs.total
-        ? (clutchable.mine.total > clutchable.theirs.total ? 'you' : 'them')
-        : clutchable.rawMine === clutchable.rawTheirs ? null : (clutchable.rawMine > clutchable.rawTheirs ? 'you' : 'them');
-    }
-  }
-  const themHasChrono = lanes.some(l => l.theirCards.some(c => hasSkill(c, 'timewarp')));
-  if (themHasChrono) {
-    const clutchable = lanes.find(l => l.winner === 'you' && (l.mine.total - l.theirs.total) <= 6);
-    if (clutchable) {
-      const total = clutchable.theirs.total + 6;
-      clutchable.theirs = { ...clutchable.theirs, total, steps: [...clutchable.theirs.steps, { key: 'timewarp', op: '+', value: 6, label: 'Temporal Surge', total }] };
-      clutchable.winner = clutchable.mine.total !== clutchable.theirs.total
-        ? (clutchable.mine.total > clutchable.theirs.total ? 'you' : 'them')
-        : clutchable.rawMine === clutchable.rawTheirs ? null : (clutchable.rawMine > clutchable.rawTheirs ? 'you' : 'them');
-    }
-  }
-
-  // 6. Valkyrie (Divine Blessing): If an allied lane is trailing by 10 or fewer, grants +8 to that lane, or +4 to self.
-  const youValk = lanes.find(l => l.myCards.some(c => hasSkill(c, 'ascendance')));
-  if (youValk) {
-    const needyLane = lanes.find(l => l !== youValk && l.winner === 'them' && (l.theirs.total - l.mine.total) <= 10);
-    const targetLane = needyLane ?? youValk;
-    const bonus = needyLane ? 8 : 4;
-    const total = targetLane.mine.total + bonus;
-    targetLane.mine = { ...targetLane.mine, total, steps: [...targetLane.mine.steps, { key: 'ascendance', op: '+', value: bonus, label: 'Divine Blessing', total }] };
-    targetLane.winner = targetLane.mine.total !== targetLane.theirs.total
-      ? (targetLane.mine.total > targetLane.theirs.total ? 'you' : 'them')
-      : targetLane.rawMine === targetLane.rawTheirs ? null : (targetLane.rawMine > targetLane.rawTheirs ? 'you' : 'them');
-  }
-  const themValk = lanes.find(l => l.theirCards.some(c => hasSkill(c, 'ascendance')));
-  if (themValk) {
-    const needyLane = lanes.find(l => l !== themValk && l.winner === 'you' && (l.mine.total - l.theirs.total) <= 10);
-    const targetLane = needyLane ?? themValk;
-    const bonus = needyLane ? 8 : 4;
-    const total = targetLane.theirs.total + bonus;
-    targetLane.theirs = { ...targetLane.theirs, total, steps: [...targetLane.theirs.steps, { key: 'ascendance', op: '+', value: bonus, label: 'Divine Blessing', total }] };
-    targetLane.winner = targetLane.mine.total !== targetLane.theirs.total
-      ? (targetLane.mine.total > targetLane.theirs.total ? 'you' : 'them')
-      : targetLane.rawMine === targetLane.rawTheirs ? null : (targetLane.rawMine > targetLane.rawTheirs ? 'you' : 'them');
-  }
-
-  // 7. Overdrive (+0.2x): Boost all other lanes when lane is won
-  const youMultBoosts = lanes.map((l) => (l.winner === 'you' && l.myCards.some(c => hasSkill(c, 'overdrive')) ? 0.2 : 0));
-  const themMultBoosts = lanes.map((l) => (l.winner === 'them' && l.theirCards.some(c => hasSkill(c, 'overdrive')) ? 0.2 : 0));
-  const totalYouBoost = youMultBoosts.reduce((a, b) => a + b, 0);
-  const totalThemBoost = themMultBoosts.reduce((a, b) => a + b, 0);
-
-  if (totalYouBoost > 0 || totalThemBoost > 0) {
-    lanes = lanes.map((lane, index) => {
-      let { mine, theirs, rawMine, rawTheirs } = lane;
-      const youBoost = youMultBoosts.filter((_, idx) => idx !== index).reduce((a, b) => a + b, 0);
-      if (youBoost > 0 && mine.total > 0) {
-        const mult = Number((1 + youBoost).toFixed(1));
-        const total = Math.round(mine.total * mult);
-        mine = { ...mine, total, steps: [...mine.steps, { key: 'overdrive', op: '×', value: mult, label: 'Momentum', total }] };
-      }
-      const themBoost = themMultBoosts.filter((_, idx) => idx !== index).reduce((a, b) => a + b, 0);
-      if (themBoost > 0 && theirs.total > 0) {
-        const mult = Number((1 + themBoost).toFixed(1));
-        const total = Math.round(theirs.total * mult);
-        theirs = { ...theirs, total, steps: [...theirs.steps, { key: 'overdrive', op: '×', value: mult, label: 'Momentum', total }] };
-      }
-      const winner = mine.total !== theirs.total
-        ? (mine.total > theirs.total ? 'you' : 'them')
-        : rawMine === rawTheirs ? null : (rawMine > rawTheirs ? 'you' : 'them');
-      return { ...lane, mine, theirs, winner, rawMine, rawTheirs };
+  // 2. Velocity: dashes to its side's closest losing lane within the window, even when
+  // leaving costs the lane it stood on. It arrives spent, scoring a share of its stat.
+  for (const who of ['you', 'them']) {
+    const k = sides[who];
+    const roster = who === 'you' ? you.roster : them.roster;
+    roster.forEach((card, index) => {
+      if (!hasSkill(card, 'velocity')) return;
+      const slots = who === 'you' ? youSlots : themSlots;
+      const from = slots[index];
+      if (slots.filter(slot => slot === from).length < 2) return;
+      const target = lanes
+        .map((lane, idx) => ({ lane, idx }))
+        .filter(({ lane, idx }) => idx !== from && lane.winner === k.other && -margin(lane, k) <= EVO_TUNING.velocityWindow
+          && slots.filter(slot => slot === idx).length < LANE_CAP)
+        .sort((a, b) => margin(b.lane, k) - margin(a.lane, k))[0];
+      if (!target) return;
+      const next = [...slots];
+      next[index] = target.idx;
+      if (who === 'you') youSlots = next; else themSlots = next;
+      lanes = computeScores(youSlots, themSlots);
+      const spent = Math.ceil(card.stats[maps[target.idx].stat] * (1 - EVO_TUNING.velocityKeep));
+      nudge(lanes[target.idx], k.own, -spent, { key: 'fatigue', label: 'Fatigue' });
+      lanes[target.idx].winner = decide(lanes[target.idx]);
+      velocityMoves.push({ side: who, card, fromLane: from, toLane: target.idx, fatigue: spent });
     });
   }
 
-  const youWon = lanes.filter(lane => lane.winner === 'you').length;
-  const themWon = lanes.filter(lane => lane.winner === 'them').length;
+  // 3. Combustion: winning its lane burns the enemy star on the next lane.
+  lanes.forEach((lane, idx) => {
+    for (const who of ['you', 'them']) {
+      const k = sides[who];
+      if (lane.winner !== who || !lane[k.cards].some(card => hasSkill(card, 'combustion'))) continue;
+      const to = nextLane(idx);
+      const target = lanes[to];
+      if (!target[k.foeCards].length || !target[k.foe].total) continue;
+      const star = target[k.foeCards].reduce((top, card) => (card.rating > top.rating ? card : top));
+      const value = Math.min(EVO_TUNING.combustionMax, Math.round(star.rating * EVO_TUNING.combustionPct));
+      nudge(target, k.foe, -value, { key: 'combustion', label: 'Combustion' });
+      target.winner = decide(target);
+      effects.push({ key: 'combustion', side: who, fromLane: idx, toLane: to, card: star, value });
+    }
+  });
+
+  // 4. Surge: with an ally on its lane, chain lightning hits every card on the next lane, its own side less.
+  lanes.forEach((lane, idx) => {
+    for (const who of ['you', 'them']) {
+      const k = sides[who];
+      if (lane[k.cards].length < 2 || !lane[k.cards].some(card => hasSkill(card, 'surge'))) continue;
+      const to = nextLane(idx);
+      const target = lanes[to];
+      const foes = target[k.foeCards].length;
+      const allies = target[k.cards].length;
+      if (foes) nudge(target, k.foe, -EVO_TUNING.surgeEnemy * foes, { key: 'surge', label: 'Surge' });
+      if (allies) nudge(target, k.own, -EVO_TUNING.surgeAlly * allies, { key: 'surge', label: 'Surge' });
+      target.winner = decide(target);
+      effects.push({ key: 'surge', side: who, fromLane: idx, toLane: to, foes, allies });
+    }
+  });
+
+  // 5. Ascendance: when her lane is lost she leaves it, taking her score with her,
+  // and lands on her side's closest losing lane with a share of her stat.
+  for (const who of ['you', 'them']) {
+    const k = sides[who];
+    const home = lanes.findIndex(lane => lane[k.cards].some(card => hasSkill(card, 'ascendance')));
+    if (home < 0 || lanes[home].winner !== k.other) continue;
+    const needy = lanes
+      .map((lane, idx) => ({ lane, idx }))
+      .filter(({ lane, idx }) => idx !== home && lane.winner === k.other)
+      .sort((a, b) => margin(b.lane, k) - margin(a.lane, k))[0];
+    if (!needy) continue;
+    const valk = lanes[home][k.cards].find(card => hasSkill(card, 'ascendance'));
+    const left = valk.stats[maps[home].stat];
+    const brought = Math.round(valk.stats[maps[needy.idx].stat] * EVO_TUNING.ascendanceKeep);
+    nudge(lanes[home], k.own, -left, { key: 'ascendance', label: 'Ascendance' });
+    nudge(needy.lane, k.own, brought, { key: 'ascendance', label: 'Ascendance' });
+    lanes[home].winner = decide(lanes[home]);
+    needy.lane.winner = decide(needy.lane);
+    effects.push({ key: 'ascendance', side: who, card: valk, fromLane: home, toLane: needy.idx, value: brought });
+  }
+
+  // 6. Overdrive: winning its lane lifts its side's other lanes; losing it tilts them.
+  for (const who of ['you', 'them']) {
+    const k = sides[who];
+    lanes.forEach((lane, idx) => {
+      if (!lane[k.cards].some(card => hasSkill(card, 'overdrive')) || lane.winner === null) return;
+      const mult = lane.winner === who ? EVO_TUNING.overdriveWin : EVO_TUNING.overdriveTilt;
+      lanes.forEach((other, j) => {
+        if (j === idx || !other[k.own].total) return;
+        const total = Math.round(other[k.own].total * mult);
+        other[k.own] = { ...other[k.own], total, steps: [...other[k.own].steps, { key: 'overdrive', op: '×', value: mult, label: mult > 1 ? 'Momentum' : 'Tilt', total }] };
+      });
+      effects.push({ key: 'overdrive', side: who, fromLane: idx, mult });
+    });
+  }
+  lanes = lanes.map(lane => ({ ...lane, winner: decide(lane), weight: laneWeight(lane) }));
+
+  // A Sovereign's lane counts as two lanes won, for whoever takes it.
+  const youWon = lanes.filter(lane => lane.winner === 'you').reduce((sum, lane) => sum + lane.weight, 0);
+  const themWon = lanes.filter(lane => lane.winner === 'them').reduce((sum, lane) => sum + lane.weight, 0);
   const youTotal = lanes.reduce((sum, lane) => sum + lane.mine.total, 0);
   const themTotal = lanes.reduce((sum, lane) => sum + lane.theirs.total, 0);
   const winner = youWon !== themWon ? (youWon > themWon ? 'you' : 'them') : (youTotal >= themTotal ? 'you' : 'them');
-  return { lanes, youWon, themWon, youTotal, themTotal, winner, displacements, velocityMoves, youSlots, themSlots };
+  return { lanes, youWon, themWon, youTotal, themTotal, winner, displacements, velocityMoves, effects, youSlots, themSlots };
 }
 
 
@@ -623,6 +592,7 @@ export function bestPlacement({ roster, maps, tactic = null, tactics = null, aga
   const layouts = chipLayouts(cards.length);
   let best = null;
   for (const slots of allPlacements(roster.length)) {
+    if (crowdsCrown(slots, roster)) continue;
     for (const lanes of layouts) {
       const chips = cards.map((card, index) => ({ lane: lanes[index], card }));
       const scores = sideScores({ roster, slots, maps, tactics: chips }).map(score => score.total);
@@ -643,7 +613,9 @@ export function rotateMoves(roster) {
 
 /** Whether `next` is a board the IGL can reach from `locked` this rotate. */
 export function isLegalRotation(locked, next, roster) {
-  if (!isLegalPlacement(next)) return false;
+  if (!isLegalPlacement(next, roster)) return false;
+  // A lurker is committed in the smoke: it never moves at the rotate.
+  if (next.some((slot, index) => slot !== locked[index] && hasSkill(roster[index], 'lurk'))) return false;
   const moved = next.filter((slot, index) => slot !== locked[index] && !hasSkill(roster[index], 'flex')).length;
   return moved <= rotateMoves(roster);
 }

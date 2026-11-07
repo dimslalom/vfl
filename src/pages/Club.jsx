@@ -17,7 +17,7 @@ import {
   squadMax, stock,
 } from '../engine/club/economy';
 import {
-  canReroll, cleanName, renameClub, setClubCrest, chooseChip, choosePick, goldDue, openBlocker, openPack, rerollChips, setTacticEquipped, useTape as spendTape,
+  canReroll, cleanName, renameClub, setClubCrest, chooseChip, choosePick, goldDue, openBlocker, openPack, rerollChips, setTacticEquipped, swapTactic, useTape as spendTape,
 } from '../engine/club/rewards';
 import { tapeCount } from '../engine/club/tapes';
 import { chipInfo } from '../chip3d/chipData';
@@ -503,7 +503,7 @@ function Home({ state, go, onAbandon, onSettings, onPrimer, size }) {
   // Whatever wants a look marks its tile; the tile's own value says how much.
   const due = new Set(attention(state, 99).map(item => item.go));
   const tile = (screen, label, value, idle) => (
-    <button type="button" className={styles.tile} data-idle={idle || undefined} onClick={() => go(screen)}>
+    <button type="button" className={styles.tile} data-tip={`tile-${screen}`} data-idle={idle || undefined} onClick={() => go(screen)}>
       {due.has(screen) && <span className={styles.pip} role="img" aria-label={t('Needs a look')} />}
       <span className={styles.tileLabel}>{label}</span>
       <span className={styles.tileValue}>{value}</span>
@@ -535,7 +535,7 @@ function Home({ state, go, onAbandon, onSettings, onPrimer, size }) {
         </nav>
         <aside className={styles.hero}>
           <Scout state={state} cards={allCards} cardScale={size.heroCard}>
-            <button type="button" className={`${styles.primary} ${styles.playBig}`} autoFocus onClick={() => go('match')} aria-label={`Play ${opponent.name}, best of ${match.bestOf}`}>Play</button>
+            <button type="button" className={`${styles.primary} ${styles.playBig}`} data-tip="play" autoFocus onClick={() => go('match')} aria-label={`Play ${opponent.name}, best of ${match.bestOf}`}>Play</button>
           </Scout>
         </aside>
         <LatestMove state={state} cards={allCards} />
@@ -691,20 +691,27 @@ function Squad({ state, go, onMove, onBack, onVault, size }) {
   const index = Math.max(0, squad.findIndex(card => card.id === selected));
   const player = squad[index];
   const cardScale = size.phone ? 0.23 : Math.min(0.42, Math.max(0.3, size.scale * 1.12));
+  // Two clicks swap: the first picks a player up, the second puts them in the place
+  // of whoever is clicked. Clicking the held player again puts them back down. The
+  // Swap button picks up the shown player the same way.
   const tap = (nextIndex) => {
-    if (moving) {
-      if (nextIndex !== index) {
-        playUiSound(nextIndex === 0 || index === 0 ? 'igl' : 'drop');
-        onMove(index, nextIndex);
-      }
+    if (moving && nextIndex !== index) {
+      playUiSound(nextIndex === 0 || index === 0 ? 'igl' : 'drop');
+      onMove(index, nextIndex);
       setMoving(false);
+      return;
+    }
+    if (nextIndex === index) {
+      playUiSound(moving ? 'drop' : 'select');
+      setMoving(!moving);
       return;
     }
     playUiSound('select');
     setSelected(squad[nextIndex].id);
+    setMoving(true);
   };
   const slot = (card, position) => (
-    <div key={card.id} className={styles.windowSlot} data-moving={moving && position !== index ? true : undefined}>
+    <div key={card.id} className={styles.windowSlot} data-held={moving && position === index ? true : undefined} data-moving={moving && position !== index ? true : undefined}>
       <div className={styles.slotCard}>
         <PlayerCard
           card={card}
@@ -735,7 +742,7 @@ function Squad({ state, go, onMove, onBack, onVault, size }) {
         </div>
       </>
     } action={
-      <button type="button" className={styles.eafcSignBtn} onClick={() => setMoving(!moving)}>{moving ? 'Cancel swap' : `Swap ${player.player}`}</button>
+      <button type="button" className={styles.eafcSignBtn} data-tip="swap" onClick={() => setMoving(!moving)}>{moving ? 'Cancel swap' : `Swap ${player.player}`}</button>
     } bottom={
       <section className={styles.eafcStageRow}>
         <h2 className={styles.eafcRowHead}>Bench {squad.length - STARTERS} / {max - STARTERS}</h2>
@@ -791,7 +798,7 @@ function Vault({ state, go, onOpenPack, onBack, onWindow }) {
           )}
         </div>
         {count > 0
-          ? <button type="button" className={styles.ghost} disabled={Boolean(blocker)} onClick={() => onOpenPack(kind)}>{blocker ? blockLabel[blocker] : 'Open'}</button>
+          ? <button type="button" className={styles.ghost} data-tip="open-pack" disabled={Boolean(blocker)} onClick={() => onOpenPack(kind)}>{blocker ? blockLabel[blocker] : 'Open'}</button>
           : <span className={styles.vaultUse} aria-hidden="true" />}
       </section>
     );
@@ -914,10 +921,12 @@ function ChipDisc({ chipKey, size = 'm', phase = 0 }) {
   return <Chip3D chipKey={chipKey} size={pixels} phase={phase} className={styles.chipDisc} />;
 }
 
-function Inventory({ state, go, onPick, onEquip, onTraining, onBack, size }) {
-  useEscape(onBack);
+function Inventory({ state, go, onPick, onEquip, onSwap, onTraining, onBack, size }) {
   const [tab, setTab] = useState('all');
   const [selected, setSelected] = useState(null);
+  // A tactic picked up to swap: from the reserve (a grid item) or the loadout (an equipped chip).
+  const [held, setHeld] = useState(null);
+  useEscape(() => (held ? setHeld(null) : onBack()));
   const hand = state.hand ?? [];
   const reserve = state.tacticReserve ?? [];
   const tactics = new Map();
@@ -955,8 +964,41 @@ function Inventory({ state, go, onPick, onEquip, onTraining, onBack, size }) {
     playUiSound('select');
     setSelected({ id: entry.id, uid });
   };
+  // Two clicks swap a reserve tactic with an equipped one: the first picks one up, the
+  // second puts it in the other's place (an empty slot just takes it). Clicking the
+  // held one again puts it down. The Equip and Unequip buttons still work alone.
+  const reserveUid = key => reserve.find(chip => chip.key === key)?.uid;
+  const tapReserve = (entry) => {
+    if (entry.kind !== 'tactic' || !reserveUid(entry.key)) { setHeld(null); select(entry); return; }
+    if (held?.from === 'loadout' && held.key !== entry.key) {
+      onSwap(held.uid, reserveUid(entry.key));
+      setHeld(null);
+      setSelected({ id: entry.id });
+      return;
+    }
+    if (held?.from === 'reserve' && held.key === entry.key) { playUiSound('drop'); setHeld(null); return; }
+    select(entry);
+    setHeld({ from: 'reserve', key: entry.key, uid: reserveUid(entry.key) });
+  };
+  const tapLoadout = (entry, chip) => {
+    if (held?.from === 'reserve' && held.key !== chip.key) {
+      onSwap(chip.uid, held.uid);
+      setHeld(null);
+      setSelected({ id: `tactic:${held.key}`, uid: held.uid });
+      return;
+    }
+    if (held?.from === 'loadout' && held.uid === chip.uid) { playUiSound('drop'); setHeld(null); return; }
+    select(entry, chip.uid);
+    setHeld({ from: 'loadout', key: chip.key, uid: chip.uid });
+  };
+  const tapEmpty = () => {
+    if (held?.from !== 'reserve') return;
+    onEquip(held.uid, true);
+    setSelected({ id: `tactic:${held.key}`, uid: held.uid });
+    setHeld(null);
+  };
   return (
-    <ManagementScreen state={state} at="chips" go={go} onBack={onBack} selected={tab} onTab={(key) => { if (key === 'pick') { onPick(); return; } setTab(key); setSelected(null); }} tabs={[
+    <ManagementScreen state={state} at="chips" go={go} onBack={onBack} selected={tab} onTab={(key) => { if (key === 'pick') { onPick(); return; } setTab(key); setSelected(null); setHeld(null); }} tabs={[
       ...(state.chipOffer ? [['pick', 'Pick a chip', true]] : []), ['all', 'All'], ['tactics', `Tactics (${hand.length + reserve.length})`], ['tapes', `Tapes (${tapeCount(state)})`], ['evos', `Evos (${state.evoInventory?.length ?? 0})`],
     ]} stats={[[ 'Equipped', `${hand.length}/${TACTIC_HAND_MAX}` ]]} inspector={
       item ? (
@@ -986,19 +1028,19 @@ function Inventory({ state, go, onPick, onEquip, onTraining, onBack, size }) {
         </>
       ) : null
     } action={item && (item.kind === 'tactic' ? (
-      <button type="button" className={styles.eafcSignBtn} disabled={action === 'equip' && hand.length >= TACTIC_HAND_MAX} onClick={() => onEquip(action === 'equip' ? copies[0].uid : remove.uid, action === 'equip')}>
+      <button type="button" className={styles.eafcSignBtn} disabled={action === 'equip' && hand.length >= TACTIC_HAND_MAX} onClick={() => { setHeld(null); onEquip(action === 'equip' ? copies[0].uid : remove.uid, action === 'equip'); }}>
         {action === 'unequip' ? 'Unequip' : hand.length >= TACTIC_HAND_MAX ? 'Loadout full' : 'Equip tactic'}
       </button>
     ) : <button type="button" className={styles.eafcSignBtn} onClick={() => onTraining(item)}>Open Training</button>)} bottom={
-      <section className={styles.eafcStageRow} aria-label="Match loadout">
+      <section className={styles.eafcStageRow} data-tip="loadout" aria-label="Match loadout">
         <h2 className={styles.eafcRowHead}>Match loadout</h2>
         <div className={`${styles.eafcCardsRow} ${styles.inventoryLoadout}`} style={{ '--tactic-slot-size': `${loadoutSize}px` }}>
           {Array.from({ length: TACTIC_HAND_MAX }, (_, index) => {
             const chip = hand[index];
-            if (!chip) return <span key={index} className={styles.emptyTactic} aria-label="Empty slot" />;
+            if (!chip) return <button key={index} type="button" className={styles.emptyTactic} data-swap-target={held?.from === 'reserve' || undefined} aria-label="Empty slot" onClick={tapEmpty} />;
             const entry = tactics.get(chip.key);
             return (
-              <ItemChoice key={chip.uid} className={styles.inventoryItem} aria-label={`Equipped ${entry.name}`} selected={selected?.uid === chip.uid} onClick={() => select(entry, chip.uid)}>
+              <ItemChoice key={chip.uid} className={styles.inventoryItem} aria-label={`Equipped ${entry.name}`} selected={selected?.uid === chip.uid} data-held={(held?.from === 'loadout' && held.uid === chip.uid) || undefined} data-swap-target={(held?.from === 'reserve' && held.key !== chip.key) || undefined} onClick={() => tapLoadout(entry, chip)}>
                 <ChipDisc chipKey={chip.key} size={loadoutSize} />
               </ItemChoice>
             );
@@ -1010,7 +1052,7 @@ function Inventory({ state, go, onPick, onEquip, onTraining, onBack, size }) {
       {gridItems.length ? (
         <div className={styles.itemGrid} aria-label="Items">
           {gridItems.map(entry => (
-            <ItemChoice key={entry.id} className={styles.inventoryItem} data-item selected={item?.id === entry.id && !fromHand} onClick={() => select(entry)}>
+            <ItemChoice key={entry.id} className={styles.inventoryItem} data-item selected={item?.id === entry.id && !fromHand} data-held={(held?.from === 'reserve' && held.key === entry.key) || undefined} data-swap-target={(held?.from === 'loadout' && entry.kind === 'tactic' && entry.key !== held.key && Boolean(reserveUid(entry.key))) || undefined} onClick={() => tapReserve(entry)}>
               <span className={styles.inventoryArt}>{art(entry)}</span>
               <b>{entry.name}</b>
               <span>×{entry.count ?? reserve.filter(chip => chip.key === entry.key).length}</span>
@@ -1040,7 +1082,7 @@ export function ChipPick({ state, go, squad, onTake, onPass, onReroll, onBack, o
       <ScreenHeader state={state} at="chips" go={go} title="Pick a chip" onBack={onBack} selected="pick" onTab={key => key === 'all' && onInventory?.()} tabs={[['pick', 'Pick a chip', true], ['all', 'All']]} />
       <Ground className={styles.chipGround}>
         {offer ? (
-          <div className={styles.chipOffer}>
+          <div className={styles.chipOffer} data-tip="chip-offer">
             {offer.options.map((option, index) => {
               if (option.kind === 'evo' || option.evo) {
                 const evo = EVO_CHIPS[option.key];
@@ -1288,7 +1330,7 @@ export function Train({ state, go, onTape, onEvo, onBack, size, initialFocus = n
         </div>
       </section>
     }>
-      <section className={styles.eafcStageRow} aria-label="Training tapes">
+      <section className={styles.eafcStageRow} data-tip="tapes" aria-label="Training tapes">
         <h2 className={styles.eafcRowHead}>Training tapes</h2>
         <div className={styles.eafcCardsRow}>
           {/* Same item as in Inventory, so a tape looks identical on both screens. */}
@@ -1543,7 +1585,7 @@ function League({ state, go, onBack, onChallenge, size }) {
         <Ground className={styles.leagueGround}>
           <Road state={state} />
           <div className={styles.leagueBody}>
-            <section className={styles.leagueTable} aria-label={tierName(state.tier)}>
+            <section className={styles.leagueTable} data-tip="table" aria-label={tierName(state.tier)}>
               <div className={styles.tableHeaderGroup}>
                 <div className={styles.bracketHead}>
                   <h2 className={styles.sectionHead}>{tierName(state.tier)}</h2>
@@ -1884,7 +1926,7 @@ function Window({ state, onClose, size }) {
         </>
       )}
       action={target && (
-        <button type="button" className={styles.eafcSignBtn} disabled={blocked} onClick={() => toggleBuy(target.card.id)}>
+        <button type="button" className={styles.eafcSignBtn} data-tip="sign" disabled={blocked} onClick={() => toggleBuy(target.card.id)}>
           <span>{signLabel}</span>
           {!taken && !blocked && target.cost > 0 && <Packs n={target.cost} label={false} />}
         </button>
@@ -2158,8 +2200,8 @@ export default function Club() {
   const found = () => (primerDue(prefs) ? openPrimer('start') : show('start'));
 
   // One first-week tip on the screen it explains, laid over that screen.
-  // `place` says where the tip sits when one screen key covers two layouts (Inventory, chip pick).
-  const withHint = (view, at, place) => {
+  // The tip finds its own spot beside the control it points at (ClubHint).
+  const withHint = (view, at) => {
     const hint = hintFor(prefs, state, at);
     if (!hint) return view;
     return (
@@ -2168,7 +2210,6 @@ export default function Club() {
         <ClubHint
           key={hint}
           screen={hint}
-          place={place}
           onDismiss={() => updatePrefs(markHintSeen(prefs, hint))}
           onHintsOff={() => updatePrefs({ ...prefs, hints: false })}
         />
@@ -2412,9 +2453,9 @@ export default function Club() {
     hubView = withHint(<Vault state={state} go={goTab} onBack={() => show('home')} onOpenPack={openThePack} onWindow={state.phase === 'review' ? () => show('window') : null} />, 'vault');
   } else if (screen === 'chips') {
     if (!state.chipOffer || chipView === 'inventory') {
-      hubView = withHint(<Inventory state={state} go={goTab} onPick={() => setChipView('pick')} size={size} onBack={() => show('home')} onTraining={(item) => { setTrainingItem(item); show('train'); }} onEquip={(uid, equipped) => { playUiSound('chip_lift'); setState(current => setTacticEquipped(current, uid, equipped)); }} />, 'chips');
+      hubView = withHint(<Inventory state={state} go={goTab} onPick={() => setChipView('pick')} size={size} onBack={() => show('home')} onTraining={(item) => { setTrainingItem(item); show('train'); }} onEquip={(uid, equipped) => { playUiSound('chip_lift'); setState(current => setTacticEquipped(current, uid, equipped)); }} onSwap={(outUid, inUid) => { playUiSound('chip_drop'); setState(current => swapTactic(current, outUid, inUid)); }} />, 'chips');
     } else {
-      hubView = withHint(<ChipPick key={state.chipOffer.attempt} state={state} go={goTab} onInventory={() => setChipView('inventory')} squad={squadCards(state, allCards).slice(0, STARTERS)} onBack={() => show('home')} onTake={takeChip} onPass={() => { setState(current => chooseChip(current, null)); setScreen('home'); }} onReroll={() => setState(current => rerollChips(current))} />, 'chipPick', 'chipPick');
+      hubView = withHint(<ChipPick key={state.chipOffer.attempt} state={state} go={goTab} onInventory={() => setChipView('inventory')} squad={squadCards(state, allCards).slice(0, STARTERS)} onBack={() => show('home')} onTake={takeChip} onPass={() => { setState(current => chooseChip(current, null)); setScreen('home'); }} onReroll={() => setState(current => rerollChips(current))} />, 'chipPick');
     }
   } else if (screen === 'crest') {
     hubView = (
