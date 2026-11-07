@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import PlayerCard from '../../../shared/src/components/PlayerCard';
 import { assetPath } from '../../../shared/src/lib/utils';
 import { clubById, clubPower, clubRoster, findCard, nextMatch, standings } from '../../engine/club/season';
@@ -80,9 +81,12 @@ export function Scout({ state, cards, cardScale, children }) {
   );
 }
 
+const ROTATE_MS = 5000;
+
 /**
- * League news as one line: the latest move (rating, face, name, crest to crest),
- * then the moves before it as faces, underlined by which way they went.
+ * League news as one rotating line, like a broadcast lower third: one move at a
+ * time (rating, face, name, crest to crest), the next sliding in every few
+ * seconds. Hover or focus holds it; the bars show which move is up.
  */
 export function LatestMove({ state, cards }) {
   const rows = (state.news ?? []).slice(0, 5).map(entry => {
@@ -90,30 +94,40 @@ export function LatestMove({ state, cards }) {
     const joined = entry.kind === 'out';
     return { entry, card: findCard(state, cards, entry.id), other: clubById(state, entry.club), joined };
   }).filter(row => row.card);
-  if (rows.length === 0) return null;
-  const [top, ...rest] = rows;
-  const crest = side => ((top.joined ? side === 'to' : side === 'from') ? <Mine state={state} size={24} /> : <Crest club={top.other} size={24} />);
-  const to = top.joined ? state.name : top.other?.name ?? '';
+  const count = rows.length;
+  const [pos, setPos] = useState({ now: 0, prev: -1 });
+  const [held, setHeld] = useState(false);
+  useEffect(() => {
+    if (held || count < 2) return undefined;
+    const timer = setTimeout(() => setPos(p => ({ now: (p.now + 1) % count, prev: p.now })), ROTATE_MS);
+    return () => clearTimeout(timer);
+  }, [held, count, pos.now]);
+  if (count === 0) return null;
+  const now = Math.min(pos.now, count - 1);
   return (
-    <section className={styles.news} aria-label={t('League news')}>
-      <div className={styles.move} data-joined={top.joined || undefined}>
-        <Face card={top.card} />
-        <b className={styles.moveRating}>{top.card.rating}</b>
-        <b className={styles.moveName}>{top.card.player}</b>
-        <span className={styles.route} role="img" aria-label={t('to {club}', { club: to })}>
-          {crest('from')}
-          <svg viewBox="0 0 24 12" width="20" height="10" aria-hidden="true"><path d="M0 6h20M15 1l5 5-5 5" fill="none" stroke="currentColor" strokeWidth="2" /></svg>
-          {crest('to')}
-        </span>
-      </div>
-      {rest.length > 0 && (
-        <ul className={styles.moreMoves}>
-          {rest.map(({ entry, card, other, joined }) => (
-            <li key={`${entry.id}-${entry.year}-${entry.kind}`} data-joined={joined || undefined} title={`${card.player}, ${t('to {club}', { club: joined ? state.name : other?.name ?? '' })}`}>
+    <section className={styles.news} aria-label={t('League news')} onMouseEnter={() => setHeld(true)} onMouseLeave={() => setHeld(false)} onFocus={() => setHeld(true)} onBlur={() => setHeld(false)}>
+      <div className={styles.stage}>
+        {rows.map(({ entry, card, other, joined }, index) => {
+          const to = joined ? state.name : other?.name ?? '';
+          const crest = side => ((joined ? side === 'to' : side === 'from') ? <Mine state={state} size={24} /> : <Crest club={other} size={24} />);
+          return (
+            <div key={`${entry.id}-${entry.year}-${entry.kind}`} className={styles.move} data-joined={joined || undefined} data-state={index === now ? 'on' : index === pos.prev ? 'out' : undefined} aria-hidden={index !== now}>
               <Face card={card} />
-            </li>
-          ))}
-        </ul>
+              <b className={styles.moveRating}>{card.rating}</b>
+              <b className={styles.moveName}>{card.player}</b>
+              <span className={styles.route} role="img" aria-label={t('to {club}', { club: to })}>
+                {crest('from')}
+                <svg viewBox="0 0 24 12" width="20" height="10" aria-hidden="true"><path d="M0 6h20M15 1l5 5-5 5" fill="none" stroke="currentColor" strokeWidth="2" /></svg>
+                {crest('to')}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      {count > 1 && (
+        <span className={styles.bars} aria-hidden="true">
+          {rows.map((row, index) => <i key={`${row.entry.id}-${row.entry.year}-${row.entry.kind}`} data-done={index < now || undefined} data-on={index === now || undefined} data-held={held || undefined} />)}
+        </span>
       )}
     </section>
   );

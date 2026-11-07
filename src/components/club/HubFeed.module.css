@@ -37,25 +37,33 @@ span.crest { background: var(--plate-inset); }
 .scout[data-compact] .power b { font-size: var(--fs-title); }
 .scout[data-compact] .split { height: 6px; }
 
-/* League news: the latest move, then the ones before it as faces. */
-.news { min-width: 0; display: flex; align-items: center; gap: var(--sp-4); }
-.move { min-width: 0; display: flex; align-items: center; gap: var(--sp-2); }
+/* League news: a lower third. One move at a time slides in; the bars show which. */
+.news { min-width: 0; display: flex; align-items: center; gap: var(--sp-4); height: 32px; }
+.stage { position: relative; flex: 1; min-width: 0; height: 32px; }
+.move { position: absolute; inset: 0; min-width: 0; display: flex; align-items: center; gap: var(--sp-2); opacity: 0; transform: translateX(-16px); transition: transform .45s cubic-bezier(.2, .8, .2, 1), opacity .3s; }
+.move[data-state="on"] { opacity: 1; transform: none; }
+.move[data-state="out"] { transform: translateX(16px); }
 .moveRating { font-size: var(--fs-lead); font-variant-numeric: tabular-nums; }
 .moveName { min-width: 0; font-size: var(--fs-body); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .route { flex: none; display: flex; align-items: center; gap: 6px; color: var(--faint); }
 .move[data-joined] .route { color: var(--win); }
-.moreMoves { margin: 0; padding: 0; list-style: none; display: flex; gap: var(--sp-1); }
-.moreMoves li { box-shadow: inset 0 -3px 0 var(--faint); }
-.moreMoves li[data-joined] { box-shadow: inset 0 -3px 0 var(--win); }
+.bars { flex: none; display: flex; gap: 3px; }
+.bars i { position: relative; overflow: hidden; width: 12px; height: 3px; background: var(--plate-inset); }
+.bars i[data-done] { background: var(--faint); }
+.bars i[data-on]::after { content: ""; position: absolute; inset: 0; background: var(--win); transform-origin: left; animation: barFill 5s linear forwards; }
+.bars i[data-held]::after { animation-play-state: paused; }
+@keyframes barFill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
 .face { display: block; width: 32px; height: 32px; flex: none; overflow: hidden; background: var(--plate); clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px)); }
 .face img { width: 100%; height: 100%; object-fit: cover; object-position: center 18%; display: block; }
 .face svg { display: block; width: 100%; height: 100%; fill: var(--faint); }
 
 @media (max-width: 759px) {
-  .moreMoves { display: none; }
+  .bars { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .split i { transition: none; }
+  .move { transition: none; }
+  .bars i[data-on]::after { animation: none; }
 }
