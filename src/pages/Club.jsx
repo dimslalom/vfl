@@ -2484,18 +2484,21 @@ export default function Club() {
 
   // One first-week tip on the screen it explains, laid over that screen.
   // The tip finds its own spot beside the control it points at (ClubHint).
+  // Always returns a fragment so dismissing the tip keeps the underlying screen mounted,
+  // preventing the page from re-animating or flashing open.
   const withHint = (view, at) => {
     const hint = hintFor(prefs, state, at);
-    if (!hint) return view;
     return (
       <>
         {view}
-        <ClubHint
-          key={hint}
-          screen={hint}
-          onDismiss={() => updatePrefs(markHintSeen(prefs, hint))}
-          onHintsOff={() => updatePrefs({ ...prefs, hints: false })}
-        />
+        {hint && (
+          <ClubHint
+            key={hint}
+            screen={hint}
+            onDismiss={() => updatePrefs(markHintSeen(prefs, hint))}
+            onHintsOff={() => updatePrefs({ ...prefs, hints: false })}
+          />
+        )}
       </>
     );
   };

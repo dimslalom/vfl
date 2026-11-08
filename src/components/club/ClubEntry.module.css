@@ -50,47 +50,105 @@
 @media (hover: hover) { .link:hover { background: var(--plate-hi); } }
 
 /* ── primer ──────────────────────────────────────────────────────────────── */
-.step { width: min(680px, 100%); display: flex; flex-direction: column; align-items: center; gap: var(--sp-3); margin: auto 0; text-align: center; }
-.stepKicker { font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--win); }
-.stepTitle { margin: 0; font-size: var(--fs-heading); font-weight: 700; line-height: 1.2; text-transform: uppercase; letter-spacing: -.01em; color: var(--ink); }
-.stepLead { max-width: 50ch; margin: 0; color: var(--muted); font-size: var(--fs-body); line-height: 1.45; }
-.piece { min-height: 160px; width: 100%; display: flex; align-items: center; justify-content: center; margin: var(--sp-1) 0; }
-.pips { display: flex; gap: 4px; margin-top: var(--sp-2); }
+.primerGround { justify-content: center; overflow: hidden; }
+.step { width: min(1160px, 100%); height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-3); margin: 0 auto; text-align: center; min-height: 0; }
+.stepHeader { display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); flex: none; }
+.stepTitle { margin: 0; font-size: var(--fs-heading); font-weight: 700; line-height: 1.15; letter-spacing: -.01em; color: var(--ink); }
+.stepLead { max-width: 58ch; margin: 0; color: var(--muted); font-size: var(--fs-body); line-height: 1.4; }
+.piece { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
+.pips { display: flex; gap: 4px; flex: none; }
 .pips i { width: 32px; height: 4px; background: var(--plate-inset); }
 .pips i[data-on] { background: var(--win); }
 
-/* Step 1: Starting five */
-.primerSquad { display: flex; flex-direction: column; align-items: center; width: 100%; }
-.primerCardRow { display: flex; align-items: flex-end; justify-content: center; gap: var(--sp-2); perspective: 1000px; }
-.primerCardWrap { display: flex; flex-direction: column; align-items: center; filter: var(--shadow-rest); }
-.primerIglBadge { font: 700 var(--fs-nano)/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; background: var(--win); color: var(--win-ink); padding: 3px 8px; clip-path: polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 5px 100%, 0 calc(100% - 5px)); margin-bottom: 4px; }
+/* Step 1: Real Starting five / Squad row */
+.primerSquadStage { width: 100%; display: flex; justify-content: center; align-items: center; }
+.primerSquadBar { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); width: 100%; }
+.primerSwapBtn { width: auto; min-width: 168px; min-height: 40px; padding: 0 var(--sp-4); font-size: var(--fs-label); }
+.primerHomeRow { padding: 28px var(--sp-4) var(--sp-2); justify-content: center; flex-wrap: nowrap; }
 
-/* Step 2: Board lanes */
-.primerBoard { width: min(540px, 100%); display: flex; flex-direction: column; gap: var(--sp-2); }
-.primerLanes { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2); }
-.primerLane { background: var(--plate); padding: var(--sp-2) var(--sp-3); text-align: left; display: flex; flex-direction: column; gap: var(--sp-1); border: 1px solid var(--line-bracket); }
-.primerLaneTag { font: 700 var(--fs-label)/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink); }
-.primerLane small { font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
-.primerSplitBar { width: 100%; height: 6px; background: var(--opponent); overflow: hidden; position: relative; margin-top: 2px; }
-.primerSplitBar span { display: block; height: 100%; background: var(--accent); }
-.primerRotateCallout { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); padding: 8px 14px; background: var(--plate); border: 1px solid var(--line-bracket); font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink); clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px)); }
-.primerRotatePip { width: 6px; height: 6px; background: var(--win); flex: none; }
+/* Step 2: Real 3-lane BoardSeries stage */
+.primerSeriesWrap {
+  position: relative;
+  width: min(1060px, 100%);
+  height: min(440px, 54dvh);
+  min-height: 300px;
+  background: var(--bg-deep);
+  overflow: hidden;
+  text-align: left;
+}
+.primerBoardHead { top: var(--sp-2); padding: 6px var(--sp-4); }
+.primerBoardBar { left: var(--sp-3); right: var(--sp-3); bottom: var(--sp-2); }
+.primerOutcome { width: min(640px, calc(100% - 24px)); padding: var(--sp-3) var(--sp-5); }
 
-/* Step 3: Ladder */
-.primerLadderWrap { width: min(380px, 100%); display: flex; justify-content: center; }
-.primerLadder { width: 100%; display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
-.primerLadder li { min-height: 42px; padding: 0 var(--sp-3); display: flex; align-items: center; justify-content: space-between; background: var(--plate); border: 1px solid var(--line-bracket); font-weight: 700; }
-.primerLadder li[data-here] { background: var(--plate-hi); }
-.tierName { font-size: var(--fs-body); color: var(--ink); }
-.tierBadge { font: 700 var(--fs-nano)/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; background: var(--win-soft); color: var(--win); padding: 3px 8px; }
-.tierZone { font: 700 var(--fs-nano)/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--gold); }
-.tierDanger { font: 700 var(--fs-nano)/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+/* Synchronized 3-lane board stage when WebGL context is unavailable */
+.primerLiveTable {
+  position: absolute;
+  inset: 0;
+  padding: 58px var(--sp-4) 68px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  box-sizing: border-box;
+  perspective: 980px;
+}
+.primerLaneGrid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-3);
+  transform: rotateX(7deg);
+  transform-origin: 50% 60%;
+}
+.primerLaneBoard {
+  position: relative;
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--plate);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--sp-1);
+  clip-path: polygon(50% 0, 100% 10px, 100% calc(100% - 10px), 50% 100%, 0 calc(100% - 10px), 0 10px);
+}
+.primerLaneBoard[data-won='true'] { background: var(--win-soft); }
+.primerLaneHeader { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); padding-top: 4px; }
+.primerLaneHeader b { font-size: var(--fs-lead); font-weight: 800; color: var(--ink); }
+.primerLaneHeader span { padding: 2px 6px; background: var(--gold); color: var(--gold-ink); font: 800 var(--fs-nano)/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
+.primerLaneSide { min-height: 84px; display: flex; align-items: center; justify-content: center; gap: var(--sp-1); padding-top: 12px; }
+.primerBoardCard { transition: transform 240ms cubic-bezier(.22, 1, .36, 1); animation: settle 240ms cubic-bezier(.22, 1, .36, 1) both; }
+.primerBoardCard[data-rotated='true'] { transform: translateY(-6px); }
+.primerHiddenPair { opacity: .88; }
+.primerTugWrap { display: flex; flex-direction: column; gap: 2px; }
+.primerSegRow { min-height: 14px; display: flex; gap: 2px; }
+.primerSegRow span { padding: 0 4px; font: 800 var(--fs-nano)/1.2 var(--font-mono); font-variant-numeric: tabular-nums; }
+.primerSegRow[data-row='you'] span { background: var(--win-soft); color: var(--win); }
+.primerSegRow[data-row='them'] span { background: var(--plate-hi); color: var(--accent); }
+.primerSegRow[data-row='you'] span[data-solid] { background: var(--win); color: var(--win-ink); }
+.primerSegRow[data-row='them'] span[data-solid] { background: var(--accent); color: var(--accent-ink); }
+.primerTugBar { position: relative; height: 28px; display: flex; background: var(--surface); align-items: center; }
+.primerTugBar i { height: 100%; transition: width 220ms cubic-bezier(.22, 1, .36, 1); }
+.primerTugBar i[data-side='you'] { background: var(--win); }
+.primerTugBar i[data-side='them'] { margin-left: auto; background: var(--accent); }
+.primerTugBar b { position: absolute; top: 50%; transform: translateY(-50%); font: 800 var(--fs-body)/1 var(--font-mono); font-variant-numeric: tabular-nums; z-index: 1; }
+.primerTugBar b[data-side='you'] { left: var(--sp-2); color: var(--win-ink); }
+.primerTugBar b[data-side='you'][data-empty] { color: var(--muted); }
+.primerTugBar b[data-side='them'] { right: var(--sp-2); color: var(--accent-ink); }
+.primerTugBar s { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink); transition: left 220ms cubic-bezier(.22, 1, .36, 1); }
+.primerLaneChip { position: absolute; top: -18px; z-index: 2; pointer-events: none; }
+.primerLaneChip[data-side='you'] { left: 42%; }
+.primerLaneChip[data-side='them'] { right: 32%; }
+.primerLaneStamp { position: absolute; right: 0; top: -18px; padding: 1px 6px; font: 800 var(--fs-nano)/1.2 var(--font-mono); font-style: normal; letter-spacing: .1em; background: var(--surface); color: var(--muted); }
+.primerLaneStamp[data-won='true'] { background: var(--win); color: var(--win-ink); }
+.primerHandTray { display: flex; align-items: center; justify-content: center; gap: var(--sp-4); min-height: 28px; }
+.primerHandCards { display: flex; align-items: flex-end; gap: var(--sp-1); }
+.primerHandCard { padding-top: 12px; }
+.primerChipTray { display: flex; align-items: center; gap: var(--sp-1); }
 
-/* Shared briefing telemetry */
-.primerTelemetry { width: min(600px, 100%); display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; margin-top: var(--sp-1); }
-.telemetryCard { background: var(--plate); padding: var(--sp-2) var(--sp-3); display: flex; flex-direction: column; gap: 3px; border: 1px solid var(--line-bracket); text-align: left; }
-.telemetryLabel { font: 700 var(--fs-nano)/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
-.telemetryVal { font-size: var(--fs-micro); color: var(--ink); font-weight: 700; }
+/* Step 3: Real League Road, Table & Playoffs Bracket */
+.primerLeagueStage { width: min(1120px, 100%); display: flex; flex-direction: column; gap: var(--sp-3); text-align: left; }
+.primerRoad { flex: none; }
+.primerLeagueBody { gap: var(--sp-6); align-items: start; }
 
 .stepAct { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3); }
 
@@ -410,8 +468,16 @@
   .go { align-items: stretch; text-align: center; }
   .go > button { width: 100%; min-width: 0; }
   .links { justify-content: center; }
-  .primerTelemetry, .chronicleAxes { grid-template-columns: 1fr; }
-  .primerLanes { grid-template-columns: 1fr; }
+  .chronicleAxes { grid-template-columns: 1fr; }
+  .primerHomeRow { padding: 16px var(--sp-2) var(--sp-1); flex-wrap: wrap; gap: var(--sp-2); }
+  .primerSeriesWrap { height: min(370px, 50dvh); min-height: 250px; }
+  .primerLiveTable { padding: 44px var(--sp-2) 54px; }
+  .primerLaneGrid { gap: var(--sp-1); transform: none; }
+  .primerLaneBoard { padding: var(--sp-1) var(--sp-2); }
+  .primerLaneSide { min-height: 60px; padding-top: 8px; }
+  .primerHandTray { display: none; }
+  .primerLeagueStage { max-height: 50dvh; overflow-y: auto; }
+  .primerLeagueBody { gap: var(--sp-3); }
   .settings li { min-height: 64px; padding: var(--sp-3); }
   .syncPair { grid-template-columns: 1fr; }
   .syncSide { padding: var(--sp-3); gap: var(--sp-2); }
