@@ -16,6 +16,8 @@ export const HINT_KEYS = [
   'chipPick',
   'league',
   'window',
+  'match_place',
+  'match_rotate',
 ];
 
 const DEFAULTS = { primer: true, hints: true, primerSeen: false, seen: [] };

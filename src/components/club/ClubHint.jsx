@@ -68,6 +68,16 @@ const HINTS = {
     title: t('Transfer window'),
     text: t('The season is over. Use your packs to sign new players, or keep players whose contracts are ending.'),
   }),
+  match_place: () => ({
+    target: 'board-lock',
+    title: t('Lanes'),
+    text: t('Place your five players across A, Mid and B. Match player stats to lane requirements.'),
+  }),
+  match_rotate: () => ({
+    target: 'board-go',
+    title: t('Rotate'),
+    text: t('Rival revealed. Use your IGL rotate to reposition a player and counter their matchups.'),
+  }),
 };
 
 const GAP = 16;

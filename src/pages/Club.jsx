@@ -2658,6 +2658,9 @@ export default function Club() {
         fixed="full"
         three
         hintsOn={prefs.hints && state.year === 1 && (state.results?.length ?? 0) === 0}
+        seenHints={prefs.seen}
+        onDismissHint={hintKey => updatePrefs(markHintSeen(prefs, hintKey))}
+        onHintsOff={() => updatePrefs({ ...prefs, hints: false })}
         comms={isStoryClub(state) ? buildBoardComms(state, club, allCards) : null}
         settings={<MusicControls />}
       />

@@ -14,6 +14,7 @@ import MatchIntro from './MatchIntro';
 import { settleMatchMusic, stopMatchMusic } from '../lib/music';
 import { ChipGuideButton, ChipLadder } from '../chip3d/ChipHelp';
 import { STAT_LABELS, STAT_LABELS_FULL } from '../../shared/src/data/statFields';
+import ClubHint from './club/ClubHint';
 import styles from './BoardSeries.module.css';
 
 // The picked piece, in detail: a light tag hung off the piece itself, in the board's
@@ -200,7 +201,7 @@ function Pips({ total, won, side }) {
 // intro: { you: { club, cards }, them: { club, cards }, stage } plays the match
 // intro over the board while it loads, then drops the 3D camera into the first deal.
 // settings: controls shown in a panel behind the gear beside Leave (the Club passes its music controls).
-export default function BoardSeries({ squad, opponent, opponentName, bestOf, seed, hand, onDone, onLeave, doneLabel = 'Continue', fixed = false, three = false, arena = 'tint', mapNames = null, intro = null, settings = null, hintsOn = false, comms = null, initialSlots = null, onStageReady = null, online = null, startScore = null }) {
+export default function BoardSeries({ squad, opponent, opponentName, bestOf, seed, hand, onDone, onLeave, doneLabel = 'Continue', fixed = false, three = false, arena = 'tint', mapNames = null, intro = null, settings = null, hintsOn = false, seenHints = [], onDismissHint = null, onHintsOff = null, comms = null, initialSlots = null, onStageReady = null, online = null, startScore = null }) {
   const hostRef = useRef(null);
   const stageRef = useRef(null);
   const chipHostRef = useRef(null);
@@ -217,6 +218,8 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
   const [introOn, setIntroOn] = useState(Boolean(intro));
   const [boardReady, setBoardReady] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [localDismissed, setLocalDismissed] = useState([]);
+  const [localHintsOff, setLocalHintsOff] = useState(false);
   // Match music lasts as long as the match does.
   useEffect(() => () => stopMatchMusic(), []);
   useEffect(() => {
@@ -574,35 +577,40 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
         </ul>
       )}
       <div className={styles.bar} ref={barRef}>
-        {hintsOn && phase === 'place' && (
-          <div className={styles.boardAdvisory}>
-            <span className={styles.advisoryPip} aria-hidden="true" />
-            <span className={styles.advisoryTag}>{t('Lanes')}</span>
-            <span>{t('Place your five players across A, Mid and B. Match player stats to lane requirements.')}</span>
-          </div>
-        )}
-        {hintsOn && phase === 'rotate' && (
-          <div className={styles.boardAdvisory}>
-            <span className={styles.advisoryPip} aria-hidden="true" />
-            <span className={styles.advisoryTag}>{t('Rotate')}</span>
-            <span>{t('Rival revealed. Use your IGL rotate to reposition a player and counter their matchups.')}</span>
-          </div>
-        )}
         {phase === 'waiting' && <p className={styles.hint}>{t('Waiting for {name}', { name: opponentName })}</p>}
         {online && live?.them && !live.them.connected && <p className={styles.hint}>{t('{name} disconnected', { name: opponentName })}</p>}
         {phase === 'place' && (
-          <button type="button" className={styles.primary} disabled={!legal} onClick={() => stageRef.current?.lockIn()}>
+          <button type="button" className={styles.primary} data-tip="board-lock" disabled={!legal} onClick={() => stageRef.current?.lockIn()}>
             {legal ? 'Lock in' : placed < 5 ? `${placed}/5 placed` : 'Fill every lane'}
           </button>
         )}
         {phase === 'rotate' && (
-          <button type="button" className={styles.primary} onClick={() => stageRef.current?.resolve()}>
+          <button type="button" className={styles.primary} data-tip="board-go" onClick={() => stageRef.current?.resolve()}>
             Go
           </button>
         )}
         {phase === 'rotate' && !three && <p className={styles.hint}>{moves === 2 ? t('Mastermind IGL: move two players') : t('IGL rotate: move one player')}</p>}
         {phase === 'resolve' && <p className={styles.hint}>{t('Tap to skip')}</p>}
       </div>
+      {(() => {
+        if (!hintsOn || localHintsOff || introOn || failed) return null;
+        const activeHint = phase === 'place' ? 'match_place' : phase === 'rotate' ? 'match_rotate' : null;
+        if (!activeHint || seenHints.includes(activeHint) || localDismissed.includes(activeHint)) return null;
+        return (
+          <ClubHint
+            key={activeHint}
+            screen={activeHint}
+            onDismiss={() => {
+              setLocalDismissed(prev => [...prev, activeHint]);
+              onDismissHint?.(activeHint);
+            }}
+            onHintsOff={() => {
+              setLocalHintsOff(true);
+              onHintsOff?.();
+            }}
+          />
+        );
+      })()}
       {outcome && outcome.lanes?.length === 3 && outcome.lanes.every(lane => lane.winner === 'you') && (
         <div className={styles.flawlessBanner} role="status" aria-label={t('FLAWLESS')}>
           <span className={styles.flawlessKicker}>{t('Clean sweep')}</span>
