@@ -7,7 +7,7 @@ export const UI_SAMPLES = [
   'select', 'drop', 'flip', 'deal', 'sign', 'reveal',
   // scripts/sfx/scoring.scd: pitched cues have one file per step of their scale
   ...steps('score', 9), ...steps('score_opp', 7), ...steps('combo', 4), ...steps('lane_win', 2),
-  'match_join', 'tactic_mult_lo', 'tactic_mult_hi', 'lane_loss', 'flawless', 'round_win', 'round_loss', 'series_win', 'series_loss',
+  'crowd-cheering-379666', 'tactic_mult_lo', 'tactic_mult_hi', 'lane_loss', 'round_loss', 'series_loss',
 ];
 export const EVO_SAMPLES = [
   'ironclad_ready', 'ironclad_block', 'lurk_ready', 'lurk_reveal', 'velocity_ready', 'velocity_dash',
@@ -51,8 +51,9 @@ function audio() {
 /**
  * Plays a rendered cue. Returns false when it isn't loaded, so the caller can synth it.
  * `detune` is a +/- fraction of random pitch so repeats don't sound cloned.
+ * `fadeOut` is the number of playback seconds to fade to silence.
  */
-export function playSample(name, { gain = 0.25, pan = 0, detune = 0.02 } = {}) {
+export function playSample(name, { gain = 0.25, pan = 0, detune = 0.02, offset = 0, duration, fadeOut = 0 } = {}) {
   const buffer = buffers.get(name);
   if (!buffer) return false;
   const ctx = audio();
@@ -65,6 +66,14 @@ export function playSample(name, { gain = 0.25, pan = 0, detune = 0.02 } = {}) {
   const panner = ctx.createStereoPanner();
   panner.pan.value = Math.max(-1, Math.min(1, pan));
   source.connect(level).connect(panner).connect(bus);
-  source.start();
+  const start = ctx.currentTime;
+  if (fadeOut > 0) {
+    const remaining = Math.max(0, buffer.duration - offset);
+    const playbackTime = Math.min(duration ?? remaining, remaining) / source.playbackRate.value;
+    const end = start + playbackTime;
+    level.gain.setValueAtTime(gain, Math.max(start, end - fadeOut));
+    level.gain.linearRampToValueAtTime(0, end);
+  }
+  source.start(start, offset, duration);
   return true;
 }

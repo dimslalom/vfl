@@ -5,6 +5,9 @@ import { playSample } from './samples.js';
 // Tuned to sit at the shared synth's level (its UI cues peak around 0.05).
 const UI_GAIN = 0.07;
 const PAN = { deal: step => ((step % 5) - 2) * 0.16, flip: step => ((step % 3) - 1) * 0.2 };
+const CROWD_DURATION = new Map([
+  ['match_join', 2.8], ['round_win', 1.8], ['flawless', 2.2], ['series_win', 2.6],
+]);
 
 // The file for a stepped cue, matching the shared synth's note choice per step.
 const step0 = step => Math.max(0, step | 0);
@@ -20,6 +23,8 @@ const FILE = {
 const TUNED = new Set(['select', 'score', 'score_opp', 'combo', 'specialty', 'tactic_mult', 'lane_win']);
 
 export function playUiSound(kind, step = 0) {
+  const duration = CROWD_DURATION.get(kind);
+  if (duration && playSample('crowd-cheering-379666', { gain: UI_GAIN, detune: 0, offset: 0.85, duration, fadeOut: 0.65 })) return;
   const pan = PAN[kind]?.(step) ?? 0;
   const file = FILE[kind]?.(step) ?? kind;
   if (playSample(file, { gain: UI_GAIN, pan, detune: TUNED.has(kind) ? 0.006 : 0.03 })) return;

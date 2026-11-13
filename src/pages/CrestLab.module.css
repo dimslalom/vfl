@@ -1,0 +1,211 @@
+.stage {
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--ink);
+  padding: var(--sp-8) var(--sp-6);
+}
+
+.header,
+.aiSample,
+.experiments,
+.workbench {
+  max-width: var(--content-max);
+  margin-inline: auto;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-8);
+}
+
+.header h1 {
+  margin: 0;
+  font: 700 var(--fs-heading)/1.2 var(--font-display);
+}
+
+.aiSample {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-4);
+  margin-bottom: var(--sp-8);
+  background: var(--surface);
+}
+
+.sampleArt {
+  display: block;
+  width: min(34%, 128px);
+  height: auto;
+}
+
+.sampleDetails {
+  display: grid;
+  justify-items: start;
+  gap: var(--sp-2);
+}
+
+.sampleDetails h2 {
+  margin: 0;
+  font: 700 var(--fs-title)/1.2 var(--font-display);
+}
+
+.sampleDetails .scoreRow { background: var(--bg); }
+
+.workbench {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.8fr);
+  gap: var(--sp-8);
+}
+
+.controls,
+.results,
+.field,
+.scoreboard {
+  display: grid;
+  align-content: start;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+
+.field {
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-weight: 700;
+}
+
+.field legend {
+  padding: 0;
+  margin-bottom: var(--sp-2);
+}
+
+.field input {
+  min-width: 0;
+  min-height: var(--tap-min);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--line-bracket);
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--ink);
+  font: 400 var(--fs-body)/1.4 var(--font-body);
+}
+
+.group,
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.control {
+  display: inline-grid;
+  place-items: center;
+  min-height: var(--tap-min);
+  padding: var(--sp-2) var(--sp-3);
+  border: 0;
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--ink);
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  font: 700 var(--fs-body)/1.2 var(--font-body);
+  text-decoration: none;
+}
+
+.control:hover { background: var(--surface-hi); }
+.control:focus-visible { outline-offset: -4px; }
+.control[aria-pressed="true"] { color: var(--win); background: var(--surface-hi); }
+
+.swatch {
+  grid-template-columns: 1fr 1fr;
+  min-width: var(--tap-min);
+  padding: var(--sp-2);
+}
+
+.swatch span { width: var(--sp-3); aspect-ratio: 1; }
+.swatch[aria-pressed="true"] { background: var(--win); }
+
+.choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-2);
+}
+
+.choice {
+  align-content: center;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-2);
+}
+
+.choice svg {
+  display: block;
+  width: min(100%, 140px);
+  aspect-ratio: 1;
+}
+
+.footer {
+  justify-content: space-between;
+  align-items: end;
+  gap: var(--sp-4);
+}
+
+.scoreboard {
+  gap: var(--sp-1);
+  color: var(--muted);
+  font-size: var(--fs-annotation);
+}
+
+.scoreRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  background: var(--surface);
+  color: var(--ink);
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.scoreRow svg { flex: 0 0 22px; width: 22px; height: 22px; }
+.primary,
+.primary:hover { background: var(--accent); color: var(--accent-ink); }
+.primary:focus-visible { outline-color: var(--accent-ink); }
+
+@media (max-width: 759px) {
+  .stage { padding: var(--sp-4); }
+  .header { margin-bottom: var(--sp-4); }
+  .workbench { grid-template-columns: minmax(0, 1fr); gap: var(--sp-6); }
+}
+
+.experiments {
+  display: grid;
+  gap: var(--sp-6);
+  margin-bottom: var(--sp-8);
+}
+
+.experiments h2,
+.experiments h3,
+.experiments p { margin: 0; }
+
+.experiments h2 { font: 700 var(--fs-title)/1.2 var(--font-display); }
+.experiments h3 { font: 700 var(--fs-body)/1.2 var(--font-body); }
+
+.experiment {
+  display: grid;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.experiment p { color: var(--muted); }
+.gallery { display: block; width: min(100%, 800px); height: auto; }
+.experiment pre {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  margin: 0;
+  color: var(--ink);
+  font: 400 var(--fs-annotation)/1.5 var(--font-mono);
+}

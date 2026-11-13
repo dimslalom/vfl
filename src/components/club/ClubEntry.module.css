@@ -153,14 +153,18 @@
 .stepAct { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3); }
 
 /* ── settings ────────────────────────────────────────────────────────────── */
-.settings { width: min(640px, 100%); max-height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
-.settings li { min-height: 72px; padding: var(--sp-3) var(--sp-4); display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); background: var(--plate); text-align: left; }
+.settings { width: min(640px, 100%); min-height: 0; max-height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.settings li { flex: none; min-height: 72px; padding: var(--sp-3) var(--sp-4); display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); background: var(--plate); text-align: left; }
 .settings li > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.settings li > .account { flex-direction: row; align-items: center; gap: var(--sp-2); }
+.account + button { flex: none; }
+.account > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.account img { width: 28px; height: 28px; flex: none; border-radius: 50%; }
 .settings li b { font-size: var(--fs-body); }
 .settings li small { color: var(--muted); font-size: 12px; line-height: 1.4; }
 .settings li small a { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
 .toggle { min-width: 72px; justify-content: center; }
-.groupHead { margin: var(--sp-4) 0 var(--sp-1); font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); align-self: flex-start; }
+.groupHead { margin: var(--sp-4) 0 var(--sp-1); font: 700 var(--fs-micro)/1.4 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); align-self: flex-start; }
 .settings li.groupHead { min-height: 0; padding: 0; background: none; }
 .settings li.groupHead:first-child { margin-top: 0; }
 
@@ -193,9 +197,6 @@
 .syncKeep { margin-top: var(--sp-1); font: 700 var(--fs-label)/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; }
 @media (hover: hover) { .syncSide:hover { background: var(--plate-hi); } }
 .syncSide > b { font-size: var(--fs-title); overflow-wrap: anywhere; }
-.account { display: flex; align-items: center; gap: var(--sp-2); }
-.account > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.account img { width: 28px; height: 28px; flex: none; border-radius: 50%; }
 .signin { display: inline-flex; align-items: center; min-height: var(--tap-min); padding: 0 var(--sp-3); background: var(--plate); color: var(--ink); font-size: var(--fs-label); font-weight: 700; text-decoration: none; }
 @media (hover: hover) { .signin:hover { background: var(--plate-hi); } }
 @media (prefers-reduced-motion: reduce) { .sync { animation: none; } }

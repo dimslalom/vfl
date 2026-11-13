@@ -116,6 +116,17 @@ export default function ClubSettings({ prefs, onChange, onBack, onPrimer, accoun
           </li>
           <li>
             <span>
+              <b>{t('Crowd cheering')}</b>
+              <small>
+                {t('Sound effect by')}{' '}
+                <a href="https://pixabay.com/users/u_xg7ssi08yr-48039129/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=379666" target="_blank" rel="noreferrer">LoLa Joy</a>
+                {' '}{t('from')}{' '}
+                <a href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=379666" target="_blank" rel="noreferrer">Pixabay</a>
+              </small>
+            </span>
+          </li>
+          <li>
+            <span>
               <b>{t('Map art')}</b>
               <small>
                 {t('Riot Games environment artists')}{' '}

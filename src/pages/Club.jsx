@@ -507,11 +507,15 @@ function Home({ state, go, onAbandon, onSettings, onPrimer, size, mode = 'season
   const tapes = tapeCount(state);
   // Whatever wants a look marks its tile; the tile's own value says how much.
   const due = new Set(attention(state, 99).map(item => item.go));
-  const tile = (screen, label, value, idle) => (
+  const tile = (screen, label, value, idle, notice) => (
     <button type="button" className={styles.tile} data-tip={`tile-${screen}`} data-idle={idle || undefined} onClick={() => go(screen)}>
-      {due.has(screen) && <span className={styles.pip} role="img" aria-label={t('Needs a look')} />}
       <span className={styles.tileLabel}>{label}</span>
       <span className={styles.tileValue}>{value}</span>
+      {(notice || due.has(screen)) && (
+        <span className={styles.tileNotice} role="img" aria-label={notice ?? t('Needs a look')}>
+          {notice && <span className={styles.tileNoticeDetail} aria-hidden="true">{notice}</span>}
+        </span>
+      )}
     </button>
   );
   return (
@@ -538,7 +542,11 @@ function Home({ state, go, onAbandon, onSettings, onPrimer, size, mode = 'season
         <nav className={styles.tileRow} aria-label="Club">
           {tile('squad', 'Squad', <><b>{squad.length}</b><small>/ {max}</small></>)}
           {tile('vault', 'Vault', <PackArt kind="silver" size="m" />)}
-          {tile('chips', 'Inventory', <><b>{hand.length}</b><small>/ {TACTIC_HAND_MAX}</small>{reserve > 0 && <em className={styles.newBadge}>{reserve} in reserve</em>}</>, hand.length === 0 && reserve === 0 && !state.chipOffer)}
+          {tile(
+            'chips', 'Inventory', <><b>{hand.length}</b><small>/ {TACTIC_HAND_MAX}</small></>,
+            hand.length === 0 && reserve === 0 && !state.chipOffer,
+            reserve > 0 ? t('{count} in reserve', { count: reserve }) : undefined,
+          )}
           {tile('train', 'Train', <TapeCard scale={0.07} />, tapes === 0)}
           {tile('league', 'League', started ? <><b>{ordinal(pos)}</b><small>of 6</small></> : <b>–</b>)}
         </nav>
