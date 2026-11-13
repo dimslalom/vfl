@@ -5,6 +5,7 @@ import { clubById, clubPower, clubRoster, findCard, nextMatch, standings } from 
 import { t } from '../../lib/i18n';
 import ClubLogo from '../ClubLogo';
 import styles from './HubFeed.module.css';
+import GameIcon from '../GameIcon';
 
 const ordinalPos = pos => t('{pos} of 6', { pos });
 
@@ -117,7 +118,7 @@ export function LatestMove({ state, cards }) {
               <b className={styles.moveName}>{card.player}</b>
               <span className={styles.route} role="img" aria-label={t('to {club}', { club: to })}>
                 {crest('from')}
-                <svg viewBox="0 0 24 12" width="20" height="10" aria-hidden="true"><path d="M0 6h20M15 1l5 5-5 5" fill="none" stroke="currentColor" strokeWidth="2" /></svg>
+                <GameIcon name="arrow" dir="right" size={14} />
                 {crest('to')}
               </span>
             </div>

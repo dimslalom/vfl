@@ -15,6 +15,8 @@ import { settleMatchMusic, stopMatchMusic } from '../lib/music';
 import { ChipGuideButton, ChipLadder } from '../chip3d/ChipHelp';
 import { STAT_LABELS, STAT_LABELS_FULL } from '../../shared/src/data/statFields';
 import ClubHint from './club/ClubHint';
+import { Popover, PopoverContent, PopoverTrigger } from '@ui-sdk/react/popover';
+import GameIcon from './GameIcon';
 import styles from './BoardSeries.module.css';
 
 // The picked piece, in detail: a light tag hung off the piece itself, in the board's
@@ -192,20 +194,18 @@ function Pips({ total, won, side }) {
   );
 }
 
-// One enemy, played as Bo3 or Bo5 rounds on the Pixi board. It owns the rounds
-// and the tactic hand for the length of a series, then hands `onDone` map-shaped
-// results so the run's rewards and bracket need not know how they were won.
-// Buttons stay in the DOM, so keyboard and screen reader support comes free.
-// three: play on the 2.5D board (one three.js scene, chips included), with the
-// Pixi board as the fallback when WebGL or three.js can't start.
+// One enemy, played as Bo3 or Bo5 rounds on the 2.5D three.js board (chips
+// included). It owns the rounds and the tactic hand for the length of a series,
+// then hands `onDone` map-shaped results so the run's rewards and bracket need
+// not know how they were won. Buttons stay in the DOM, so keyboard and screen
+// reader support comes free. The board is 3D or nothing: a failure says what
+// happened and offers a retry.
 // intro: { you: { club, cards }, them: { club, cards }, stage } plays the match
 // intro over the board while it loads, then drops the 3D camera into the first deal.
 // settings: controls shown in a panel behind the gear beside Leave (the Club passes its music controls).
-export default function BoardSeries({ squad, opponent, opponentName, bestOf, seed, hand, onDone, onLeave, doneLabel = 'Continue', fixed = false, three = false, arena = 'tint', mapNames = null, intro = null, settings = null, hintsOn = false, seenHints = [], onDismissHint = null, onHintsOff = null, comms = null, initialSlots = null, onStageReady = null, online = null, startScore = null }) {
+export default function BoardSeries({ squad, opponent, opponentName, bestOf, seed, hand, onDone, onLeave, doneLabel = 'Continue', fixed = false, arena = 'tint', mapNames = null, intro = null, settings = null, hintsOn = false, seenHints = [], onDismissHint = null, onHintsOff = null, comms = null, initialSlots = null, onStageReady = null, online = null, startScore = null }) {
   const hostRef = useRef(null);
   const stageRef = useRef(null);
-  const chipHostRef = useRef(null);
-  const chipsRef = useRef(null);
   const barRef = useRef(null);
   const reducedMotion = useReducedMotion();
   const [maps] = useState(() => (mapNames ? namedSeriesMaps(seed, mapNames) : pickSeriesMaps(seed, bestOf)));
@@ -217,17 +217,10 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
   const [failed, setFailed] = useState(false);
   const [introOn, setIntroOn] = useState(Boolean(intro));
   const [boardReady, setBoardReady] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [localDismissed, setLocalDismissed] = useState([]);
   const [localHintsOff, setLocalHintsOff] = useState(false);
   // Match music lasts as long as the match does.
   useEffect(() => () => stopMatchMusic(), []);
-  useEffect(() => {
-    if (!settingsOpen) return undefined;
-    const onKey = (event) => { if (event.key === 'Escape') setSettingsOpen(false); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [settingsOpen]);
   const introRef = useRef(introOn);
   const onStageReadyRef = useRef(onStageReady);
   // The first round's pieces, for preloading behind the intro without making the
@@ -260,7 +253,6 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
     run.handBefore = run.hand;
     run.hand = refillTacticHand(() => ((seed * (round + 7)) % 997) / 997, run.hand, { roster: squad, map: maps[round] });
     setOutcome(null);
-    chipsRef.current?.setChips(run.hand.map(card => card.key));
     const slots = initialSlots && round === 0 ? initialSlots : null;
     const replay = run.rewound ? 1 : 0;
     const game = roundBoard({ seed, round, map: maps[round], you: squad, them: opponent, tactics: run.hand, slots, replay, spent: run.rewound ? ['timewarp'] : [] });
@@ -309,11 +301,11 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
   // Fetch every map's arena for the series up front; each is small, and later
   // rounds then swap sets without waiting.
   useEffect(() => {
-    if (!three || arena === 'off') return;
+    if (arena === 'off') return;
     import('../table3d/arena.js')
       .then(({ preloadArena }) => maps.forEach(map => preloadArena(map.name)))
       .catch(() => null);
-  }, [three]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { finishRoundRef.current = finishRound; });
 
   const playRoundRef = useRef(playRound);
@@ -361,108 +353,47 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
 
   useEffect(() => {
     let stage;
-    let chips;
     let cancelled = false;
-    // Board pixels to page pixels: the chip layer reads the page, the board its own canvas.
-    const toPage = (spot) => {
-      const box = hostRef.current?.getBoundingClientRect();
-      return spot && box ? { ...spot, x: box.left + spot.x, y: box.top + spot.y } : null;
-    };
     const onState = (next) => {
       setState(next);
-      chipsRef.current?.setLocked(next.phase !== 'place');
       if (next.result) finishRoundRef.current(next.result);
       catchUpRef.current();
     };
     (async () => {
       try {
-        if (three) {
-          try {
-            const { default: TableStage } = await import('../table3d/TableStage.js');
-            if (cancelled) return;
-            stage = new TableStage(hostRef.current, { reducedMotion, onState, onChipView: setChipView, onCardView: setCardView, arena: arenaRef.current });
-            if (await stage.init()) {
-              if (cancelled) return;
-              stageRef.current = stage;
-              onStageReadyRef.current?.(stage);
-              // With an intro, the first deal waits for the panels to part.
-              if (introRef.current) {
-                stage.raiseForDrop();
-                await stage.preload(firstRef.current).catch(() => null);
-                if (cancelled) return;
-                setBoardReady(true);
-              } else {
-                playRoundRef.current();
-              }
-              return;
-            }
-            // init() is false only when the browser won't give us a WebGL context.
-            stage.destroy();
-            if (!cancelled) setFailed('webgl');
-            return;
-          } catch {
-            stage?.destroy();
-            if (!cancelled) setFailed('load');
-            return;
-          }
-        }
-        // The flat board below serves only the labs that ask for it (three=false).
-        // The Club board is 3D or nothing: a flat stand-in looks broken, so a
-        // failure says what happened and offers a retry instead.
-        // The 3D chips are a nicety: if three.js or WebGL fails, the board keeps its flat chips.
-        try {
-          const { default: ChipStack } = await import('../chip3d/ChipStack.js');
-          if (cancelled) return;
-          chips = new ChipStack(chipHostRef.current, {
-            reducedMotion,
-            events: hostRef.current,
-            single: true,
-            anchors: () => stageRef.current?.chipAnchors() ?? { closed: { x: 0, y: 0, size: 64 }, open: { x: 0, y: 0, size: 96 } },
-            dropTarget: (x, y) => {
-              const board = stageRef.current;
-              const box = hostRef.current?.getBoundingClientRect();
-              if (!board || !box || board.phase !== 'place') return null;
-              const lane = board.laneAt(x - box.left, y - box.top);
-              return lane == null ? null : toPage(board.chipSpot(lane));
-            },
-            onPlace: (index, lane) => stageRef.current?.setTacticLane(index, lane),
-            onChange: setChipView,
-          });
-          if (!(await chips.init())) chips = null;
-        } catch {
-          chips?.destroy();
-          chips = null;
-        }
+        const { default: TableStage } = await import('../table3d/TableStage.js');
         if (cancelled) return;
-        chipsRef.current = chips;
-        const { default: BoardStage } = await import('../prototype/BoardStage.js');
-        if (cancelled) return;
-        stage = new BoardStage(hostRef.current, {
-          reducedMotion,
-          chips3d: Boolean(chips),
-          onChipSpot: (index, spot) => chipsRef.current?.repin(index, toPage(spot)),
-          onState,
-        });
-        stageRef.current = stage;
+        stage = new TableStage(hostRef.current, { reducedMotion, onState, onChipView: setChipView, onCardView: setCardView, arena: arenaRef.current });
         if (await stage.init()) {
+          if (cancelled) return;
+          stageRef.current = stage;
           onStageReadyRef.current?.(stage);
-          playRoundRef.current();
-          chips?.fit();
+          // With an intro, the first deal waits for the panels to part.
+          if (introRef.current) {
+            stage.raiseForDrop();
+            await stage.preload(firstRef.current).catch(() => null);
+            if (cancelled) return;
+            setBoardReady(true);
+          } else {
+            playRoundRef.current();
+          }
+          return;
         }
+        // init() is false only when the browser won't give us a WebGL context.
+        stage.destroy();
+        if (!cancelled) setFailed('webgl');
       } catch {
-        // No WebGL, or the board's code or images could not load.
+        stage?.destroy();
         if (!cancelled) setFailed('load');
       }
     })();
     return () => {
       cancelled = true;
       stage?.destroy();
-      chips?.destroy();
       onStageReadyRef.current?.(null);
       stageRef.current = null;
-      chipsRef.current = null;
     };
-  }, [reducedMotion, attempt, three]);
+  }, [reducedMotion, attempt]);
 
   // The 2.5D board keeps its hand clear of the button docked beside it, so it is
   // told how much of the bottom right the button covers whenever that changes.
@@ -489,8 +420,7 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
     setAttempt(value => value + 1);
   }
 
-  const skills = Object.keys(BOARD_SKILLS).filter(key => squad.some(card => hasSkill(card, key)));
-  const { phase, legal, placed, moves, layout } = state;
+  const { phase, legal, placed, layout } = state;
   // The finished round stays on screen until the next one is dealt.
   const shownRound = Math.min(score.you + score.them - (outcome ? 1 : 0), bestOf - 1);
   // One bark per moment that matters: a round starting or a round ending. Silence otherwise.
@@ -507,7 +437,6 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
   return (
     <div className={styles.series} data-fixed={fixed === true ? 'true' : fixed || undefined} data-layout={layout}>
       <div className={styles.board} key={attempt} ref={hostRef} onClick={() => phase === 'resolve' && stageRef.current?.skip()} />
-      <div className={styles.chips} key={`chips${attempt}`} ref={chipHostRef} aria-hidden="true" />
       {chipView?.selected && <ChipView view={chipView} roster={squad} stageRef={stageRef} hostRef={hostRef} />}
       {cardView && <CardView view={cardView} stageRef={stageRef} hostRef={hostRef} onPlaceLane={lane => stageRef.current?.placePicked(lane)} onBack={() => stageRef.current?.unplace()} />}
       {phase === 'loading' && !failed && !introOn && <p className={styles.notice} role="status">Dealing the board</p>}
@@ -539,16 +468,18 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
       {!failed && (onLeave || settings) && (
         <div className={styles.tools}>
           {settings && (
-            <button type="button" className={styles.tool} aria-label="Settings" aria-expanded={settingsOpen} onClick={() => setSettingsOpen(!settingsOpen)}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8" /><path d="M14 4v6M8 14v6" /></svg>
-            </button>
+            <Popover>
+              <PopoverTrigger className={styles.tool} aria-label="Settings">
+                <GameIcon name="settings" size={18} />
+              </PopoverTrigger>
+              <PopoverContent className={styles.settingsPanel} aria-label="Settings" side="bottom" align="end" sideOffset={4}>{settings}</PopoverContent>
+            </Popover>
           )}
           {onLeave && (
             <button type="button" className={styles.leave} data-armed={leaving || undefined} onBlur={() => setLeaving(false)} onClick={() => (leaving ? onLeave() : setLeaving(true))}>
               {leaving ? 'Leave and replay later' : 'Leave'}
             </button>
           )}
-          {settings && settingsOpen && <div className={styles.settingsPanel} role="dialog" aria-label="Settings">{settings}</div>}
         </div>
       )}
       {online && live?.board && CLOCK_SPAN[phase] && !introOn && (
@@ -570,12 +501,6 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
           </span>
         </p>
       )}
-      {/* On the 3D board each card shows its own live skill; the flat board keeps the list. */}
-      {!three && skills.length > 0 && (
-        <ul className={styles.skills} aria-label="Your squad's skills">
-          {skills.map(key => <li key={key}><b>{BOARD_SKILLS[key].label}</b>{BOARD_SKILLS[key].text}</li>)}
-        </ul>
-      )}
       <div className={styles.bar} ref={barRef}>
         {phase === 'waiting' && <p className={styles.hint}>{t('Waiting for {name}', { name: opponentName })}</p>}
         {online && live?.them && !live.them.connected && <p className={styles.hint}>{t('{name} disconnected', { name: opponentName })}</p>}
@@ -589,7 +514,6 @@ export default function BoardSeries({ squad, opponent, opponentName, bestOf, see
             Go
           </button>
         )}
-        {phase === 'rotate' && !three && <p className={styles.hint}>{moves === 2 ? t('Mastermind IGL: move two players') : t('IGL rotate: move one player')}</p>}
         {phase === 'resolve' && <p className={styles.hint}>{t('Tap to skip')}</p>}
       </div>
       {(() => {

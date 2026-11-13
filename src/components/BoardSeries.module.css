@@ -201,10 +201,10 @@
 .notice { position: absolute; top: 50%; left: 50%; margin: 0; transform: translate(-50%, -50%); font-size: 13px; color: var(--muted); }
 .tools { position: absolute; top: var(--sp-3); right: var(--sp-5); z-index: 5; display: flex; gap: var(--sp-1); }
 .tool { width: var(--tap-min); height: var(--tap-min); display: grid; place-items: center; border: 0; background: var(--surface); color: var(--ink); cursor: pointer; }
-.tool[aria-expanded='true'] { background: var(--ink); color: var(--bg); }
+.tool[aria-expanded='true'], .tool[data-open] { background: var(--ink); color: var(--bg); }
 .leave { min-height: var(--tap-min); padding: 0 var(--sp-3); border: 0; background: var(--surface); color: var(--ink); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
 /* The in-match settings: a flat panel hung under the tools. */
-.settingsPanel { position: absolute; top: calc(100% + var(--sp-1)); right: 0; width: min(380px, calc(100vw - 2 * var(--sp-3))); padding: var(--sp-3) var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); box-sizing: border-box; background: var(--surface-flyout); color: var(--ink); }
+.settingsPanel { z-index: var(--z-overlay, 50); width: min(380px, calc(100vw - 2 * var(--sp-3))); padding: var(--sp-3) var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); box-sizing: border-box; background: var(--surface-flyout); color: var(--ink); }
 @media (hover: hover) { .tool:hover:not([aria-expanded='true']), .leave:hover:not([data-armed]) { background: var(--surface-hi); } }
 .leave[data-armed] { background: var(--accent); color: var(--accent-ink); }
 .pips { display: inline-flex; gap: 3px; }

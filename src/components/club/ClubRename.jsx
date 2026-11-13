@@ -5,6 +5,7 @@ import { canRename } from '../../engine/club/rewards';
 import { t } from '../../lib/i18n';
 import club from '../../pages/Club.module.css';
 import styles from './ClubEntry.module.css';
+import GameIcon from '../GameIcon';
 import { DEFAULT_MAP } from './clubSummary';
 
 // A new name for the club, paid in packs. The price and what the club holds sit
@@ -23,7 +24,7 @@ export default function ClubRename({ state, onRename, onBack }) {
       <header className={club.hud}>
         <div className={club.plate}>
           <button type="button" className={club.iconButton} aria-label={t('Back to the club')} onClick={onBack}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+            <GameIcon name="arrow" dir="left" />
           </button>
           <div className={club.titleBlock}><b>{t('Rename club')}</b></div>
         </div>

@@ -3,8 +3,9 @@
 // "How chips work" sheet. Every number comes from chipData, which reads the
 // board engine, so nothing here can drift from what a chip really pays.
 
-import { useEffect, useId, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useId, useState } from 'react';
+import { Dialog, DialogBackdrop, DialogClose, DialogContent, DialogTitle } from '@ui-sdk/react/dialog';
+import GameIcon from '../components/GameIcon';
 import { t } from '../lib/i18n';
 import { CODES, ROLES, SKILLS, chipInfo, chipPlan } from './chipData';
 import { chipCopy, chipRules, chipTips, planLine } from './chipCopy';
@@ -78,7 +79,7 @@ export function ChipNoteButton({ chipKey, className = '' }) {
       <div id={id} popover="auto" className={styles.note}>
         <header className={styles.guideHead}>
           <h2>{info.name}</h2>
-          <button type="button" className={styles.close} popoverTarget={id} popoverTargetAction="hide" aria-label={t('Close')}>×</button>
+          <button type="button" className={styles.close} popoverTarget={id} popoverTargetAction="hide" aria-label={t('Close')}><GameIcon name="close" size={18} /></button>
         </header>
         <p className={styles.effect}>{copy.effect}</p>
         <dl className={styles.detail}>
@@ -104,19 +105,17 @@ export function ChipLegend() {
   );
 }
 
-export function ChipGuide({ onClose }) {
-  useEffect(() => {
-    const key = event => event.key === 'Escape' && onClose();
-    window.addEventListener('keydown', key);
-    return () => window.removeEventListener('keydown', key);
-  }, [onClose]);
-  // Portalled: the chip tag is transformed, which would trap a fixed veil inside it.
-  return createPortal(
-    <div className={styles.veil} onClick={event => { event.stopPropagation(); onClose(); }}>
-      <section className={styles.guide} role="dialog" aria-modal="true" aria-label={t('How chips work')} onClick={event => event.stopPropagation()}>
+// Rendered into <body>: the chip tag is transformed, which would trap a fixed
+// overlay inside it. Clicks stop here so they never reach the tag underneath.
+export function ChipGuide({ open, onClose }) {
+  const stop = event => event.stopPropagation();
+  return (
+    <Dialog open={open} onOpenChange={next => { if (!next) onClose(); }} container={document.body}>
+      <DialogBackdrop className={styles.veil} onClick={stop} />
+      <DialogContent className={styles.guide} onClick={stop}>
         <header className={styles.guideHead}>
-          <h2>{t('How chips work')}</h2>
-          <button type="button" className={styles.close} onClick={onClose} aria-label={t('Close')}>×</button>
+          <DialogTitle>{t('How chips work')}</DialogTitle>
+          <DialogClose className={styles.close} aria-label={t('Close')}><GameIcon name="close" size={18} /></DialogClose>
         </header>
         <ol className={styles.rules}>
           {chipRules().map((rule, index) => (
@@ -127,9 +126,8 @@ export function ChipGuide({ onClose }) {
         <ChipLegend />
         <h3 className={styles.kicker}>{t('Playing them well')}</h3>
         <ul className={styles.tips}>{chipTips().map(tip => <li key={tip}>{tip}</li>)}</ul>
-      </section>
-    </div>,
-    document.body,
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -141,7 +139,7 @@ export function ChipGuideButton({ className = '', label }) {
       <button type="button" className={`${styles.guideButton} ${className}`} onClick={(event) => { event.stopPropagation(); setOpen(true); }}>
         <span aria-hidden="true" className={styles.q}>?</span>{label ?? t('How chips work')}
       </button>
-      {open && <ChipGuide onClose={() => setOpen(false)} />}
+      <ChipGuide open={open} onClose={() => setOpen(false)} />
     </>
   );
 }

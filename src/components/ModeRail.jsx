@@ -1,7 +1,7 @@
 import { Suspense, lazy, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { m } from 'motion/react';
-import { IconHelp } from '@tabler/icons-react';
+import GameIcon from './GameIcon';
 import { DUR, EASE } from '../../shared/src/lib/motion';
 import { t } from '../lib/i18n';
 import BrandLogo from './BrandLogo';
@@ -17,17 +17,8 @@ import styles from './ModeRail.module.css';
 const HowTo = lazy(() => import('./HowTo'));
 
 const ICON = {
-  library: (
-    <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <rect x="2.5" y="2.5" width="6" height="6" /><rect x="11.5" y="2.5" width="6" height="6" />
-      <rect x="2.5" y="11.5" width="6" height="6" /><rect x="11.5" y="11.5" width="6" height="6" />
-    </svg>
-  ),
-  club: (
-    <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="square">
-      <path d="M10 2.5 16.5 5v5c0 3.6-2.6 6.2-6.5 7.5C6.1 16.2 3.5 13.6 3.5 10V5L10 2.5Z" /><path d="M7 9.5 9.2 12 13 7.8" />
-    </svg>
-  ),
+  library: <GameIcon name="library" size={20} />,
+  club: <GameIcon name="club" size={20} />,
 };
 
 const RAIL = [
@@ -70,7 +61,7 @@ export default function ModeRail() {
         ))}
       </div>
       <button type="button" className={styles.help} aria-label={t('How to play')} onClick={() => setHelpOpen(true)}>
-        <IconHelp size={20} stroke={1.8} aria-hidden="true" />
+        <GameIcon name="help" size={20} />
         <span className={styles.tip} aria-hidden="true">{t('How to play')}</span>
       </button>
       <Sheet open={helpOpen} onClose={() => setHelpOpen(false)} title={t('How to play')}>

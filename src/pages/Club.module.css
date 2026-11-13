@@ -50,16 +50,16 @@
 .tierBars { display: flex; gap: 2px; }
 .tierBars i { width: 18px; height: 7px; background: var(--plate-inset); }
 .tierBars i[data-on] { background: var(--ink); }
-.menuWrap { position: relative; }
-.menu { position: absolute; right: 0; top: calc(100% + var(--sp-1)); z-index: 5; width: 240px; display: flex; flex-direction: column; background: var(--ink); }
-.menu button { min-height: 52px; padding: 0 var(--sp-4); border: 0; background: transparent; color: var(--bg); font: inherit; font-size: var(--fs-body); font-weight: 800; text-align: left; cursor: pointer; }
-.menu button[data-armed] { background: var(--accent); color: var(--accent-ink); }
+.menu { z-index: var(--z-overlay, 50); width: 240px; display: flex; flex-direction: column; background: var(--ink); }
+.menu [data-slot='menu-item'] { display: flex; align-items: center; min-height: 52px; padding: 0 var(--sp-4); border: 0; background: transparent; color: var(--bg); font: inherit; font-size: var(--fs-body); font-weight: 800; text-align: left; cursor: pointer; }
+.menu [data-slot='menu-item'][data-highlighted]:not([data-armed]) { background: var(--plate-inset); color: var(--ink); }
+.menu [data-slot='menu-item'][data-armed] { background: var(--accent); color: var(--accent-ink); }
 @media (hover: hover) {
   .tile:hover:not(:disabled):not([data-static]) { background: var(--plate-hi); }
   .iconButton:hover { background: var(--plate-hi); }
   .primary:hover:not(:disabled) { filter: brightness(1.08); }
   .ghost:hover:not(:disabled), .small:hover:not(:disabled):not([data-on]) { border-color: var(--ink); }
-  .menu button:hover:not([data-armed]) { background: var(--plate-inset); color: var(--ink); }
+  .menu [data-slot='menu-item']:hover:not([data-armed]) { background: var(--plate-inset); color: var(--ink); }
 }
 
 .nameField { display: flex; flex-direction: column; gap: 2px; }

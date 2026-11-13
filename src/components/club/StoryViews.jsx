@@ -9,6 +9,7 @@ import ClubLogo from '../ClubLogo';
 import club from '../../pages/Club.module.css';
 import styles from './ClubEntry.module.css';
 import { DEFAULT_MAP } from './clubSummary';
+import GameIcon from '../GameIcon';
 
 const STAGE_CARD_SCALE = 0.3;
 
@@ -414,9 +415,7 @@ export function StoryDialogue(props) {
 
 function SignalIcon({ up = false }) {
   return (
-    <svg viewBox="0 0 12 12" aria-hidden="true">
-      <path d={up ? 'M6 1 11 10H1z' : 'M6 11 1 2h10z'} fill="currentColor" />
-    </svg>
+    <GameIcon name="arrow" dir={up ? 'up' : 'down'} size={12} />
   );
 }
 

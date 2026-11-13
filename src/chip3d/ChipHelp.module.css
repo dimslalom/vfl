@@ -22,8 +22,8 @@
 .legend li { display: grid; grid-template-columns: 52px 1fr; align-items: center; gap: var(--sp-2); font-size: 12px; color: var(--muted); }
 .legend b { font: 700 var(--fs-micro)/1 var(--font-mono); letter-spacing: .1em; color: var(--ink); }
 
-.veil { position: fixed; inset: 0; z-index: var(--z-overlay, 50); display: grid; place-items: center; padding: var(--sp-4); background: var(--veil); }
-.guide { width: min(560px, 100%); max-height: calc(100dvh - 2 * var(--sp-4)); overflow: auto; display: grid; gap: var(--sp-4); padding: var(--sp-6); background: var(--surface); color: var(--ink); box-shadow: var(--shadow-overlay); }
+.veil { position: fixed; inset: 0; z-index: var(--z-overlay, 50); background: var(--veil); }
+.guide { position: fixed; inset: 0; z-index: var(--z-overlay, 50); margin: auto; height: fit-content; width: min(560px, calc(100% - 2 * var(--sp-4))); max-height: calc(100dvh - 2 * var(--sp-4)); overflow: auto; display: grid; gap: var(--sp-4); padding: var(--sp-6); background: var(--surface); color: var(--ink); box-shadow: var(--shadow-overlay); }
 .guideHead { display: flex; align-items: center; justify-content: space-between; }
 .guideHead h2 { margin: 0; font-size: var(--fs-heading); }
 .close { width: 44px; height: 44px; border: 0; background: var(--surface-alt); color: var(--ink); font-size: 24px; cursor: pointer; }

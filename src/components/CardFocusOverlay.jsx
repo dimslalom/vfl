@@ -8,7 +8,8 @@ import SpecialtyIcon from '../../shared/src/components/SpecialtyIcon';
 import Split from '../../shared/src/components/Split';
 import { fadeIn } from '../../shared/src/lib/motion';
 import { countryName, regionFullName } from '../../shared/src/lib/utils';
-import useDialogFocusTrap from '../lib/useDialogFocusTrap';
+import { Dialog, DialogContent } from '@ui-sdk/react/dialog';
+import GameIcon from './GameIcon';
 import styles from './CardFocusOverlay.module.css';
 import { STAGE_LABEL } from '../../shared/src/engine/endless/career';
 
@@ -43,12 +44,30 @@ function cardScale() {
   return Math.min(0.95, (h * 0.72) / CARD_H, (w * 0.42) / CARD_W);
 }
 
+// Unmounts with the dialog and, a frame later (after ui-sdk's own cleanup),
+// puts focus back on whatever opened it.
+function FocusHome({ to }) {
+  useEffect(() => () => {
+    const target = to.current;
+    requestAnimationFrame(() => { if (target?.isConnected) target.focus({ preventScroll: true }); });
+  }, [to]);
+  return null;
+}
+
 export default function CardFocusOverlay({ card, onClose, action = null, onAction, signals = null }) {
   const [flipped, setFlipped] = useState(false);
   const closeRef = useRef(null);
-  const dialogRef = useRef(null);
   const cardRef = useRef(card);
-  useDialogFocusTrap(Boolean(card), dialogRef, closeRef);
+  // The last thing focused outside the overlay: the card (or button) that
+  // opened it, where focus goes back once the exit finishes.
+  const openerRef = useRef(null);
+  useEffect(() => {
+    const track = (event) => {
+      if (!event.target.closest?.('[data-slot="dialog-content"]')) openerRef.current = event.target;
+    };
+    document.addEventListener('focusin', track);
+    return () => document.removeEventListener('focusin', track);
+  }, []);
   useEffect(() => {
     cardRef.current = card;
   });
@@ -81,14 +100,6 @@ export default function CardFocusOverlay({ card, onClose, action = null, onActio
     });
   }
 
-  useEffect(() => {
-    if (!card) return;
-    const onKey = (e) => e.key === 'Escape' && requestClose();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [card]);
-
   // The card IS the page here, so it runs near native size rather than
   // sharing the room with a panel. Once the annotations lose their margins
   // and stack underneath (the same 960px the stylesheet switches at), the
@@ -103,19 +114,20 @@ export default function CardFocusOverlay({ card, onClose, action = null, onActio
   return createPortal(
     <AnimatePresence>
       {card && (
-        <m.div
-          ref={dialogRef}
+        // ui-sdk owns the Tab trap and Esc; Motion owns the fade and the card's
+        // shared-layout flight, so the content renders as m.div and stays open
+        // until AnimatePresence finishes its exit. That outlives ui-sdk's own
+        // focus return, so FocusHome sends focus back once it is gone.
+        <Dialog key="focus" open onOpenChange={next => { if (!next) requestClose(); }}>
+        <DialogContent
+          render={<m.div variants={fadeIn} initial="initial" animate="animate" exit="exit" />}
           className={styles.backdrop}
-          variants={fadeIn}
-          initial="initial"
-          animate="animate"
-          exit="exit"
+          initialFocus={() => closeRef.current}
           onClick={requestClose}
-          role="dialog"
-          aria-modal="true"
           aria-label={t('{player} card details', { player: card.player ?? t('Player') })}
         >
-          <button ref={closeRef} className={styles.close} onClick={requestClose} aria-label={t('Close')}>✕</button>
+          <FocusHome to={openerRef} />
+          <button ref={closeRef} className={styles.close} onClick={requestClose} aria-label={t('Close')}><GameIcon name="close" size={18} /></button>
 
           <div
             className={styles.focusStage}
@@ -217,7 +229,8 @@ export default function CardFocusOverlay({ card, onClose, action = null, onActio
             )}
             <p className={styles.hint}><Split parts={[t('click card to flip for the full sheet'), t('esc to close')]} /></p>
           </div>
-        </m.div>
+        </DialogContent>
+        </Dialog>
       )}
     </AnimatePresence>,
     document.body

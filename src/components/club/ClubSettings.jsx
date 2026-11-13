@@ -8,6 +8,7 @@ import MusicControls from '../MusicControls';
 import AmbientControls from '../AmbientControls';
 import club from '../../pages/Club.module.css';
 import styles from './ClubEntry.module.css';
+import GameIcon from '../GameIcon';
 import { DEFAULT_MAP } from './clubSummary';
 
 function Toggle({ on, label, onChange }) {
@@ -63,7 +64,7 @@ export default function ClubSettings({ prefs, onChange, onBack, onPrimer, accoun
       <header className={club.hud}>
         <div className={club.plate}>
           <button type="button" className={club.iconButton} aria-label={t('Back')} onClick={onBack}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+            <GameIcon name="arrow" dir="left" />
           </button>
           <div className={club.titleBlock}><b>{t('Settings')}</b></div>
         </div>

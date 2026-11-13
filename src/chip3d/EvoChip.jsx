@@ -12,6 +12,7 @@ import { EVO_CHIPS, isEligibleForEvo } from '../engine/club/season';
 import Chip3D from './Chip3D';
 import help from './ChipHelp.module.css';
 import styles from './EvoChip.module.css';
+import GameIcon from '../components/GameIcon';
 
 const statGain = stats => Object.entries(stats).map(([key, value]) => `+${value} ${STAT_LABELS[key]}`).join(', ');
 const evoTakes = evo => `${evo.requirements.roles ? evo.requirements.roles.join(' or ') : 'Any role'}, ${evo.requirements.maxRating} ceiling`;
@@ -125,7 +126,7 @@ export function EvoNoteButton({ evoKey, className = '' }) {
       <div id={id} popover="auto" className={help.note}>
         <header className={help.guideHead}>
           <h2>{evo.name}</h2>
-          <button type="button" className={help.close} popoverTarget={id} popoverTargetAction="hide" aria-label="Close">×</button>
+          <button type="button" className={help.close} popoverTarget={id} popoverTargetAction="hide" aria-label="Close"><GameIcon name="close" size={18} /></button>
         </header>
         <p className={help.effect}>{skill.name}: {skill.desc}</p>
         <dl className={help.detail}>

@@ -26,7 +26,7 @@ Each rule is checkable. Run section 10 against your diff before you finish.
 8. **No one-sided borders** (top, bottom, left or right) on buttons, plates, cards or rows to show status or selection. Status goes in a chip, a fill (`--ink` or `--plate-hi`), selection corners (`SelectionCorners`), or the text colour.
 9. **No boxes inside boxes.** Split a panel with hairline rows (`LedgerRow`) or spacing, never a nested bordered box.
 10. **No hand-mixed grays.** On map art, a surface is `--plate`, `--plate-hi` or `--plate-inset`. A new `color-mix()` of a surface token is a bug.
-11. **No emoji, no glyph icons, no native `<select>`.** Use real game imagery (player cards, crests, pack and tape art) or a drawn SVG. To pick a player, show the player cards and let the user tap one.
+11. **No emoji, no glyph icons, no native `<select>`.** Use real game imagery (player cards, crests, pack and tape art). Interface icons (close, back, menu, settings, help) are `GameIcon` (`src/components/GameIcon.jsx`), paths copied from game-icons.net; add one by pasting its path there and adding its author to the credit on `/legal` (CC BY 3.0). Never install an icon package. To pick a player, show the player cards and let the user tap one.
 12. **No literal font sizes or colours.** Use the `--fs-*` and colour tokens from `DESIGN.md`. If no token fits, the element is wrong; don't add a new size.
 13. **No disabled button where a hidden one is clearer.** If an action can never happen in this state (for example, opening a pack you have zero of), remove the button rather than showing "None left".
 14. **Fix, don't remove.** When the user says something looks wrong, change the property that is wrong (radius, spacing, alignment). Never delete the element unless they ask. If you think removing it is better, ask first.
@@ -169,6 +169,10 @@ These are the things that broke before. Check them every time you touch a menu.
 3. The same action has the same position on every screen: the primary action is always bottom left in the inspector.
 4. The same fact uses the same words everywhere. The menu tile, tab and screen title all say "Inventory", and the Train tile and tab both say "Train".
 5. Equal choices are equal buttons. Pass, Reroll and Take share one size; colour alone marks the main one.
+6. **Every overlay is a ui-sdk part.** Modals are `Sheet` or `Dialog`, menus are `Menu`, panels hung off a button are `Popover` (all from `@ui-sdk/react/*`, pinned at an exact beta version; read `node_modules/@ui-sdk/react/docs` before using a new one). They own focus, Tab, Esc, outside presses and handing focus back; never hand-roll any of that or add another `keydown` listener for Esc. Parts are unstyled `div`s with `data-slot`/`data-open`/`data-highlighted` attributes: position content with `position: fixed; inset: 0; margin: auto`, never `::backdrop`. When Motion owns an exit, render the content as Motion with `render={<m.div … />}` inside `AnimatePresence`. Page-level "Esc = back" (`useEscape` in Club) checks `event.defaultPrevented`, which ui-sdk sets when an overlay took the key.
+7. **A button waiting on the network says so.** Set `aria-busy` while the request runs (the global style dims it and stops presses) and guard the handler so a second press does nothing. Don't use `disabled` for this: disabled means "can't", busy means "working".
+8. **Every drag has a keyboard path.** If dragging changes state (a swap, a placement), a focused piece must do the same with keys (for a swap, Alt+Left/Right with the neighbour). A drag that only stretches and snaps back needs nothing.
+9. **Text fields are 16px or larger on touch screens**, or iPhone zooms the page on focus. The global rule in `shared/src/index.css` does this; don't override it.
 
 ---
 

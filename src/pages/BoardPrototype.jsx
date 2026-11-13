@@ -33,7 +33,6 @@ export default function BoardPrototype() {
             seed={series.seed}
             hand={series.tactics}
             onDone={() => setFinished(true)}
-            three
           />
         )}
       </div>

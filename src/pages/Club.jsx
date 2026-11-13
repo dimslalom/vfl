@@ -1,5 +1,8 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@ui-sdk/react/dialog';
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@ui-sdk/react/menu';
+import GameIcon from '../components/GameIcon';
 import allCards from '../../shared/src/data/cards.json';
 import { STAT_KEYS, STAT_LABELS, STAT_LABELS_FULL } from '../../shared/src/data/statFields';
 import PlayerCard from '../../shared/src/components/PlayerCard';
@@ -127,7 +130,7 @@ function useEscape(action) {
   const latest = useRef(action);
   useEffect(() => { latest.current = action; });
   useEffect(() => {
-    const onKey = (event) => { if (event.key === 'Escape') latest.current(); };
+    const onKey = (event) => { if (event.key === 'Escape' && !event.defaultPrevented) latest.current(); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
@@ -164,7 +167,7 @@ function OwnMark({ state, size }) {
 function BackButton({ onClick, label = 'Back to the club' }) {
   return (
     <button type="button" className={styles.iconButton} aria-label={label} onClick={onClick}>
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+      <GameIcon name="arrow" dir="left" />
     </button>
   );
 }
@@ -263,13 +266,16 @@ function Road({ state, off }) {
 
 // ── start ───────────────────────────────────────────────────────────────────
 
+// Mounted only while choosing, so it is always open; any close (Esc, Done,
+// a press on the margin) hands back to the caller.
 function CrestPicker({ name, value, tone, onStyle, onTone, onClose }) {
   return (
-    <div className={styles.crestSheet} role="dialog" aria-modal="true" aria-label={t('Choose club crest')} onClick={onClose}>
-      <div className={styles.crestGrid} onClick={event => event.stopPropagation()}>
-        <h2>{t('Pick a crest')}</h2>
+    <Dialog open onOpenChange={next => { if (!next) onClose(); }}>
+      <DialogContent className={styles.crestSheet} aria-label={t('Choose club crest')} initialFocus="[aria-pressed='true']" onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
+      <div className={styles.crestGrid}>
+        <DialogTitle>{t('Pick a crest')}</DialogTitle>
         {LOGO_STYLES.map(option => (
-          <button key={option.id} type="button" className={styles.crestOption} aria-pressed={option.id === value} onClick={() => onStyle(option.id)} autoFocus={option.id === value}>
+          <button key={option.id} type="button" className={styles.crestOption} aria-pressed={option.id === value} onClick={() => onStyle(option.id)}>
             <span dangerouslySetInnerHTML={{ __html: logoSvg(name, option.id, tone) }} />
             <b>{t(option.label)}</b>
           </button>
@@ -288,9 +294,10 @@ function CrestPicker({ name, value, tone, onStyle, onTone, onClose }) {
             />
           ))}
         </div>
-        <button type="button" className={styles.crestDone} onClick={onClose}>{t('Done')}</button>
+        <DialogClose className={styles.crestDone}>{t('Done')}</DialogClose>
       </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -298,7 +305,6 @@ function CrestPicker({ name, value, tone, onStyle, onTone, onClose }) {
 function CrestEdit({ state, onDone }) {
   const [style, setStyle] = useState(state.crest ?? defaultLogoStyle(state.name));
   const [tone, setTone] = useState(state.tone ?? defaultLogoTone(state.name));
-  useEscape(() => onDone(style, tone));
   return <CrestPicker name={state.name} value={style} tone={tone} onStyle={setStyle} onTone={setTone} onClose={() => onDone(style, tone)} />;
 }
 
@@ -312,7 +318,6 @@ function Start({ onStart, onExit, scale, exitLabel = 'Back' }) {
   const shownName = cleanName(name) || t('Your club');
   const style = crest ?? defaultLogoStyle(shownName);
   const tone = toneIndex ?? defaultLogoTone(shownName);
-  useEscape(() => setChoosing(false));
   // Each draft pack is torn open before its cards can be picked.
   const [torn, setTorn] = useState(false);
   const done = picks.length >= DRAFT_PACKS;
@@ -391,27 +396,24 @@ function Start({ onStart, onExit, scale, exitLabel = 'Back' }) {
 
 // ── hub ─────────────────────────────────────────────────────────────────────
 
+// Abandon takes two presses: the first arms it and keeps the menu open.
 function ClubMenu({ onAbandon, onSettings, onPrimer, onRename, onCrest }) {
-  const [open, setOpen] = useState(false);
   const [armed, setArmed] = useState(false);
-  useEscape(() => { setOpen(false); setArmed(false); });
   return (
-    <div className={styles.menuWrap}>
-      <button type="button" className={styles.iconButton} aria-label="Club menu" aria-expanded={open} onClick={() => { setOpen(!open); setArmed(false); }}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
-      </button>
-      {open && (
-        <div className={styles.menu}>
-          {onRename && <button type="button" onClick={onRename}>{t('Rename club')}</button>}
-          {onCrest && <button type="button" onClick={onCrest}>{t('Change crest')}</button>}
-          {onPrimer && <button type="button" onClick={onPrimer}>{t('How it plays')}</button>}
-          {onSettings && <button type="button" onClick={onSettings}>{t('Settings')}</button>}
-          <button type="button" data-armed={armed || undefined} onBlur={() => setArmed(false)} onClick={() => (armed ? onAbandon() : setArmed(true))}>
-            {armed ? 'Tap again to delete this club' : 'Abandon club'}
-          </button>
-        </div>
-      )}
-    </div>
+    <Menu onOpenChange={() => setArmed(false)}>
+      <MenuTrigger className={styles.iconButton} aria-label="Club menu">
+        <GameIcon name="menu" />
+      </MenuTrigger>
+      <MenuContent className={styles.menu} side="bottom" align="end" sideOffset={4}>
+        {onRename && <MenuItem onSelect={onRename}>{t('Rename club')}</MenuItem>}
+        {onCrest && <MenuItem onSelect={onCrest}>{t('Change crest')}</MenuItem>}
+        {onPrimer && <MenuItem onSelect={onPrimer}>{t('How it plays')}</MenuItem>}
+        {onSettings && <MenuItem onSelect={onSettings}>{t('Settings')}</MenuItem>}
+        <MenuItem data-armed={armed || undefined} closeOnSelect={armed} onSelect={() => (armed ? onAbandon() : setArmed(true))}>
+          {armed ? 'Tap again to delete this club' : 'Abandon club'}
+        </MenuItem>
+      </MenuContent>
+    </Menu>
   );
 }
 
@@ -483,7 +485,7 @@ function TapeCard({ scale = 0.3, target }) {
 function BenchOpen({ scale, onClick }) {
   const body = (
     <>
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+      <GameIcon name="add" size={22} />
       <small>Open a pack</small>
     </>
   );
@@ -555,6 +557,7 @@ function Home({ state, go, onAbandon, onSettings, onPrimer, size, mode = 'season
               power={Math.round(squad.slice(0, STARTERS).reduce((sum, card) => sum + card.rating, 0) / STARTERS)}
               queue={online.queue}
               now={online.now}
+              joining={online.joining}
               onFind={online.onFind}
               onCancel={online.onCancel}
               onFriendly={() => go('friendly')}
@@ -1289,7 +1292,7 @@ export function Train({ state, go, onTape, onEvo, onBack, size, initialFocus = n
                 <span className={styles.eafcSpotlightTag}>Before</span>
                 <PlayerCard card={subject} displayScale={90 / 400} tilt canDrag={false} highlightStat={highlight} />
               </div>
-              <span className={styles.trainingArrow} aria-hidden="true">→</span>
+              <span className={styles.trainingArrow}><GameIcon name="arrow" dir="right" size={14} /></span>
               <div>
                 <span className={styles.eafcSpotlightTag}>After</span>
                 {after.evoTheme
@@ -1769,6 +1772,7 @@ function Friendly({ state, linkCode, onStart, size }) {
   }
 
   async function run(request) {
+    if (busy) return;
     setBusy(true);
     setError(null);
     try {
@@ -1836,7 +1840,7 @@ function Friendly({ state, linkCode, onStart, size }) {
         <div className={styles.managementActions}>
           {room
             ? <button type="button" className={styles.primary} onClick={copyLink}>{copied ? t('Link copied') : t('Copy link')}</button>
-            : <button type="button" className={styles.primary} disabled={busy} onClick={() => run(() => createDuel({ club, squad, bestOf }))}>{t('Create code')}</button>}
+            : <button type="button" className={styles.primary} aria-busy={busy} onClick={() => run(() => createDuel({ club, squad, bestOf }))}>{t('Create code')}</button>}
         </div>
       </aside>
       <div className={styles.managementMain}>
@@ -1877,7 +1881,7 @@ function Friendly({ state, linkCode, onStart, size }) {
               spellCheck={false}
               maxLength={6}
             />
-            {typed.length === 6 && <button type="submit" className={styles.small} disabled={busy}>{t('Join')}</button>}
+            {typed.length === 6 && <button type="submit" className={styles.small} aria-busy={busy}>{t('Join')}</button>}
           </form>
         )}
         {error && <p className={styles.duelError} role="alert">{error}</p>}
@@ -1923,7 +1927,7 @@ function Review({ state, onNext, size }) {
             <Tag>{MOVEMENT[review.movement]}</Tag>
           </span>
           {toTier !== review.fromTier && (
-            <p className={styles.tierMove}><span>{tierName(review.fromTier)}</span><b aria-hidden="true">→</b><span data-to="true">{tierName(toTier)}</span></p>
+            <p className={styles.tierMove}><span>{tierName(review.fromTier)}</span><b><GameIcon name="arrow" dir="right" size={14} /></b><span data-to="true">{tierName(toTier)}</span></p>
           )}
           {review.movement === 'warned' && <p className={styles.tierMove}><span data-to="true">Finish last again and the run ends</span></p>}
         </div>
@@ -2348,6 +2352,7 @@ export default function Club() {
   const [ratingDelta, setRatingDelta] = useState(0);
   // The ranked queue: the ticket and when it was taken, or null.
   const [queue, setQueue] = useState(null);
+  const [joining, setJoining] = useState(false);
   const [queueNow, setQueueNow] = useState(() => Date.now());
   // With a chip pick waiting, the Inventory menu opens on the pick; its tab flips to the rest.
   const [chipView, setChipView] = useState('pick');
@@ -2410,11 +2415,14 @@ export default function Club() {
   }, [queue]);
 
   function findMatch() {
+    if (joining) return;
+    setJoining(true);
     setNotice('');
     const squad = squadCards(state, allCards).slice(0, STARTERS);
     joinQueue({ club: { name: state.name, crest: state.crest, tone: state.tone }, squad })
       .then(id => setQueue({ id, since: Date.now() }))
-      .catch(error => setNotice(error.code === 'signed_out' ? t('Sign in with Discord') : t('Couldn’t reach the server')));
+      .catch(error => setNotice(error.code === 'signed_out' ? t('Sign in with Discord') : t('Couldn’t reach the server')))
+      .finally(() => setJoining(false));
   }
 
   function cancelQueue() {
@@ -2656,7 +2664,6 @@ export default function Club() {
         onDone={finishMatch}
         onLeave={() => show('home')}
         fixed="full"
-        three
         hintsOn={prefs.hints && state.year === 1 && (state.results?.length ?? 0) === 0}
         seenHints={prefs.seen}
         onDismissHint={hintKey => updatePrefs(markHintSeen(prefs, hintKey))}
@@ -2696,7 +2703,6 @@ export default function Club() {
         }}
         onLeave={() => { setExhibition(null); show('league'); }}
         fixed="full"
-        three
         settings={<MusicControls />}
       />
     );
@@ -2746,7 +2752,6 @@ export default function Club() {
         }}
         onLeave={() => { conn.forfeit(); endDuel(); show('home'); }}
         fixed="full"
-        three
         settings={<MusicControls />}
       />
     );
@@ -2908,7 +2913,7 @@ export default function Club() {
           // Story mode is its own campaign: no Online face, no ranked, no friendlies.
           mode={isStoryClub(state) ? 'season' : mode}
           onMode={isStoryClub(state) ? null : (next) => { if (next === 'season') cancelQueue(); setMode(next); }}
-          online={isStoryClub(state) ? null : { account: sync.account, rating, delta: ratingDelta, queue, now: queueNow, onFind: findMatch, onCancel: cancelQueue }}
+          online={isStoryClub(state) ? null : { account: sync.account, rating, delta: ratingDelta, queue, now: queueNow, joining, onFind: findMatch, onCancel: cancelQueue }}
           go={(next) => {
             setNotice('');
             if (next === 'match' && isStoryClub(state)) {

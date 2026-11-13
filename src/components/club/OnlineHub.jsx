@@ -81,7 +81,7 @@ export function RankStrip({ rating, delta, off }) {
 }
 
 /** The hero: your five against whoever the queue finds, behind the same big red button. */
-export function OnlineHero({ account, rating, power, queue, now, onFind, onCancel, onFriendly }) {
+export function OnlineHero({ account, rating, power, queue, now, joining = false, onFind, onCancel, onFriendly }) {
   const signedOut = account?.status === 'signedOut';
   const waited = queue ? Math.max(0, Math.floor((now - queue.since) / 1000)) : 0;
   return (
@@ -111,7 +111,7 @@ export function OnlineHero({ account, rating, power, queue, now, onFind, onCance
         ) : queue ? (
           <button type="button" className={`${club.primary} ${club.playBig}`} onClick={onCancel}>{t('Cancel')}</button>
         ) : (
-          <button type="button" className={`${club.primary} ${club.playBig}`} disabled={account?.status !== 'signedIn'} onClick={onFind}>{t('Find match')}</button>
+          <button type="button" className={`${club.primary} ${club.playBig}`} disabled={account?.status !== 'signedIn'} aria-busy={joining} onClick={onFind}>{t('Find match')}</button>
         )}
       </div>
     </section>

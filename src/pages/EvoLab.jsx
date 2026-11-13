@@ -319,7 +319,6 @@ function LabBoard({ card, evoKey }) {
           hand={series.tactics}
           mapNames={MAP_NAMES}
           onDone={noop}
-          three
           arena="tint"
           initialSlots={series.slots}
           onStageReady={setStage}

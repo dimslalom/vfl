@@ -12,6 +12,7 @@ import { t } from '../lib/i18n.js';
 import SquadDock from './SquadDock.jsx';
 import TacticalButton from './TacticalButton.jsx';
 import styles from './SeriesCardTable.module.css';
+import GameIcon from './GameIcon';
 
 const ROLE_MARK = { Duelist: 'DLT', Initiator: 'INI', Controller: 'CTL', Sentinel: 'SEN' };
 const NARROW = '(max-width: 820px)';
@@ -526,7 +527,7 @@ export function RewardTable({
         <div className={styles.replaceTable}>
           {pendingTactics.length > 1 && <span className={styles.rewardPickLabel}>{t('{n} tactics left to place', { n: pendingTactics.length })}</span>}
           <TacticCard instance={incoming} selected disabled />
-          <span className={styles.replaceArrow}>→</span>
+          <span className={styles.replaceArrow}><GameIcon name="arrow" dir="right" size={16} /></span>
           <div className={styles.replaceHand}>{tacticHand.map(card => <TacticCard key={card.uid} instance={card} compact replace onPlay={onReplace} />)}</div>
           <TacticalButton className={styles.replaceKeep} onClick={() => onReplace(null)}>{t('Keep hand')}</TacticalButton>
         </div>

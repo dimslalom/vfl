@@ -39,7 +39,6 @@ export default function ArenaLab() {
           hand={series.tactics}
           mapNames={[map, map, map]}
           onDone={() => setSeries(dealSeries(series.seed + 1, 3))}
-          three
           arena={look}
         />
       </div>

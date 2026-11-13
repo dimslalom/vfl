@@ -130,6 +130,6 @@ Clubs is early and still changing quickly. It replaced two older modes, the Gaun
 
 ---
 
-Music by <a href="https://pixabay.com/users/atlasaudio-54514918/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=617620">AtlasAudio</a> from <a href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=617620">Pixabay</a>. Map art by Riot Games environment artists [Tobias Koepp](https://www.artstation.com/tobiaskoepp) and [Kevin Brunt](https://www.artstation.com/sirdigitalbacon), and official VALORANT wallpapers.
+Music by <a href="https://pixabay.com/users/atlasaudio-54514918/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=617620">AtlasAudio</a> from <a href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=617620">Pixabay</a>. Map art by Riot Games environment artists [Tobias Koepp](https://www.artstation.com/tobiaskoepp) and [Kevin Brunt](https://www.artstation.com/sirdigitalbacon), and official VALORANT wallpapers. Cutscene character poses from the [MakeHuman Community](https://www.makehumancommunity.org/) by callharvey3d, Gustavo Pedroso (gpedroso), DredNicolson, J_Jones, Mindfront, and punkduck.
 
 Clubs is a fan project with no monetization. It is not affiliated with or endorsed by Riot Games. VALORANT, the VCT and related names belong to Riot Games.
