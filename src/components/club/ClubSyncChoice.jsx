@@ -40,8 +40,8 @@ export default function ClubSyncChoice({ local, cloud, onKeepDevice, onKeepAccou
         <div className={styles.sync}>
           <p className={styles.lead}>{t('This device and your account each have a club. Keep one. The other is replaced and can’t be brought back.')}</p>
           <div className={styles.syncPair}>
-            <Side label={t('On this device')} state={local} onKeep={onKeepDevice} keepLabel={t('Keep this one')} />
-            <Side label={t('On your account')} state={cloud} onKeep={onKeepAccount} keepLabel={t('Keep this one')} />
+            <Side label={t('On this device')} state={local} onKeep={onKeepDevice} keepLabel={t('Keep device club')} />
+            <Side label={t('On your account')} state={cloud} onKeep={onKeepAccount} keepLabel={t('Keep account club')} />
           </div>
         </div>
       </main>

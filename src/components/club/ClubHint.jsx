@@ -11,7 +11,7 @@ const HINTS = {
   home: () => ({
     target: 'play',
     title: t('Your next match'),
-    text: t('Press Play to start this week’s match. Between matches, use the tiles to manage your team.'),
+    text: t('Select Play to start this week’s match. Between matches, use the tiles to manage your team.'),
   }),
   home_tapes: () => ({
     target: 'tile-train',
@@ -21,7 +21,7 @@ const HINTS = {
   squad: () => ({
     target: 'swap',
     title: t('Your team'),
-    text: t('The five cards on top play the match. Click two players to swap them. The player on the left is your captain (IGL).'),
+    text: t('The five cards on top play the match. Select two players to swap them. The player on the left is your captain (IGL).'),
   }),
   squad_fatigue: () => ({
     target: 'swap',
@@ -51,12 +51,12 @@ const HINTS = {
   chips: () => ({
     target: 'loadout',
     title: t('Tactics'),
-    text: t('Tactics are chips you place on a lane during a match to multiply its score. Equip up to seven to take them into your next match.'),
+    text: t('Equip up to seven tactic chips for your next match. Place them on lanes during a match to multiply scores.'),
   }),
   chipPick: () => ({
     target: 'chip-offer',
     title: t('Pick a reward'),
-    text: t('You won! Keep one tactic chip. Tap a chip to see what it does, then tap it again to take it.'),
+    text: t('You won! Keep one tactic chip. Select a chip to see what it does, then select it again to take it.'),
   }),
   league: () => ({
     target: 'table',
@@ -76,7 +76,7 @@ const HINTS = {
   match_rotate: () => ({
     target: 'board-go',
     title: t('Rotate'),
-    text: t('Rival revealed. Use your IGL rotate to reposition a player and counter their matchups.'),
+    text: t('Rival revealed. Rotate one player with your IGL to counter their matchups.'),
   }),
 };
 

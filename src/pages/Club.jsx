@@ -38,7 +38,9 @@ import {
 import { TIER_META } from '../engine/endless/ladder';
 import { pickSeriesMaps } from '../prototype/boardSetup';
 import ClubLogo from '../components/ClubLogo';
-import { LOGO_STYLES, LOGO_TONES, defaultLogoStyle, defaultLogoTone, logoSvg } from '../engine/club/logo';
+import { LOGO_TONES, defaultLogoStyle, defaultLogoTone } from '../engine/club/logo';
+import { CREST_SHAPES, CREST_STYLES, decodeCrest, encodeCrest, isKitCrest, pickCrest, upgradeCrest } from '../engine/club/crestKit';
+import { loadCrestLexicon, useCrestLexicon } from '../lib/crestParts';
 import {
   CLUB_SAVE_KEY, STORY_SAVE_KEY, clearClubSlot, loadActiveSlot, loadClubSlot, saveActiveSlot, saveClubSlot,
 } from '../lib/clubSave';
@@ -266,30 +268,82 @@ function Road({ state, off }) {
 
 // ── start ───────────────────────────────────────────────────────────────────
 
+function crestStyleNames() {
+  return { esports: t('Esports'), minimal: t('Minimal'), brutalist: t('Brutalist'), heraldic: t('Heraldic'), line: t('Line'), riso: t('Riso print') };
+}
+
+function crestShapeNames() {
+  return {
+    shield: t('Shield'), hex: t('Hexagon'), notch: t('Notched'), pennant: t('Pennant'), octagon: t('Octagon'),
+    circle: t('Circle'), square: t('Square'), diamond: t('Diamond'), none: t('No shape'),
+  };
+}
+
+// The crest a name picks for itself, as a saved code; null until the parts lexicon is in.
+function nameCrest(name, lexicon, options) {
+  return lexicon ? encodeCrest(pickCrest(name, lexicon, options)) : null;
+}
+
 // Mounted only while choosing, so it is always open; any close (Esc, Done,
-// a press on the margin) hands back to the caller.
-function CrestPicker({ name, value, tone, onStyle, onTone, onClose }) {
+// a press on the margin) hands back to the caller. Every option is the club's
+// own crest drawn that way, so the choice is made by looking.
+function CrestPicker({ name, value, tone, onCrest, onTone, onClose }) {
+  const lexicon = useCrestLexicon();
+  const [roll, setRoll] = useState(0);
+  const current = decodeCrest(value) ?? decodeCrest(nameCrest(name, lexicon, { tone }));
+  const code = current ? encodeCrest(current) : null;
+  const pick = changes => onCrest(encodeCrest({ ...current, ...changes }));
+  const another = () => {
+    const next = roll + 1;
+    setRoll(next);
+    const kept = { reroll: next, style: current.style, frame: current.frame, tone };
+    const same = pickCrest(name, lexicon, { ...kept, shape: current.shell });
+    // A name with one fitting mark has nothing new to draw, so the shape moves instead.
+    onCrest(encodeCrest(same.marks.join() === current.marks.join() ? pickCrest(name, lexicon, kept) : same));
+  };
+  const styleNames = crestStyleNames();
+  const shapeNames = crestShapeNames();
+  const option = (key, pressed, label, changes, onClick, disabled) => (
+    <button key={key} type="button" className={styles.crestOption} aria-pressed={pressed} disabled={disabled} onClick={onClick}>
+      <ClubLogo name={name} style={encodeCrest({ ...current, ...changes })} tone={tone} />
+      <b>{label}</b>
+    </button>
+  );
   return (
     <Dialog open onOpenChange={next => { if (!next) onClose(); }}>
       <DialogContent className={styles.crestSheet} aria-label={t('Choose club crest')} initialFocus="[aria-pressed='true']" onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
       <div className={styles.crestGrid}>
         <DialogTitle>{t('Pick a crest')}</DialogTitle>
-        {LOGO_STYLES.map(option => (
-          <button key={option.id} type="button" className={styles.crestOption} aria-pressed={option.id === value} onClick={() => onStyle(option.id)}>
-            <span dangerouslySetInnerHTML={{ __html: logoSvg(name, option.id, tone) }} />
-            <b>{t(option.label)}</b>
-          </button>
-        ))}
+        <div className={styles.crestHero}>
+          <ClubLogo name={name} style={code ?? value} tone={tone} size={148} />
+          {current && lexicon && <button type="button" className={styles.crestAnother} onClick={another}>{t('Another crest')}</button>}
+        </div>
+        {current && (
+          <>
+            <div className={styles.crestRow} role="group" aria-label={t('Style')}>
+              <h3>{t('Style')}</h3>
+              {CREST_STYLES.map(key => option(key, current.style === key, styleNames[key], { style: key }, () => pick({ style: key })))}
+            </div>
+            <div className={styles.crestRow} role="group" aria-label={t('Shape')}>
+              <h3>{t('Shape')}</h3>
+              {CREST_SHAPES.map(key => option(key, current.shell === key, shapeNames[key], { shell: key }, () => pick({ shell: key })))}
+            </div>
+            <div className={styles.crestRow} role="group" aria-label={t('Fill')}>
+              <h3>{t('Fill')}</h3>
+              {['filled', 'outline'].map(key => option(key, current.frame === key, key === 'filled' ? t('Filled') : t('Outline'), { frame: key }, () => pick({ frame: key }), current.shell === 'none'))}
+            </div>
+          </>
+        )}
         <div className={styles.toneRow} role="group" aria-label={t('Colour')}>
-          {LOGO_TONES.map((option, index) => (
+          {LOGO_TONES.map((item, index) => (
             <button
-              key={option.id}
+              key={item.id}
               type="button"
               className={styles.tone}
               aria-pressed={index === tone}
-              aria-label={t(option.label)}
-              title={t(option.label)}
-              style={{ '--tone-main': option.main, '--tone-second': option.second }}
+              aria-label={t(item.label)}
+              title={t(item.label)}
+              style={{ '--tone-main': item.main, '--tone-second': item.second }}
               onClick={() => onTone(index)}
             />
           ))}
@@ -303,9 +357,11 @@ function CrestPicker({ name, value, tone, onStyle, onTone, onClose }) {
 
 // Changing the crest of a club that already exists. Closing keeps the choice.
 function CrestEdit({ state, onDone }) {
-  const [style, setStyle] = useState(state.crest ?? defaultLogoStyle(state.name));
+  const [crest, setCrest] = useState(isKitCrest(state.crest) ? state.crest : null);
   const [tone, setTone] = useState(state.tone ?? defaultLogoTone(state.name));
-  return <CrestPicker name={state.name} value={style} tone={tone} onStyle={setStyle} onTone={setTone} onClose={() => onDone(style, tone)} />;
+  const lexicon = useCrestLexicon();
+  const shown = crest ?? nameCrest(state.name, lexicon, { tone }) ?? state.crest;
+  return <CrestPicker name={state.name} value={shown} tone={tone} onCrest={setCrest} onTone={setTone} onClose={() => onDone(shown, tone)} />;
 }
 
 function Start({ onStart, onExit, scale, exitLabel = 'Back' }) {
@@ -316,8 +372,11 @@ function Start({ onStart, onExit, scale, exitLabel = 'Back' }) {
   const [toneIndex, setToneIndex] = useState(null);
   const [choosing, setChoosing] = useState(false);
   const shownName = cleanName(name) || t('Your club');
-  const style = crest ?? defaultLogoStyle(shownName);
   const tone = toneIndex ?? defaultLogoTone(shownName);
+  // Until a crest is chosen, the name draws its own: the name as typed, so
+  // words in any language count even where the saved name keeps only letters.
+  const lexicon = useCrestLexicon();
+  const style = crest ?? nameCrest(name.trim() || shownName, lexicon, { tone }) ?? defaultLogoStyle(shownName);
   // Each draft pack is torn open before its cards can be picked.
   const [torn, setTorn] = useState(false);
   const done = picks.length >= DRAFT_PACKS;
@@ -389,7 +448,7 @@ function Start({ onStart, onExit, scale, exitLabel = 'Back' }) {
         </div>
         <button type="button" className={styles.primary} disabled={!done} onClick={enter}>{t('Enter league')}</button>
       </footer>
-      {choosing && <CrestPicker name={shownName} value={style} tone={tone} onStyle={setCrest} onTone={setToneIndex} onClose={() => setChoosing(false)} />}
+      {choosing && <CrestPicker name={shownName} value={style} tone={tone} onCrest={setCrest} onTone={setToneIndex} onClose={() => setChoosing(false)} />}
     </div>
   );
 }
@@ -410,7 +469,7 @@ function ClubMenu({ onAbandon, onSettings, onPrimer, onRename, onCrest }) {
         {onPrimer && <MenuItem onSelect={onPrimer}>{t('How it plays')}</MenuItem>}
         {onSettings && <MenuItem onSelect={onSettings}>{t('Settings')}</MenuItem>}
         <MenuItem data-armed={armed || undefined} closeOnSelect={armed} onSelect={() => (armed ? onAbandon() : setArmed(true))}>
-          {armed ? 'Tap again to delete this club' : 'Abandon club'}
+          {armed ? t('Tap again to delete club') : t('Delete club')}
         </MenuItem>
       </MenuContent>
     </Menu>
@@ -1748,7 +1807,7 @@ function League({ state, go, onBack, onChallenge, size }) {
 function duelErrorText(error) {
   if (error?.code === 'duel_not_found') return t('No match with that code');
   if (error?.code === 'duel_full') return t('That match already has two clubs');
-  return t('Couldn’t reach the server');
+  return t('Couldn’t reach the server. Check your connection and try again.');
 }
 
 function Friendly({ state, linkCode, onStart, size }) {
@@ -2292,7 +2351,7 @@ function Damaged({ onReset }) {
 
 function signinNotice(result) {
   if (result === 'cancelled') return t('Sign-in cancelled.');
-  if (result === 'failed') return t('Couldn’t sign in with Discord. Try again.');
+  if (result === 'failed') return t('Couldn’t sign in with Discord. Try again, or keep playing with your local save.');
   return '';
 }
 
@@ -2378,6 +2437,17 @@ export default function Club() {
   // account gets a copy. A club is only valid if every player in it still exists.
   const sync = useClubSync({ state: slots.club.state, setState: setClubSlotState, isValid: isCloudClub });
 
+  // Clubs made before parts crests move onto them the first time they load,
+  // keeping their colour. The save, account copy and leaderboard follow.
+  const clubName = state?.name;
+  const savedCrest = state?.crest;
+  useEffect(() => {
+    if (!clubName || isKitCrest(savedCrest)) return undefined;
+    let live = true;
+    loadCrestLexicon().then(lexicon => { if (live) setState(current => upgradeCrest(current, lexicon)); }, () => {});
+    return () => { live = false; };
+  }, [clubName, savedCrest, setState]);
+
   // ── online: rating, the ranked queue, and handing a found match to the board ──
   useEffect(() => {
     if (mode !== 'online' || screen !== 'home') return undefined;
@@ -2416,7 +2486,7 @@ export default function Club() {
         if (stopped) return;
         stopped = true;
         setQueue(null);
-        setNotice(t('Couldn’t reach the server'));
+        setNotice(t('Couldn’t reach the server. Check your connection and try again.'));
       });
     }, 1500);
     return () => { stopped = true; clearInterval(tick); clearInterval(poll); };
@@ -2429,7 +2499,7 @@ export default function Club() {
     const squad = squadCards(state, allCards).slice(0, STARTERS);
     joinQueue({ club: { name: state.name, crest: state.crest, tone: state.tone }, squad })
       .then(id => setQueue({ id, since: Date.now() }))
-      .catch(error => setNotice(error.code === 'signed_out' ? t('Sign in with Discord') : t('Couldn’t reach the server')))
+      .catch(error => setNotice(error.code === 'signed_out' ? t('Sign in with Discord') : t('Couldn’t reach the server. Check your connection and try again.')))
       .finally(() => setJoining(false));
   }
 

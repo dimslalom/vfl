@@ -17,7 +17,7 @@ function Fallback({ crumb, title, body, detail }) {
         <h2 className={styles.title}>{title}</h2>
         <p className={styles.body}>{body}</p>
         {detail && <pre className={styles.detail}>{detail}</pre>}
-        <Link className={styles.action} to="/">Back to modes</Link>
+        <Link className={styles.action} to="/">{t('Back to modes')}</Link>
       </div>
     </AppFrame>
   );
@@ -26,9 +26,9 @@ function Fallback({ crumb, title, body, detail }) {
 export function NotFound() {
   return (
     <Fallback
-      crumb="404"
-      title={t('No such page')}
-      body={t("That address doesn't match any screen in the app.")}
+      crumb={t('Not found')}
+      title={t('Page not found')}
+      body={t("This screen doesn't exist. Go back to modes to pick a game.")}
     />
   );
 }
@@ -49,7 +49,7 @@ export default class RouteErrorBoundary extends Component {
       <Fallback
         crumb={t('Error')}
         title={t('Something broke on this screen')}
-        body={t('The rest of the app is still fine. Head back and try again.')}
+        body={t('The rest of the app is still fine. Go back to modes and try again.')}
         // Shown because this is a game people self-host and debug; it is the
         // message only, never a stack.
         detail={this.state.error?.message}

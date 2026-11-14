@@ -14,6 +14,7 @@ import {
 import { CONTRACT_MAX, SKILL_SESSIONS, STAT_CAP, STAT_STEP, hashTag, rollChipOffer, squadCards, trainingOffer } from './season.js';
 import { TRAINING_SKILLS } from './tapes.js';
 import { LOGO_STYLES, LOGO_TONES } from './logo.js';
+import { isKitCrest } from './crestKit.js';
 
 export const PICKS = 3;
 
@@ -179,9 +180,9 @@ export function renameClub(state, name) {
   return { ...payPacks(state, RENAME_PRICE), name: cleanName(name) };
 }
 
-/** A new crest is free: the style and colourway must be real ones, and the club still in charge. */
+/** A new crest is free: the crest (a parts crest or a letter style) and colourway must be real, and the club still in charge. */
 export function setClubCrest(state, style, tone) {
-  const real = LOGO_STYLES.some(option => option.id === style) && Number.isInteger(tone) && Boolean(LOGO_TONES[tone]);
+  const real = (isKitCrest(style) || LOGO_STYLES.some(option => option.id === style)) && Number.isInteger(tone) && Boolean(LOGO_TONES[tone]);
   if (!real || state.phase === 'over' || (state.crest === style && state.tone === tone)) return state;
   return { ...state, crest: style, tone };
 }

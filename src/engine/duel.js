@@ -78,8 +78,9 @@ export function sanitizeRoster(raw, cards) {
 function sanitizeClub(club) {
   return {
     name: shortText(club?.name, 24)?.trim() || 'Club',
-    crest: shortText(club?.crest, 24) ?? null,
-    tone: shortText(club?.tone, 24) ?? null,
+    // Parts crests are saved as codes up to 160 characters (crestKit CREST_CODE_MAX).
+    crest: shortText(club?.crest, 160) ?? null,
+    tone: Number.isInteger(club?.tone) ? String(club.tone) : shortText(club?.tone, 24) ?? null,
   };
 }
 

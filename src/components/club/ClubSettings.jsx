@@ -48,7 +48,7 @@ function AccountRows({ account, onSignOut, onDeleteAccount }) {
       <li>
         <span><b>{t('Delete account')}</b><small>{t('Deletes your account and the club saved on it. This device keeps its copy.')}</small></span>
         <button type="button" className={club.small} data-armed={armed || undefined} onBlur={() => setArmed(false)} onClick={() => (armed ? onDeleteAccount() : setArmed(true))}>
-          {armed ? t('Tap again to delete') : t('Delete')}
+          {armed ? t('Tap again to delete account') : t('Delete account')}
         </button>
       </li>
     </>
@@ -133,6 +133,17 @@ export default function ClubSettings({ prefs, onChange, onBack, onPrimer, accoun
                 <a href="https://www.artstation.com/tobiaskoepp" target="_blank" rel="noreferrer">Tobias Koepp</a>,{' '}
                 <a href="https://www.artstation.com/sirdigitalbacon" target="_blank" rel="noreferrer">Kevin Brunt</a>,{' '}
                 {t('and official VALORANT wallpapers.')}
+              </small>
+            </span>
+          </li>
+          <li>
+            <span>
+              <b>{t('Game icons')}</b>
+              <small>
+                {t('Interface icons and crest parts by')}{' '}
+                Lorc, Delapouite, sbed, Andy Meneely, Aussiesim, Carl Olsen, Caro Asercion, Cathelineau, Catsu, DarkZaitzev, Faithtoken, Felbrigg, GeneralAce135, Guard13007, HeavenlyDog, Irongamer, John Colburn, John Redman, Kier Heyl, Lord Berandas, Lucas, Pepijn Poolman, Pierre Leducq, PriorBlue, Quoting, Rihlsul, Seregacthtuf, Skoll, Sparker, SpencerDub, Starseeker, Viscious Speed, Willdabeast, Zajkonur {t('and')} Zeromancer {t('from')}{' '}
+                <a href="https://game-icons.net" target="_blank" rel="noreferrer">game-icons.net</a>,{' '}
+                {t('under')} <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noreferrer">CC BY 3.0</a>.
               </small>
             </span>
           </li>

@@ -143,14 +143,15 @@ export default function LeaderboardLab() {
 
           {viewState === 'empty' && (
             <div className={styles.noticeBox}>
-              <h3 className={styles.noticeHead}>{t('No scores recorded')}</h3>
-              <p className={styles.noticeText}>{t('Play a match to post your score')}</p>
+              <h3 className={styles.noticeHead}>{t('No scores on this board yet')}</h3>
+              <p className={styles.noticeText}>{t("Play a match to post your club's score.")}</p>
             </div>
           )}
 
           {viewState === 'error' && (
             <div className={styles.noticeBox}>
               <h3 className={styles.noticeHead}>{t('Leaderboard unavailable')}</h3>
+              <p className={styles.noticeText}>{t('Couldn’t load standings. Check your connection and try again.')}</p>
               <button
                 type="button"
                 className={styles.actionSecondary}

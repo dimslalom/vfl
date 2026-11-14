@@ -211,8 +211,10 @@ async function writeClubLeaderboard(request, origins, env, at) {
   if (!id) return json({ error: 'invalid_submission' }, 400);
 
   const name = typeof body.name === 'string' ? body.name.trim().slice(0, 32) : '';
-  const crest = typeof body.crest === 'string' ? body.crest.trim().slice(0, 32) : 'laurel';
-  const tone = typeof body.tone === 'string' ? body.tone.trim().slice(0, 32) : 'sunset';
+  // Parts crests are saved as codes up to 160 characters; colourways as an index.
+  const crest = typeof body.crest === 'string' ? body.crest.trim().slice(0, 160) : 'laurel';
+  const tone = Number.isInteger(body.tone) && body.tone >= 0 && body.tone < 100 ? String(body.tone)
+    : typeof body.tone === 'string' ? body.tone.trim().slice(0, 32) : 'sunset';
   const score = Number.isInteger(body.score) && body.score >= 0 ? Math.min(body.score, 10000000) : 0;
   const power = Number.isInteger(body.power) && body.power >= 0 ? Math.min(body.power, 150) : 80;
   const w = Number.isInteger(body.w) && body.w >= 0 ? Math.min(body.w, 1000) : 0;
